@@ -1,6 +1,7 @@
 import { MORSE, MorsePlayer, getTiming } from './audio.js';
 import { LETTERS, DIGITS, LEVELS, generateSequence, createPracticeGenerator, generateLessonSequence, normalizeInput, formatGroups, gradeInput } from './trainer.js';
 import { LearnSession } from './learn-session.js';
+import { PracticeRecording, ReplayPlayer } from './replay.js';
 
 const $ = (selector) => document.querySelector(selector);
 const escapeHTML = (value) => String(value).replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
@@ -31,17 +32,27 @@ let toneBusy = false;
 let answerBusy = '';
 let answerRunId = 0;
 let countdownValue = 0;
+let replayViewing = false;
+let replayScrubbing = false;
+let replayRunId = 0;
 const learn = { level: Math.min(18, Math.max(0, ...progress.completed) + 1), phase: 'intro', sequence: '', session: null, index: 0, records: [], input: '', audible: false, playing: false, countdown: false, tutorialIndex: 0, tutorialHeard: false };
 const practice = { source: 'random', filter: 'all', custom: 'QYFL', length: 'continuous', count: 50, words: 50, groupSize: 5, phase: 'idle', sequence: '', played: 0, answer: '', grading: null, session: null };
 
-const signals = { main: false, answer: false };
+const signals = { main: false, answer: false, replay: false };
 function setSignal(source, active) {
   signals[source] = active;
-  $('#signal-light').classList.toggle('on', signals.main || signals.answer);
-  $('#waveform').classList.toggle('active', signals.main || signals.answer);
+  const audible = Object.values(signals).some(Boolean);
+  $('#signal-light').classList.toggle('on', audible);
+  $('#waveform').classList.toggle('active', audible);
 }
 const player = new MorsePlayer({ onSignal: (active) => setSignal('main', active) });
 const answerPlayer = new MorsePlayer({ onSignal: (active) => setSignal('answer', active) });
+const recording = new PracticeRecording();
+const replayPlayer = new ReplayPlayer(recording, {
+  onSignal: (active) => setSignal('replay', active),
+  onProgress: () => renderAudioTimeline(),
+  onEnded: () => updateTransport(),
+});
 $('#waveform').innerHTML = Array.from({ length: 31 }, (_, index) => `<i style="--bar:${[5, 9, 14, 7, 19, 12, 23, 8, 16][index % 9]}px"></i>`).join('');
 
 function notify(text = '', success = false) {
@@ -52,6 +63,7 @@ function notify(text = '', success = false) {
 function cancelAudio() {
   runId += 1;
   player.stop();
+  stopReplay();
   stopAnswerAudio();
   tutorialBusy = false;
   tutorialCharacter = '';
@@ -96,7 +108,7 @@ for (const key of Object.keys(sound)) {
 }
 
 $('#test-tone').addEventListener('click', async () => {
-  if (learn.playing || learn.countdown || tutorialBusy || answerBusy || ['countdown', 'playing', 'paused'].includes(practice.phase)) return;
+  if (learn.playing || learn.countdown || tutorialBusy || answerBusy || replayPlayer.isPlaying || ['countdown', 'playing', 'paused'].includes(practice.phase)) return;
   cancelAudio();
   const token = runId;
   toneBusy = true;
@@ -149,12 +161,12 @@ function renderSetup() {
   const character = level.newCharacters[learn.tutorialIndex];
   let stage;
   if (learn.phase === 'intro') {
-    stage = `<div class="lesson-stage"><h1 class="lesson-stage-eyebrow">Level ${level.number}</h1><div class="lesson-stage-characters" aria-label="${level.newCharacters.split('').join(' and ')}">${[...level.newCharacters].map((item) => `<span class="lesson-stage-letter">${item}</span>`).join('')}</div><p class="lesson-stage-description">Learn these two characters, one at a time.<br>Then receive ${level.practiceCount} signals using everything you’ve learned.</p><div class="lesson-stage-actions">${button('start-lesson', `Start lesson ${level.number}`, 'play', 'primary')}</div></div>`;
+    stage = `<div class="lesson-stage"><h1 class="lesson-stage-eyebrow">Level ${level.number}</h1><div class="lesson-stage-characters" aria-label="${level.newCharacters.split('').join(' and ')}">${[...level.newCharacters].map((item) => `<div class="lesson-stage-character"><span class="lesson-stage-letter">${item}</span><span class="lesson-stage-morse morse-pattern" aria-label="${morseWords(item)}">${morseDisplay(item)}</span></div>`).join('')}</div><p class="lesson-stage-description">Learn these two characters, one at a time.<br>Then receive ${level.practiceCount} signals using everything you’ve learned.</p><div class="lesson-stage-actions">${button('start-lesson', `Start lesson ${level.number}`, 'play', 'primary')}</div></div>`;
   } else if (['tutorial', 'lesson-complete'].includes(learn.phase)) {
     const completed = learn.phase === 'lesson-complete';
     stage = `<div class="lesson-stage ${tutorialBusy ? 'is-listening' : ''}"><h1 class="lesson-stage-eyebrow">Level ${level.number} · Character ${learn.tutorialIndex + 1} of 2</h1><div class="tutorial-letter"><span class="lesson-stage-letter">${character}</span></div><div class="tutorial-pattern morse-pattern" aria-label="${morseWords(character)}">${morseDisplay(character)}</div><p class="tutorial-sounds">${morseWords(character)}</p><p class="lesson-stage-description" role="status">${tutorialBusy ? 'Listen to the character.' : completed ? 'You’ve heard both characters. Replay the lesson or start practice.' : learn.tutorialHeard ? 'Replay as often as you like, then listen to the next character.' : 'Play the character to continue.'}</p><div class="lesson-stage-actions">${button('replay-tutorial', tutorialBusy ? 'Playing…' : `Replay ${character}`, 'replay', '', tutorialBusy)}${completed ? `${button('replay-lesson', 'Replay lesson', 'replay', '', tutorialBusy)}${button('start-learn-practice', 'Start practice', 'arrow', 'primary', tutorialBusy)}` : button('next-tutorial', `Next: ${level.newCharacters[1]}`, 'arrow', 'primary', tutorialBusy || !learn.tutorialHeard)}</div></div>`;
   } else {
-    stage = `<div class="lesson-stage lesson-stage-compact"><h1>Level ${level.number}${learn.phase === 'finished' ? ' complete' : ' practice'}</h1><p class="lesson-stage-description">${learn.phase === 'finished' ? 'Every signal received correctly. Your next level is unlocked.' : `${level.practiceCount} correct answers to complete this level. A mistake repeats the same signal.`}</p></div>`;
+    stage = `<div class="lesson-stage lesson-stage-compact"><h1>Level ${level.number}${learn.phase === 'finished' ? '' : ' practice'}</h1><p class="lesson-stage-description">${learn.phase === 'finished' ? 'Review your copy beside the received signals. Click a received character to hear it.' : `${level.practiceCount} correct answers to complete this level. A mistake repeats the same signal.`}</p></div>`;
   }
   $('#setup-panel').innerHTML = `<div class="lesson-card">
     <div class="lesson-path"><span class="small-label">YOUR LEARNING PATH</span><div class="level-track" aria-label="18 lesson levels">${LEVELS.map((item) => `<button class="level-button ${item.number === learn.level ? 'active' : progress.completed.includes(item.number) ? 'completed' : ''}" data-level="${item.number}" ${item.number > unlocked ? 'disabled' : ''} aria-label="Level ${item.number}: ${item.newCharacters.split('').join(' and ')}${progress.completed.includes(item.number) ? ', completed' : ''}" ${item.number === learn.level ? 'aria-current="step"' : ''} title="${item.number > unlocked ? 'Complete the previous level to unlock' : `Learn ${item.newCharacters.split('').join(' and ')}`}">${item.number}</button>`).join('')}</div></div>
@@ -182,31 +194,20 @@ function practiceLocked() { return ['countdown', 'playing', 'paused', 'ready', '
 function renderPracticeSetup() {
   const locked = practiceLocked();
   const disabled = locked ? 'disabled' : '';
+  const referenceDisabled = ['countdown', 'playing'].includes(practice.phase) ? 'disabled' : '';
   const grouped = practice.length === 'words';
   $('#setup-panel').innerHTML = `<div class="practice-card"><div class="practice-card-top"><span class="small-label">MAKE IT YOUR PRACTICE</span><div class="segmented" aria-label="Practice type"><button data-source="random" class="${practice.source === 'random' ? 'active' : ''}" ${disabled}>Random practice</button><button data-source="custom" class="${practice.source === 'custom' ? 'active' : ''}" ${disabled}>Custom practice</button></div></div>
     <div class="practice-fields"><div class="field">${practice.source === 'random' ? `<span class="field-label" id="pool-label">What would you like to hear?</span><div class="segmented" aria-labelledby="pool-label">${[['all', 'Letters + numbers'], ['letters', 'Letters'], ['numbers', 'Numbers']].map(([value, label]) => `<button data-filter="${value}" class="${practice.filter === value ? 'active' : ''}" ${disabled}>${label}</button>`).join('')}</div>` : `<label for="custom-characters">Your character selection</label><input id="custom-characters" type="text" value="${escapeHTML(practice.custom)}" maxlength="100" autocomplete="off" spellcheck="false" ${disabled}><p>Only these letters and numbers will be played. Each round includes every choice once.</p>`}</div>
     <div class="field"><label for="session-length">Session length</label><select id="session-length" ${disabled}><option value="continuous" ${practice.length === 'continuous' ? 'selected' : ''}>Continuous, until I stop</option><option value="characters" ${practice.length === 'characters' ? 'selected' : ''}>A set number of characters</option><option value="words" ${grouped ? 'selected' : ''}>Random word groups</option></select></div>
     <div class="field">${practice.length === 'continuous' ? `<span class="field-label">No finish line</span><p style="margin:0;line-height:1.9">Pause to take a breath.<br>Stop to check what you heard.</p>` : grouped ? `<div class="double-fields"><div><label for="word-count">Words</label><input id="word-count" type="number" min="1" max="2000" step="1" value="${practice.words}" ${disabled}></div><div><label for="group-size">Letters / word</label><input id="group-size" type="number" min="1" max="50" step="1" value="${practice.groupSize}" ${disabled}></div></div><p>${practice.words * practice.groupSize} characters, with a gap between words.</p>` : `<label for="character-count">Characters to receive</label><input id="character-count" type="number" min="1" max="10000" step="1" value="${practice.count}" ${disabled}><p>Spaces in your copy are optional.</p>`}</div></div>
-    ${practice.source === 'custom' ? `<details class="character-picker"><summary>Choose individual characters</summary><div class="character-grid">${[...LETTERS + DIGITS].map((character) => `<button data-pick="${character}" class="${practice.custom.toUpperCase().includes(character) ? 'selected' : ''}" aria-label="${character}" aria-pressed="${practice.custom.toUpperCase().includes(character)}" ${disabled}>${character}</button>`).join('')}</div></details>` : ''}</div>`;
-  document.querySelectorAll('[data-source]').forEach((element) => element.addEventListener('click', () => { practice.source = element.dataset.source; renderPracticeSetup(); }));
-  document.querySelectorAll('[data-filter]').forEach((element) => element.addEventListener('click', () => { practice.filter = element.dataset.filter; renderPracticeSetup(); }));
+    <section class="character-reference-panel" aria-labelledby="characters-heading"><div class="reference-heading"><h2 id="characters-heading">Characters</h2><p>Click a character to hear its Morse code.${practice.source === 'custom' ? ' Type your practice choices in the box above.' : ''}</p></div><div class="character-reference-grid">${[...LETTERS + DIGITS].map((character) => `<button type="button" class="character-reference" data-reference="${character}" aria-label="Listen to ${character}: ${morseWords(character)}" title="Listen to ${character}" ${referenceDisabled}><span class="reference-letter">${character}</span><span class="reference-morse" aria-hidden="true">${morseDisplay(character)}</span></button>`).join('')}</div></section></div>`;
+  document.querySelectorAll('[data-source]').forEach((element) => element.addEventListener('click', () => { cancelAudio(); practice.source = element.dataset.source; renderPracticeSetup(); updateTransport(); }));
+  document.querySelectorAll('[data-filter]').forEach((element) => element.addEventListener('click', () => { cancelAudio(); practice.filter = element.dataset.filter; renderPracticeSetup(); updateTransport(); }));
   $('#session-length').addEventListener('change', (event) => { practice.length = event.target.value; renderPracticeSetup(); });
   $('#custom-characters')?.addEventListener('input', (event) => {
     practice.custom = event.target.value.toUpperCase();
-    document.querySelectorAll('[data-pick]').forEach((element) => {
-      const selected = practice.custom.includes(element.dataset.pick);
-      element.classList.toggle('selected', selected);
-      element.setAttribute('aria-pressed', selected);
-    });
   });
-  document.querySelectorAll('[data-pick]').forEach((element) => element.addEventListener('click', () => {
-    const character = element.dataset.pick;
-    const pool = [...new Set(practice.custom.toUpperCase().replace(/[^A-Z0-9]/g, ''))];
-    practice.custom = pool.includes(character) ? pool.filter((item) => item !== character).join('') : pool.join('') + character;
-    $('#custom-characters').value = practice.custom;
-    element.classList.toggle('selected', practice.custom.includes(character));
-    element.setAttribute('aria-pressed', practice.custom.includes(character));
-  }));
+  document.querySelectorAll('[data-reference]').forEach((element) => element.addEventListener('click', () => playReferenceCharacter(element.dataset.reference, element)));
   for (const [id, key] of [['character-count', 'count'], ['word-count', 'words'], ['group-size', 'groupSize']]) {
     $(`#${id}`)?.addEventListener('input', (event) => { practice[key] = Number(event.target.value); });
     $(`#${id}`)?.addEventListener('change', () => renderPracticeSetup());
@@ -238,11 +239,12 @@ function stopAnswerAudio() {
   answerRunId += 1;
   answerPlayer.stop();
   answerBusy = '';
-  document.querySelectorAll('[data-answer].playing').forEach((cell) => cell.classList.remove('playing'));
+  document.querySelectorAll('[data-answer].playing,[data-reference].playing').forEach((cell) => cell.classList.remove('playing'));
 }
 
 async function playAnswerCharacter(character, cell) {
   if (!MORSE[character] || learn.playing || learn.countdown || tutorialBusy || toneBusy || (mode === 'practice' && practice.phase !== 'reviewed')) return;
+  stopReplay();
   stopAnswerAudio();
   const token = answerRunId;
   answerBusy = character;
@@ -266,12 +268,128 @@ async function playAnswerCharacter(character, cell) {
   }
 }
 
+async function playReferenceCharacter(character, cell) {
+  if (!MORSE[character] || learn.playing || learn.countdown || tutorialBusy || toneBusy || replayPlayer.isPlaying || (mode === 'practice' && ['countdown', 'playing'].includes(practice.phase))) return;
+  stopReplay();
+  stopAnswerAudio();
+  const token = answerRunId;
+  answerBusy = character;
+  cell.classList.add('playing');
+  updateTransport();
+  try {
+    await answerPlayer.playCharacter(character, { ...sound });
+    if (token !== answerRunId) return;
+    answerBusy = '';
+    cell.classList.remove('playing');
+    updateTransport();
+  } catch (error) {
+    if (token !== answerRunId) return;
+    stopAnswerAudio();
+    notify(error.message || 'This character could not be played. Try again.');
+    updateTransport();
+  }
+}
+
+function stopReplay() {
+  replayRunId += 1;
+  replayPlayer.stop();
+  replayViewing = false;
+  replayScrubbing = false;
+  renderAudioTimeline();
+}
+
+function audioTime(seconds) {
+  const tenths = Math.max(0, Math.floor(seconds * 10));
+  return `${Math.floor(tenths / 600)}:${String(Math.floor(tenths / 10) % 60).padStart(2, '0')}.${tenths % 10}`;
+}
+
+function renderAudioTimeline() {
+  const bar = $('#practice-audio-bar');
+  if (!bar) return;
+  bar.hidden = mode !== 'practice';
+  if (mode !== 'practice') return;
+  if (!$('#audio-position')) {
+    bar.innerHTML = `<div class="audio-bar-header"><label for="audio-position">Session audio</label><span id="replay-clock"></span></div><div class="audio-bar-controls">${button('toggle-replay', 'Replay', 'play', 'quiet audio-replay-button')}<input id="audio-position" type="range" min="0" max="0" step="0.01" value="0" aria-label="Replay received session audio"></div><p class="audio-bar-help"></p>`;
+    $('#toggle-replay').addEventListener('click', toggleAudioReplay);
+    $('#audio-position').addEventListener('pointerdown', () => { replayScrubbing = true; });
+    $('#audio-position').addEventListener('pointerup', () => { replayScrubbing = false; });
+    $('#audio-position').addEventListener('pointercancel', () => { replayScrubbing = false; renderAudioTimeline(); });
+    $('#audio-position').addEventListener('input', (event) => {
+      replayScrubbing = true;
+      $('#replay-clock').textContent = `${audioTime(Number(event.target.value))} / ${audioTime(recording.duration)}`;
+    });
+    $('#audio-position').addEventListener('change', (event) => {
+      replayScrubbing = false;
+      startAudioReplay(Number(event.target.value));
+    });
+    $('#audio-position').addEventListener('blur', () => { replayScrubbing = false; renderAudioTimeline(); });
+  }
+  const position = replayViewing ? replayPlayer.position : recording.duration;
+  const disabled = !recording.characterCount || toneBusy || Boolean(answerBusy) || practice.phase === 'countdown';
+  const slider = $('#audio-position');
+  slider.max = recording.duration;
+  slider.disabled = disabled;
+  if (!replayScrubbing) {
+    slider.value = position;
+    $('#replay-clock').textContent = `${audioTime(position)} / ${audioTime(recording.duration)}`;
+  }
+  slider.setAttribute('aria-valuetext', `${audioTime(Number(slider.value))} of ${audioTime(recording.duration)}`);
+  const replayButton = $('#toggle-replay');
+  replayButton.disabled = disabled;
+  replayButton.innerHTML = `${icon(replayPlayer.isPlaying ? 'pause' : 'play')}${replayPlayer.isPlaying ? 'Pause replay' : replayPlayer.isPaused ? 'Resume replay' : 'Replay'}`;
+  $('.audio-bar-help').textContent = !recording.characterCount
+    ? 'Received audio will appear here after the first character.'
+    : ['playing', 'paused'].includes(practice.phase)
+      ? 'Drag to replay received audio. Resume continues the test from your saved place.'
+      : 'Drag to any point to replay the audio from this session.';
+}
+
+async function startAudioReplay(offset = 0) {
+  if (mode !== 'practice' || !recording.characterCount || practice.phase === 'countdown' || toneBusy || answerBusy) return;
+  if (practice.phase === 'playing') {
+    if (!player.pause()) return;
+    practice.resumePhase = 'playing';
+    practice.phase = 'paused';
+    renderActions();
+  }
+  stopAnswerAudio();
+  replayViewing = true;
+  const token = ++replayRunId;
+  try {
+    const playback = replayPlayer.play(offset, { ...sound });
+    updateTransport();
+    await playback;
+    if (token === replayRunId) updateTransport();
+  } catch (error) {
+    if (token !== replayRunId) return;
+    stopReplay();
+    notify(error.message || 'Session audio could not be replayed. Try again.');
+    updateTransport();
+  }
+}
+
+function toggleAudioReplay() {
+  if (replayPlayer.isPlaying) {
+    replayPlayer.pause();
+    updateTransport();
+  } else if (replayPlayer.isPaused) {
+    replayPlayer.resume();
+    updateTransport();
+  } else {
+    const offset = replayViewing && replayPlayer.position < recording.duration ? replayPlayer.position : 0;
+    startAudioReplay(offset);
+  }
+}
+
 $('#answer-panel').addEventListener('click', (event) => {
   const cell = event.target.closest('[data-answer]');
   if (cell && !cell.disabled) playAnswerCharacter(cell.dataset.answer, cell);
 });
 
 function renderWorkspace() {
+  const feedback = $('#session-feedback');
+  feedback.hidden = true;
+  feedback.innerHTML = '';
   if (mode === 'learn') renderLearnWorkspace(); else renderPracticeWorkspace();
   renderActions();
 }
@@ -288,14 +406,17 @@ function renderLearnWorkspace() {
   const answers = learn.records.map((record) => answerCell(record.expected, record.correct ? 'correct' : 'incorrect', record.position - 1)).join('');
   if (learn.phase === 'finished') {
     const accuracy = Math.round(level.practiceCount / learn.records.length * 100);
-    $('#copy-panel').innerHTML = `<div class="completion-card"><span class="completion-icon">${icon('check')}</span><h3>Every signal, understood.</h3><p>You’ve received all ${level.practiceCount} signals correctly.<br>${level.number === 18 ? 'You’ve learned all 26 letters and 10 numbers.' : `Level ${level.number + 1} is now unlocked.`}</p><div class="score">${level.practiceCount} / ${level.practiceCount} passed · ${learn.records.length} attempts · ${accuracy}% accuracy</div></div><div class="learn-copy-list">${copies}</div>`;
-    $('#answer-panel').innerHTML = `<p class="review-label">Your answers, in order. Click a character to hear it.</p><div class="learn-answer-list">${answers}</div><div class="answer-legend"><span>Correct</span><span>Retried</span></div>`;
+    $('#copy-panel').innerHTML = `<p class="review-label">Your submitted copy</p><div class="learn-copy-list">${copies}</div>`;
+    $('#answer-panel').innerHTML = `<p class="review-label">Received characters</p><div class="learn-answer-list">${answers}</div><div class="answer-legend"><span>Correct</span><span>Retried</span></div>`;
+    $('#session-feedback').hidden = false;
+    $('#session-feedback').innerHTML = `<div class="completion-card"><span class="completion-icon">${icon('check')}</span><h3>Level ${level.number} complete</h3><p>Well done. You’ve received all ${level.practiceCount} signals correctly.<br>${level.number === 18 ? 'You’ve learned all 26 letters and 10 numbers.' : `Level ${level.number + 1} is now unlocked.`}</p><div class="score">${level.practiceCount} / ${level.practiceCount} passed · ${learn.records.length} attempts · ${accuracy}% accuracy</div></div>`;
     return;
   }
   const last = learn.records.at(-1);
   $('#copy-panel').innerHTML = `${copies ? `<div class="learn-copy-list">${copies}</div>` : ''}
-    <div class="entry-row"><div class="letter-input-controls"><input id="letter-entry" class="letter-entry" type="text" maxlength="1" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Type the character you hear" value="${escapeHTML(learn.input)}"><button id="replay-letter" class="button entry-replay" aria-label="Replay the current signal" title="Replay the current signal">${icon('replay')}<span class="entry-replay-label">Replay</span></button></div><small>Listen to signal ${learn.index + 1} of ${level.practiceCount}.<br>Type one character, then press <kbd>Enter</kbd>.</small></div>
-    <div class="lesson-feedback ${last ? last.correct ? 'correct' : 'incorrect' : ''}" role="status">${last ? last.correct ? `Correct. Now receive signal ${learn.index + 1}.` : `You copied ${escapeHTML(last.actual)}. The signal was ${last.expected}. Signal ${last.position} will repeat until you get it right.` : 'Take your time. You can replay the signal.'}</div>`;
+    <div class="entry-row"><div class="letter-input-controls"><input id="letter-entry" class="letter-entry" type="text" maxlength="1" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Type the character you hear" value="${escapeHTML(learn.input)}"><button id="replay-letter" class="button entry-replay" aria-label="Replay the current signal" title="Replay the current signal">${icon('replay')}<span class="entry-replay-label">Replay</span></button></div><small>Listen to signal ${learn.index + 1} of ${level.practiceCount}.<br>Type one character, then press <kbd>Enter</kbd>.</small></div>`;
+  $('#session-feedback').hidden = false;
+  $('#session-feedback').innerHTML = `<p class="lesson-feedback ${last ? last.correct ? 'correct' : 'incorrect' : ''}">${last ? last.correct ? `Correct. Now receive signal ${learn.index + 1}.` : `You copied ${escapeHTML(last.actual)}. The signal was ${last.expected}. Signal ${last.position} will repeat until you get it right.` : 'Take your time. You can replay the signal.'}</p>`;
   $('#answer-panel').innerHTML = answers ? `<div class="learn-answer-list">${answers}</div><p class="review-label" style="margin-top:12px">Click a character to hear it again.</p><div class="answer-legend"><span>Correct</span><span>Retried</span></div>` : emptyAnswers('Listen first. Then check.', 'Press Enter after typing a character to reveal its letter and Morse symbols here.');
   const entry = $('#letter-entry');
   $('#replay-letter').addEventListener('click', playLearnCharacter);
@@ -313,8 +434,10 @@ function renderPracticeWorkspace() {
   $('#keyboard-note').innerHTML = `Your shortcuts <kbd>Alt + P</kbd> pause / resume <kbd>Ctrl + Enter</kbd> submit`;
   if (reviewed) {
     const grade = practice.grading;
-    $('#copy-panel').innerHTML = `<div class="results-summary"><span><b>Your submitted copy</b><br>${normalizeInput(practice.answer).length} typed · ${practice.played} received</span></div><div class="result-grid">${grade.rows.map((row, index) => `${groupSize && row.expectedIndex !== null && row.expectedIndex > 0 && row.expectedIndex % groupSize === 0 ? '<span class="result-word-break"></span>' : ''}${copyCell(row.actual, row.status, index)}`).join('')}</div><div class="answer-legend"><span>Correct</span><span>Wrong or missed</span><span>Extra input</span></div>`;
-    $('#answer-panel').innerHTML = `<div class="results-summary"><strong>${grade.total || grade.extra ? `${grade.accuracy}%` : '0'}</strong><span><b>${grade.correct} of ${grade.total} received correctly</b><br>${grade.incorrect} wrong · ${grade.missing} missed · ${grade.extra} extra</span></div>${grade.rows.length ? `<div class="result-grid">${grade.rows.map((row, index) => `${groupSize && row.expectedIndex !== null && row.expectedIndex > 0 && row.expectedIndex % groupSize === 0 ? '<span class="result-word-break"></span>' : ''}${answerCell(row.expected, row.status, index)}`).join('')}</div>` : '<p class="review-label">No complete characters were played. Start again when you’re ready.</p>'}`;
+    $('#copy-panel').innerHTML = `<p class="review-label">Your submitted copy</p><div class="result-grid">${grade.rows.map((row, index) => `${groupSize && row.expectedIndex !== null && row.expectedIndex > 0 && row.expectedIndex % groupSize === 0 ? '<span class="result-word-break"></span>' : ''}${copyCell(row.actual, row.status, index)}`).join('')}</div><div class="answer-legend"><span>Correct</span><span>Wrong or missed</span><span>Extra input</span></div>`;
+    $('#answer-panel').innerHTML = `<p class="review-label">Received characters</p><div class="result-grid">${grade.rows.map((row, index) => `${groupSize && row.expectedIndex !== null && row.expectedIndex > 0 && row.expectedIndex % groupSize === 0 ? '<span class="result-word-break"></span>' : ''}${answerCell(row.expected, row.status, index)}`).join('')}</div>`;
+    $('#session-feedback').hidden = false;
+    $('#session-feedback').innerHTML = `<div class="session-result"><strong class="session-result-score">${grade.total || grade.extra ? grade.accuracy : 0}%</strong><h3>Practice checked</h3><p>${grade.correct} of ${grade.total} received correctly</p><p class="session-result-details">${normalizeInput(practice.answer).length} typed · ${practice.played} received<br>${grade.incorrect} wrong · ${grade.missing} missed · ${grade.extra} extra</p>${grade.total === 0 ? '<p>No complete characters were played. Start again when you’re ready.</p>' : ''}</div>`;
     return;
   }
   $('#copy-panel').innerHTML = `<textarea id="practice-copy" class="practice-textarea" spellcheck="false" autocomplete="off" autocapitalize="characters" aria-label="Type the Morse characters you hear" ${practice.phase === 'idle' ? 'disabled' : ''} placeholder="${practice.phase === 'idle' ? 'Start a session below.\nYour listening practice begins here.' : groupSize ? `Keep typing. A space is added every ${groupSize} characters.` : 'Type what you hear. Spaces are optional.'}">${escapeHTML(practice.answer)}</textarea><div class="textarea-meta"><span id="typed-counter">${normalizeInput(practice.answer).length} typed</span><span>${groupSize ? `${groupSize} letters per word` : 'Spaces don’t affect your score'}</span></div>`;
@@ -355,6 +478,7 @@ function renderPracticeWorkspace() {
 }
 
 function renderActions() {
+  renderAudioTimeline();
   if (mode === 'learn') {
     if (learn.phase === 'practice') {
       const busy = learn.playing || learn.countdown || Boolean(answerBusy);
@@ -398,7 +522,7 @@ function updateTransport() {
   if (mode === 'learn') {
     const level = LEVELS[learn.level - 1];
     if (['intro', 'tutorial', 'lesson-complete'].includes(learn.phase)) label = tutorialBusy ? `Tutorial: listening to ${tutorialCharacter}` : 'Ready when you are';
-    else if (learn.phase === 'finished') label = 'Level complete. Nicely received.';
+    else if (learn.phase === 'finished') label = `Level ${level.number} results`;
     else label = learn.countdown ? `Starting in ${countdownValue}…` : learn.playing ? 'Listen to the signal…' : learn.audible ? 'Your turn to copy' : 'Replay the signal to continue';
     count = `${learn.index} / ${level.practiceCount} correct`;
     percentage = learn.index / level.practiceCount * 100;
@@ -407,7 +531,8 @@ function updateTransport() {
     count = practice.session ? practice.session.total ? `${practice.played} / ${practice.session.total} characters` : `${practice.played} characters received` : 'Your own pace';
     percentage = practice.session?.total ? practice.played / practice.session.total * 100 : practice.phase === 'reviewed' ? 100 : 0;
   }
-  if (answerBusy) label = `Listening to answer ${answerBusy}…`;
+  if (answerBusy) label = `Listening to character ${answerBusy}…`;
+  if (replayPlayer.isPlaying) label = 'Replaying session audio…';
   if (toneBusy) label = 'Testing your sound…';
   $('#signal-label').textContent = label;
   $('#session-counter').textContent = count;
@@ -417,8 +542,10 @@ function updateTransport() {
   const countdownPaused = mode === 'practice' && practice.phase === 'paused' && practice.resumePhase === 'countdown';
   $('#session-countdown').classList.toggle('is-paused', countdownPaused);
   $('#session-countdown .countdown-copy b').textContent = countdownPaused ? 'Countdown paused' : 'Get ready to receive';
-  $('#test-tone').disabled = toneBusy || tutorialBusy || learn.playing || learn.countdown || Boolean(answerBusy) || ['countdown', 'playing', 'paused'].includes(practice.phase);
+  $('#test-tone').disabled = toneBusy || tutorialBusy || learn.playing || learn.countdown || Boolean(answerBusy) || replayPlayer.isPlaying || ['countdown', 'playing', 'paused'].includes(practice.phase);
   document.querySelectorAll('[data-answer]').forEach((cell) => { cell.disabled = learn.playing || learn.countdown || tutorialBusy || toneBusy || (mode === 'practice' && practice.phase !== 'reviewed'); });
+  document.querySelectorAll('[data-reference]').forEach((cell) => { cell.disabled = learn.playing || learn.countdown || tutorialBusy || toneBusy || replayPlayer.isPlaying || (mode === 'practice' && ['countdown', 'playing'].includes(practice.phase)); });
+  renderAudioTimeline();
 }
 
 function startLesson() {
@@ -543,6 +670,7 @@ async function startPractice() {
   let session;
   try { session = getPracticeConfig(); } catch (error) { notify(error.message); return; }
   cancelAudio();
+  recording.clear();
   const token = runId;
   Object.assign(practice, { phase: 'countdown', resumePhase: 'countdown', sequence: '', played: 0, answer: '', grading: null, session });
   countdownValue = 5;
@@ -563,11 +691,14 @@ async function startPractice() {
       // Only complete characters enter the answer key. An interrupted mark is excluded.
       practice.sequence += character;
       practice.played += 1;
+      recording.appendCharacter(character, config);
       updateTransport();
       if (session.total !== null && practice.played === session.total) break;
       const timing = getTiming(config);
       const gap = session.groupSize && practice.played % session.groupSize === 0 ? timing.wordGap : timing.characterGap;
       if (!await player.gap(gap) || token !== runId) return;
+      recording.appendGap(gap);
+      renderAudioTimeline();
     }
     if (token !== runId) return;
     practice.phase = 'ready';
@@ -584,6 +715,8 @@ function pausePractice() {
     practice.resumePhase = practice.phase;
     practice.phase = 'paused';
   } else if (practice.phase === 'paused') {
+    stopReplay();
+    stopAnswerAudio();
     if (!player.resume()) return;
     practice.phase = practice.resumePhase || 'playing';
   } else return;

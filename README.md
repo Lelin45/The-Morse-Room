@@ -74,13 +74,15 @@ There are 18 levels. Levels 1 to 13 introduce two letters at a time in this exac
 
 Levels 14 to 18 introduce `01`, `23`, `45`, `67`, and `89`.
 
-Select **Start lesson** to hear each new character with its Morse pattern and dit/dah guide. Replay as often as you like, then move to the next character. After both characters, choose **Replay lesson** or **Start practice**.
+The level introduction shows the two new characters with their Morse patterns underneath. Select **Start lesson** to hear each character with its dit/dah guide. Replay as often as you like, then move to the next character. After both characters, choose **Replay lesson** or **Start practice**.
 
 Each level practises every character learned so far exactly five times in shuffled order. Level 4 uses `ETANIMSO` for 40 signals; level 18 uses all 36 letters and numbers for 180 signals. A visible **5, 4, 3, 2, 1** countdown runs before the first practice signal.
 
 Type one character in the left column and press **Enter**. A green tick or red cross marks your answer; the right column shows the correct character and its Morse pattern. A correct answer plays the next signal automatically. A wrong answer repeats the same signal until you answer correctly. Complete every signal correctly to unlock the next level.
 
 Use **Replay** beside the typing box to hear the current signal again. Click a revealed answer in the right column to hear that character without changing your progress.
+
+Answer feedback, scores, and level completion messages appear centered below both columns.
 
 ## Practice
 
@@ -90,7 +92,11 @@ Use **Replay** beside the typing box to hear the current signal again. Click a r
 - **Character count:** receive a fixed number, such as 10 or 100.
 - **Random word groups:** set the number of words and letters per word. For example, 50 words of five letters plays 250 random characters with proper word gaps. Spaces are added automatically as you type each group.
 
+The **Characters** reference stays open in both Random and Custom practice, showing all letters and numbers with their Morse patterns. Click a character to hear a sample. These buttons leave your custom selection unchanged; type your chosen pool in the selection box.
+
 Type continuously in the left column. Spaces and letter case do not affect checking. Answers stay hidden during playback and while paused. **Pause** and **Resume** preserve your place, including during the countdown.
+
+The **Session audio** bar sits above the playback controls. Drag its slider to replay any received audio, including after a test finishes. Rewinding pauses the test; **Resume** continues from the saved point. Use **Pause replay** or **Resume replay** to control the replay separately. Replaying audio never adds characters to your answer key or changes your score.
 
 After a finite run ends, press **Submit copy** when you finish typing. **Stop & check** ends a run and reveals results immediately. Only fully played characters are checked. The right column shows their Morse patterns and lets you replay them. Missing or extra characters are aligned so a single omission does not turn later correct answers into errors.
 

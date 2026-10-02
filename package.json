@@ -1,0 +1,19 @@
+{
+  "name": "morse-room",
+  "version": "1.0.0",
+  "description": "A local receiving-only Morse code trainer with lessons and custom practice.",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Lelin45/The-Morse-Room.git"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "test": "node --test"
+  }
+}

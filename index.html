@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#f7f6f2">
+  <meta name="description" content="A personal Morse code receiving trainer with progressive lessons, custom practice, and adjustable Farnsworth timing.">
+  <title>Morse Room | Listen. Type. Learn.</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='15' fill='%23212e2b'/%3E%3Ccircle cx='18' cy='32' r='5' fill='%23e7a655'/%3E%3Crect x='29' y='27' width='21' height='10' rx='5' fill='%23e7a655'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <svg class="svg-library" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="m8 5 11 7-11 7z"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></symbol>
+    <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1"/></symbol>
+    <symbol id="i-replay" viewBox="0 0 24 24"><path d="M4 10a8 8 0 1 1 1 8M4 4v6h6"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h16m-6-6 6 6-6 6"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M12 6v15M12 6C8 3 4 3 2 4v15c4-1 7 0 10 2 3-2 6-3 10-2V4c-2-1-6-1-10 2Z"/></symbol>
+    <symbol id="i-headphones" viewBox="0 0 24 24"><path d="M4 14v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="12" width="4" height="8" rx="2"/><rect x="17" y="12" width="4" height="8" rx="2"/></symbol>
+    <symbol id="i-volume" viewBox="0 0 24 24"><path d="M11 5 6 9H3v6h3l5 4ZM16 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/></symbol>
+    <symbol id="i-shuffle" viewBox="0 0 24 24"><path d="m3 5 3 0c5 0 7 14 12 14h3m-4-4 4 4-4 4M3 19h3C11 19 13 5 18 5h3m-4-4 4 4-4 4"/></symbol>
+  </svg>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="./" aria-label="Morse Room home"><span class="brand-mark"><i></i><b></b></span><span>Morse Room<small>LISTEN. TYPE. LEARN.</small></span></a>
+      <div class="sidebar-section-label">YOUR WORKSPACE</div>
+      <nav class="mode-nav" aria-label="Training mode">
+        <button class="mode-button active" data-mode="learn"><svg><use href="#i-book"/></svg><span>Learn<small>One step at a time</small></span><span class="nav-dot"></span></button>
+        <button class="mode-button" data-mode="practice"><svg><use href="#i-headphones"/></svg><span>Practice<small>Find your rhythm</small></span><span class="nav-dot"></span></button>
+      </nav>
+      <div class="settings-heading"><span class="sidebar-section-label">AUDIO SETTINGS</span><svg><use href="#i-volume"/></svg></div>
+      <div class="sound-settings">
+        <div class="setting"><label for="wpm-number">Character speed</label><div class="setting-value"><input id="wpm-number" type="number" min="5" max="60" step="1" aria-label="Character speed in words per minute"><span>WPM</span></div><input id="wpm-range" type="range" min="5" max="60" step="1" aria-label="Character speed slider"></div>
+        <div class="setting"><label for="farnsworth-number">Farnsworth speed</label><div class="setting-value"><input id="farnsworth-number" type="number" min="1" max="20" step="1" aria-label="Farnsworth speed in words per minute"><span>WPM</span></div><input id="farnsworth-range" type="range" min="1" max="20" step="1" aria-label="Farnsworth speed slider"><p>Lower values give you more time between characters.</p></div>
+        <div class="setting"><label for="frequency-number">Tone frequency</label><div class="setting-value"><input id="frequency-number" type="number" min="200" max="1200" step="10" aria-label="Tone frequency in hertz"><span>Hz</span></div><input id="frequency-range" type="range" min="200" max="1200" step="10" aria-label="Tone frequency slider"></div>
+        <div class="setting"><label for="volume-number">Volume</label><div class="setting-value"><input id="volume-number" type="number" min="0" max="100" step="1" aria-label="Volume percentage"><span>%</span></div><input id="volume-range" type="range" min="0" max="100" step="1" aria-label="Volume slider"></div>
+      </div>
+      <button id="test-tone" class="button tone-test"><svg><use href="#i-volume"/></svg>Test your sound</button>
+      <div class="sidebar-footer"><span class="receiving-dot"></span>Receiving only<small>Your progress stays in this browser.</small></div>
+    </aside>
+    <main class="main-content">
+      <div class="topbar"><span id="breadcrumb">Your workspace <span>/</span> Learn</span><span class="topbar-note"><svg><use href="#i-headphones"/></svg> Headphones recommended</span></div>
+      <div id="view-heading" class="view-heading"></div>
+      <section id="setup-panel" aria-label="Training setup"></section>
+      <section class="receiver" aria-label="Morse receiving workspace">
+        <div class="receiver-toolbar"><div class="signal-status"><span id="signal-light"></span><span id="signal-label">Ready when you are</span></div><div class="waveform" id="waveform" aria-hidden="true"></div><span id="session-counter" class="session-counter">0 / 10 characters</span></div>
+        <div class="progress-track"><div id="session-progress"></div></div>
+        <div id="session-countdown" class="session-countdown" hidden aria-live="polite" aria-atomic="true"><span class="countdown-copy"><b>Get ready to receive</b><small>Place your cursor in the typing box.</small></span><strong id="countdown-number">5</strong></div>
+        <div class="writing-columns">
+          <section class="writing-pane"><div class="pane-heading"><h2>Your copy</h2><span>01 / TYPE WHAT YOU HEAR</span></div><div id="copy-panel"></div></section>
+          <section class="answer-pane"><div class="pane-heading"><h2>The answer</h2><span>02 / CHECK YOUR COPY</span></div><div id="answer-panel"></div></section>
+        </div>
+        <div id="receiver-actions" class="receiver-actions"></div>
+      </section>
+      <div class="bottom-note"><span id="keyboard-note"></span><span>Small steps. A better ear.</span></div>
+      <div id="message" class="message" role="status" aria-live="polite"></div>
+    </main>
+  </div>
+</body>
+</html>

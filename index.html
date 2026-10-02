@@ -6,6 +6,17 @@
   <meta name="theme-color" content="#f7f6f2">
   <meta name="description" content="A personal Morse code receiving trainer with progressive lessons, custom practice, and adjustable Farnsworth timing.">
   <title>Morse Room | Listen. Type. Learn.</title>
+  <script>
+    (() => {
+      let theme;
+      try { theme = localStorage.getItem('morse-room-theme'); } catch { /* Use the device preference when storage is unavailable. */ }
+      if (theme !== 'dark' && theme !== 'light') {
+        theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+      document.documentElement.dataset.theme = theme;
+      document.querySelector('meta[name="theme-color"]').content = theme === 'dark' ? '#121a18' : '#f7f6f2';
+    })();
+  </script>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='15' fill='%23212e2b'/%3E%3Ccircle cx='18' cy='32' r='5' fill='%23e7a655'/%3E%3Crect x='29' y='27' width='21' height='10' rx='5' fill='%23e7a655'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="styles.css">
   <script type="module" src="app.js"></script>
@@ -43,7 +54,7 @@
       <div class="sidebar-footer"><span class="receiving-dot"></span>Receiving only<small>Your progress stays in this browser.</small></div>
     </aside>
     <main class="main-content">
-      <div class="topbar"><span id="breadcrumb">Your workspace <span>/</span> Learn</span><span class="topbar-note"><svg><use href="#i-headphones"/></svg> Headphones recommended</span></div>
+      <div class="topbar"><span id="breadcrumb">Your workspace <span>/</span> Learn</span><div class="topbar-actions"><span class="topbar-note"><svg><use href="#i-headphones"/></svg> Headphones recommended</span><button id="theme-toggle" type="button" role="switch" aria-label="Dark theme" aria-checked="false"><span id="theme-label">Dark theme</span><span class="theme-switch-track" aria-hidden="true"><span class="theme-switch-thumb"></span></span></button></div></div>
       <div id="view-heading" class="view-heading"></div>
       <section id="setup-panel" aria-label="Training setup"></section>
       <section class="receiver" aria-label="Morse receiving workspace">

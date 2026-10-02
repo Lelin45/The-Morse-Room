@@ -10,6 +10,22 @@ const button = (id, label, symbol, classes = '', disabled = false) => `<button i
 const clamp = (number, min, max, fallback) => Number.isFinite(Number(number)) ? Math.min(max, Math.max(min, Math.round(Number(number)))) : fallback;
 const readStorage = (key, fallback) => { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; } };
 const writeStorage = (key, value) => { try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* The trainer also works when storage is unavailable. */ } };
+
+function applyTheme(theme, save = false) {
+  const selected = theme === 'dark' ? 'dark' : 'light';
+  document.documentElement.dataset.theme = selected;
+  const toggle = $('#theme-toggle');
+  toggle.setAttribute('aria-checked', String(selected === 'dark'));
+  toggle.title = `Switch to ${selected === 'dark' ? 'light' : 'dark'} theme`;
+  $('meta[name="theme-color"]').content = selected === 'dark' ? '#121a18' : '#f7f6f2';
+  if (save) {
+    try { localStorage.setItem('morse-room-theme', selected); } catch { /* The switch also works without saved preferences. */ }
+  }
+}
+
+applyTheme(document.documentElement.dataset.theme);
+$('#theme-toggle').addEventListener('click', () => applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark', true));
+
 const savedSound = readStorage('morse-room-sound', {});
 const sound = {
   wpm: clamp(savedSound.wpm, 5, 60, 20),
@@ -90,7 +106,7 @@ function syncSound() {
     range.value = value;
     number.value = value;
     const percent = (value - Number(range.min)) / (Number(range.max) - Number(range.min)) * 100;
-    range.style.background = `linear-gradient(to right, #729364 ${percent}%, #d6ddcc ${percent}%)`;
+    range.style.background = `linear-gradient(to right, var(--range-fill) ${percent}%, var(--range-track) ${percent}%)`;
   }
   writeStorage('morse-room-sound', sound);
 }
@@ -200,7 +216,7 @@ function renderPracticeSetup() {
     <div class="practice-fields"><div class="field">${practice.source === 'random' ? `<span class="field-label" id="pool-label">What would you like to hear?</span><div class="segmented" aria-labelledby="pool-label">${[['all', 'Letters + numbers'], ['letters', 'Letters'], ['numbers', 'Numbers']].map(([value, label]) => `<button data-filter="${value}" class="${practice.filter === value ? 'active' : ''}" ${disabled}>${label}</button>`).join('')}</div>` : `<label for="custom-characters">Your character selection</label><input id="custom-characters" type="text" value="${escapeHTML(practice.custom)}" maxlength="100" autocomplete="off" spellcheck="false" ${disabled}><p>Only these letters and numbers will be played. Each round includes every choice once.</p>`}</div>
     <div class="field"><label for="session-length">Session length</label><select id="session-length" ${disabled}><option value="continuous" ${practice.length === 'continuous' ? 'selected' : ''}>Continuous, until I stop</option><option value="characters" ${practice.length === 'characters' ? 'selected' : ''}>A set number of characters</option><option value="words" ${grouped ? 'selected' : ''}>Random word groups</option></select></div>
     <div class="field">${practice.length === 'continuous' ? `<span class="field-label">No finish line</span><p style="margin:0;line-height:1.9">Pause to take a breath.<br>Stop to check what you heard.</p>` : grouped ? `<div class="double-fields"><div><label for="word-count">Words</label><input id="word-count" type="number" min="1" max="2000" step="1" value="${practice.words}" ${disabled}></div><div><label for="group-size">Letters / word</label><input id="group-size" type="number" min="1" max="50" step="1" value="${practice.groupSize}" ${disabled}></div></div><p>${practice.words * practice.groupSize} characters, with a gap between words.</p>` : `<label for="character-count">Characters to receive</label><input id="character-count" type="number" min="1" max="10000" step="1" value="${practice.count}" ${disabled}><p>Spaces in your copy are optional.</p>`}</div></div>
-    <section class="character-reference-panel" aria-labelledby="characters-heading"><div class="reference-heading"><h2 id="characters-heading">Characters</h2><p>Click a character to hear its Morse code.${practice.source === 'custom' ? ' Type your practice choices in the box above.' : ''}</p></div><div class="character-reference-grid">${[...LETTERS + DIGITS].map((character) => `<button type="button" class="character-reference" data-reference="${character}" aria-label="Listen to ${character}: ${morseWords(character)}" title="Listen to ${character}" ${referenceDisabled}><span class="reference-letter">${character}</span><span class="reference-morse" aria-hidden="true">${morseDisplay(character)}</span></button>`).join('')}</div></section></div>`;
+    <section class="character-reference-panel" aria-labelledby="characters-heading"><div class="reference-heading"><h2 id="characters-heading">Characters</h2><p>Click a character or press its key outside a typing field to hear its Morse code.${practice.source === 'custom' ? ' Type your practice choices in the box above.' : ''}</p></div><div class="character-reference-grid">${[...LETTERS + DIGITS].map((character) => `<button type="button" class="character-reference" data-reference="${character}" aria-label="Listen to ${character}: ${morseWords(character)}" title="Listen to ${character}" ${referenceDisabled}><span class="reference-letter">${character}</span><span class="reference-morse" aria-hidden="true">${morseDisplay(character)}</span></button>`).join('')}</div></section></div>`;
   document.querySelectorAll('[data-source]').forEach((element) => element.addEventListener('click', () => { cancelAudio(); practice.source = element.dataset.source; renderPracticeSetup(); updateTransport(); }));
   document.querySelectorAll('[data-filter]').forEach((element) => element.addEventListener('click', () => { cancelAudio(); practice.filter = element.dataset.filter; renderPracticeSetup(); updateTransport(); }));
   $('#session-length').addEventListener('change', (event) => { practice.length = event.target.value; renderPracticeSetup(); });
@@ -366,6 +382,26 @@ async function startAudioReplay(offset = 0) {
     notify(error.message || 'Session audio could not be replayed. Try again.');
     updateTransport();
   }
+}
+
+function previewPracticeKey(event) {
+  if (mode !== 'practice' || event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey || event.repeat || event.isComposing) return;
+  const character = event.key.toUpperCase();
+  if (!/^[A-Z0-9]$/.test(character)) return;
+  const target = event.target instanceof Element ? event.target : document.activeElement;
+  if (target?.isContentEditable || target?.closest('input,textarea,select,[role="textbox"]')) return;
+  const cell = $(`[data-reference="${character}"]`);
+  if (!cell) return;
+  if (['countdown', 'playing'].includes(practice.phase)) {
+    if (!player.pause()) return;
+    practice.resumePhase = practice.phase;
+    practice.phase = 'paused';
+    renderActions();
+  }
+  if (toneBusy) cancelAudio();
+  if (replayPlayer.isPlaying) stopReplay();
+  event.preventDefault();
+  playReferenceCharacter(character, cell);
 }
 
 function toggleAudioReplay() {
@@ -750,6 +786,7 @@ document.addEventListener('keydown', (event) => {
   if (event.altKey && event.key.toLowerCase() === 'r' && mode === 'learn' && learn.phase === 'practice') { event.preventDefault(); playLearnCharacter(); }
   if (event.altKey && event.key.toLowerCase() === 'p' && mode === 'practice') { event.preventDefault(); pausePractice(); }
   if ((event.ctrlKey || event.metaKey) && event.key === 'Enter' && mode === 'practice') { event.preventDefault(); submitPractice(); }
+  previewPracticeKey(event);
 });
 
 syncSound();

@@ -92,7 +92,7 @@ Answer feedback, scores, and level completion messages appear centered below bot
 - **Character count:** receive a fixed number, such as 10 or 100.
 - **Random word groups:** set the number of words and letters per word. For example, 50 words of five letters plays 250 random characters with proper word gaps. Spaces are added automatically as you type each group.
 
-The **Characters** reference stays open in both Random and Custom practice, showing all letters and numbers with their Morse patterns. Click a character to hear a sample. These buttons leave your custom selection unchanged; type your chosen pool in the selection box.
+The **Characters** reference stays open in both Random and Custom practice, showing all letters and numbers with their Morse patterns. Click a character to hear a sample, or press its letter/number key while outside a typing field. A keyboard sample pauses a running test; **Resume** continues from its saved point. Typing in the answer box, custom selection, or settings does not play samples. These samples leave your custom selection and received count unchanged; type your chosen pool in the selection box.
 
 Type continuously in the left column. Spaces and letter case do not affect checking. Answers stay hidden during playback and while paused. **Pause** and **Resume** preserve your place, including during the countdown.
 
@@ -114,7 +114,9 @@ At 20 WPM with 10 WPM Farnsworth, a dit lasts 60 ms, a dah 180 ms, a character g
 
 Morse marks are scheduled on the browser's audio clock. A silent preparation period lets the audio start before the first mark, and continuous practice keeps its configured gaps between characters and words.
 
-Completed levels and sound settings are stored in this browser's `localStorage`. They stay on your computer. Use the same browser and address to keep your progress when you update the app. Clearing site data or using another browser gives you a separate saved history.
+Use the **Dark theme** switch at the top right to change between light and dark themes. The first visit follows your device's theme; your choice is saved for later visits.
+
+Completed levels, sound settings, and your theme choice are stored in this browser's `localStorage`. They stay on your computer. Use the same browser and address to keep your progress when you update the app. Clearing site data or using another browser gives you a separate saved history.
 
 ## Keyboard
 
@@ -124,6 +126,7 @@ Completed levels and sound settings are stored in this browser's `localStorage`.
 | Alt + R | Replay the current Learn signal |
 | Alt + P | Pause or resume Practice |
 | Ctrl + Enter / Cmd + Enter | Submit a finished Practice run |
+| Letter / number key outside a typing field | Play that character in Practice |
 
 ## Run the tests
 

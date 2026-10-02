@@ -74,7 +74,7 @@ There are 18 levels. Levels 1 to 13 introduce two letters at a time in this exac
 
 Levels 14 to 18 introduce `01`, `23`, `45`, `67`, and `89`.
 
-Select **Start lesson** to hear each new character with its Morse pattern. Replay as often as you like, then move to the next character. After both characters, choose **Replay lesson** or **Start practice**.
+Select **Start lesson** to hear each new character with its Morse pattern and dit/dah guide. Replay as often as you like, then move to the next character. After both characters, choose **Replay lesson** or **Start practice**.
 
 Each level practises every character learned so far exactly five times in shuffled order. Level 4 uses `ETANIMSO` for 40 signals; level 18 uses all 36 letters and numbers for 180 signals. A visible **5, 4, 3, 2, 1** countdown runs before the first practice signal.
 
@@ -85,7 +85,7 @@ Use **Replay** beside the typing box to hear the current signal again. Click a r
 ## Practice
 
 - **Random:** practise all letters and numbers, letters only, or numbers only.
-- **Custom:** choose a character pool, such as `Q Y F L`.
+- **Custom:** choose a character pool, such as `Q Y F L`. Each shuffled round plays every selected character once. The same character cannot occur twice in a row across rounds, unless you selected only one character.
 - **Continuous:** keep receiving until you stop.
 - **Character count:** receive a fixed number, such as 10 or 100.
 - **Random word groups:** set the number of words and letters per word. For example, 50 words of five letters plays 250 random characters with proper word gaps. Spaces are added automatically as you type each group.
@@ -97,6 +97,16 @@ After a finite run ends, press **Submit copy** when you finish typing. **Stop & 
 ## Sound and saved progress
 
 Adjust character speed from 5 to 60 WPM, Farnsworth speed from 1 WPM up to character speed, frequency from 200 to 1,200 Hz, and volume from 0 to 100%. Farnsworth increases the gaps between characters and words while keeping the selected character speed. Changes during a session apply to the next character. Use **Test your sound** before starting.
+
+Timing follows the [standard PARIS calculation](https://morsecode.world/international/timing/) and [Farnsworth calculation](https://morsecode.world/international/timing/farnsworth.html). With character speed `C` and Farnsworth speed `F`, all durations below are in seconds:
+
+- Dit: `1.2 / C`; dah: three dits; silence within a character: one dit.
+- Farnsworth spacing unit: `(60 / F - 31 * dit) / 19`.
+- Character gap: three spacing units; word gap: seven spacing units.
+
+At 20 WPM with 10 WPM Farnsworth, a dit lasts 60 ms, a dah 180 ms, a character gap about 654 ms, and a word gap about 1,525 ms. Equal character and Farnsworth speeds give standard Morse spacing. Learn pauses for your answer, so its overall session speed also depends on how quickly you type.
+
+Morse marks are scheduled on the browser's audio clock. A silent preparation period lets the audio start before the first mark, and continuous practice keeps its configured gaps between characters and words.
 
 Completed levels and sound settings are stored in this browser's `localStorage`. They stay on your computer. Use the same browser and address to keep your progress when you update the app. Clearing site data or using another browser gives you a separate saved history.
 
@@ -117,4 +127,4 @@ From the project folder, run:
 npm test
 ```
 
-On Windows PowerShell, use `npm.cmd test` if scripts are blocked. Tests cover Morse mappings, Farnsworth timing, audio preparation and playback controls, all 18 lessons, incorrect-answer retries, custom sequences, word groups, and answer alignment.
+On Windows PowerShell, use `npm.cmd test` if scripts are blocked. Tests cover Morse mappings, Farnsworth timing, audio preparation and playback controls, all 18 lessons, incorrect-answer retries, shuffled custom rounds, word groups, and answer alignment.

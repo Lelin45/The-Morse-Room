@@ -1,5 +1,5 @@
 import { MORSE, MorsePlayer, getTiming } from './audio.js';
-import { LETTERS, DIGITS, LEVELS, generateSequence, generateLessonSequence, normalizeInput, formatGroups, gradeInput } from './trainer.js';
+import { LETTERS, DIGITS, LEVELS, generateSequence, createPracticeGenerator, generateLessonSequence, normalizeInput, formatGroups, gradeInput } from './trainer.js';
 import { LearnSession } from './learn-session.js';
 
 const $ = (selector) => document.querySelector(selector);
@@ -184,7 +184,7 @@ function renderPracticeSetup() {
   const disabled = locked ? 'disabled' : '';
   const grouped = practice.length === 'words';
   $('#setup-panel').innerHTML = `<div class="practice-card"><div class="practice-card-top"><span class="small-label">MAKE IT YOUR PRACTICE</span><div class="segmented" aria-label="Practice type"><button data-source="random" class="${practice.source === 'random' ? 'active' : ''}" ${disabled}>Random practice</button><button data-source="custom" class="${practice.source === 'custom' ? 'active' : ''}" ${disabled}>Custom practice</button></div></div>
-    <div class="practice-fields"><div class="field">${practice.source === 'random' ? `<span class="field-label" id="pool-label">What would you like to hear?</span><div class="segmented" aria-labelledby="pool-label">${[['all', 'Letters + numbers'], ['letters', 'Letters'], ['numbers', 'Numbers']].map(([value, label]) => `<button data-filter="${value}" class="${practice.filter === value ? 'active' : ''}" ${disabled}>${label}</button>`).join('')}</div>` : `<label for="custom-characters">Your character selection</label><input id="custom-characters" type="text" value="${escapeHTML(practice.custom)}" maxlength="100" autocomplete="off" spellcheck="false" ${disabled}><p>Only these letters and numbers will be played.</p>`}</div>
+    <div class="practice-fields"><div class="field">${practice.source === 'random' ? `<span class="field-label" id="pool-label">What would you like to hear?</span><div class="segmented" aria-labelledby="pool-label">${[['all', 'Letters + numbers'], ['letters', 'Letters'], ['numbers', 'Numbers']].map(([value, label]) => `<button data-filter="${value}" class="${practice.filter === value ? 'active' : ''}" ${disabled}>${label}</button>`).join('')}</div>` : `<label for="custom-characters">Your character selection</label><input id="custom-characters" type="text" value="${escapeHTML(practice.custom)}" maxlength="100" autocomplete="off" spellcheck="false" ${disabled}><p>Only these letters and numbers will be played. Each round includes every choice once.</p>`}</div>
     <div class="field"><label for="session-length">Session length</label><select id="session-length" ${disabled}><option value="continuous" ${practice.length === 'continuous' ? 'selected' : ''}>Continuous, until I stop</option><option value="characters" ${practice.length === 'characters' ? 'selected' : ''}>A set number of characters</option><option value="words" ${grouped ? 'selected' : ''}>Random word groups</option></select></div>
     <div class="field">${practice.length === 'continuous' ? `<span class="field-label">No finish line</span><p style="margin:0;line-height:1.9">Pause to take a breath.<br>Stop to check what you heard.</p>` : grouped ? `<div class="double-fields"><div><label for="word-count">Words</label><input id="word-count" type="number" min="1" max="2000" step="1" value="${practice.words}" ${disabled}></div><div><label for="group-size">Letters / word</label><input id="group-size" type="number" min="1" max="50" step="1" value="${practice.groupSize}" ${disabled}></div></div><p>${practice.words * practice.groupSize} characters, with a gap between words.</p>` : `<label for="character-count">Characters to receive</label><input id="character-count" type="number" min="1" max="10000" step="1" value="${practice.count}" ${disabled}><p>Spaces in your copy are optional.</p>`}</div></div>
     ${practice.source === 'custom' ? `<details class="character-picker"><summary>Choose individual characters</summary><div class="character-grid">${[...LETTERS + DIGITS].map((character) => `<button data-pick="${character}" class="${practice.custom.toUpperCase().includes(character) ? 'selected' : ''}" aria-label="${character}" aria-pressed="${practice.custom.toUpperCase().includes(character)}" ${disabled}>${character}</button>`).join('')}</div></details>` : ''}</div>`;
@@ -226,7 +226,7 @@ function morseDisplay(character) {
 }
 
 function morseWords(character) {
-  return (MORSE[character] || '').split('').map((mark) => mark === '.' ? 'dot' : 'dash').join(' · ');
+  return (MORSE[character] || '').split('').map((mark) => mark === '.' ? 'dit' : 'dah').join(' · ');
 }
 
 function answerCell(expected, status, index) {
@@ -535,7 +535,8 @@ function getPracticeConfig() {
     total = practice.words * groupSize;
     if (total > 10000) throw new Error('Keep a session to 10,000 characters or fewer. Reduce the words or letters per word.');
   }
-  return { pool, total, groupSize };
+  const generator = practice.source === 'custom' ? createPracticeGenerator(pool) : null;
+  return { pool, total, groupSize, generator };
 }
 
 async function startPractice() {
@@ -556,7 +557,7 @@ async function startPractice() {
     renderActions();
     updateTransport();
     while (token === runId && (session.total === null || practice.played < session.total)) {
-      const character = generateSequence(session.pool, 1);
+      const character = session.generator ? session.generator.next() : generateSequence(session.pool, 1);
       const config = { ...sound };
       if (!await player.playCharacter(character, config) || token !== runId) return;
       // Only complete characters enter the answer key. An interrupted mark is excluded.
@@ -566,7 +567,7 @@ async function startPractice() {
       if (session.total !== null && practice.played === session.total) break;
       const timing = getTiming(config);
       const gap = session.groupSize && practice.played % session.groupSize === 0 ? timing.wordGap : timing.characterGap;
-      if (!await player.wait(gap) || token !== runId) return;
+      if (!await player.gap(gap) || token !== runId) return;
     }
     if (token !== runId) return;
     practice.phase = 'ready';

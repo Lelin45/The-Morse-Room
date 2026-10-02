@@ -87,95 +87,128 @@ test('starting a new operation cancels the prior pending operation', async () =>
   await assert.rejects(player.wait(-1), /nonnegative/);
 });
 
-function mockAudio() {
+
+function mockAudio({ manual = false, delayedResume = false, holdInitialClock = false, failToneScheduling = false } = {}) {
   const events = [];
+  const contexts = [];
   class Parameter {
-    value = 0;
-    setValueAtTime(value, time) {
-      this.value = value;
-      events.push(['set', value, time]);
-    }
+    constructor(name) { this.name = name; this.value = 0; }
+    setValueAtTime(value, time) { this.value = value; events.push({ parameter: this.name, type: 'set', value, time }); }
     linearRampToValueAtTime(value, time) {
+      if (failToneScheduling && this.name === 'gain' && value > 0) throw new Error('Scheduling failed');
       this.value = value;
-      events.push(['ramp', value, time]);
+      events.push({ parameter: this.name, type: 'ramp', value, time });
     }
-    cancelAndHoldAtTime(time) { events.push(['hold', time]); }
+    cancelScheduledValues(time) { events.push({ parameter: this.name, type: 'cancel', time }); }
+    cancelAndHoldAtTime(time) { events.push({ parameter: this.name, type: 'hold', time }); }
   }
   class Context {
-    state = 'suspended';
-    currentTime = 0;
-    destination = {};
+    constructor() {
+      this.state = 'suspended';
+      this.time = 0;
+      this.startedAt = performance.now();
+      this.destination = {};
+      contexts.push(this);
+    }
+    get currentTime() {
+      // A first real render quantum unlocks preparation, then the clock is
+      // controlled explicitly so tests can freeze it during scheduled sound.
+      if (manual && !holdInitialClock && this.state === 'running'
+          && this.time === 0 && performance.now() - this.startedAt >= 10) this.time = 0.01;
+      return this.time + (!manual && this.state === 'running' ? (performance.now() - this.startedAt) / 1000 : 0);
+    }
     resume() {
-      events.push(['resume']);
-      this.state = 'running';
-      return Promise.resolve();
+      events.push({ type: 'resume' });
+      const finish = () => { this.state = 'running'; this.startedAt = performance.now(); };
+      if (!delayedResume) { finish(); return Promise.resolve(); }
+      return new Promise((resolve) => { this.finishResume = () => { finish(); resolve(); }; });
     }
     createOscillator() {
-      events.push(['oscillator']);
+      events.push({ type: 'oscillator' });
       return {
-        frequency: new Parameter(),
-        connect() {},
-        disconnect() {},
-        start(time) { events.push(['start', time]); },
-        stop(time) { events.push(['stop', time]); },
+        frequency: new Parameter('frequency'), connect() {}, disconnect() {},
+        start(time) { events.push({ type: 'start', time }); },
+        stop(time) { events.push({ type: 'stop', time }); },
       };
     }
-    createGain() {
-      return { gain: new Parameter(), connect() {}, disconnect() {} };
-    }
+    createGain() { return { gain: new Parameter('gain'), connect() {}, disconnect() {} }; }
   }
-  return { Context, events };
+  return { Context, events, contexts };
 }
 
-test('preparing audio unlocks its context without playing a tone or changing the signal', async () => {
+async function withAudio(options, callback) {
   const original = globalThis.AudioContext;
-  const { Context, events } = mockAudio();
-  globalThis.AudioContext = Context;
-  try {
-    const signals = [];
-    const player = new MorsePlayer({ onSignal: (signal) => signals.push(signal) });
-    assert.deepEqual(events, []);
-    const prepared = player.prepare();
-    assert.deepEqual(events, [['resume']]);
-    assert.equal(player.isPlaying, false);
-    await prepared;
-    assert.deepEqual(signals, []);
-    assert.deepEqual(events, [['resume']]);
-    await player.prepare();
-    assert.deepEqual(events, [['resume']]);
-  } finally {
+  const audio = mockAudio(options);
+  globalThis.AudioContext = audio.Context;
+  try { await callback(audio); }
+  finally {
     if (original === undefined) delete globalThis.AudioContext;
     else globalThis.AudioContext = original;
   }
+}
+
+function scheduledMarks(events) {
+  const gain = events.filter((event) => event.parameter === 'gain');
+  const marks = [];
+  for (const [index, event] of gain.entries()) {
+    if (event.type !== 'ramp' || event.value <= 0) continue;
+    const end = gain.slice(index + 1).find((next) => next.type === 'ramp' && next.value === 0);
+    if (end) marks.push({ start: event.time - 0.004, end: end.time, duration: end.time - event.time + 0.004 });
+  }
+  return marks;
+}
+
+test('prepare starts a silent persistent carrier and resumes within the gesture', async () => {
+  await withAudio({}, async ({ events }) => {
+    const signals = [];
+    const player = new MorsePlayer({ onSignal: (signal) => signals.push(signal) });
+    assert.deepEqual(events, []);
+    const preparing = player.prepare();
+    assert.ok(events.some((event) => event.type === 'resume'));
+    assert.equal(events.filter((event) => event.type === 'start').length, 1);
+    assert.equal(player.isPlaying, false);
+    await preparing;
+    assert.deepEqual(signals, []);
+    assert.equal(scheduledMarks(events).length, 0);
+    assert.ok(events.some((event) => event.parameter === 'gain' && event.type === 'set' && event.value === 0));
+    await player.prepare();
+    assert.equal(events.filter((event) => event.type === 'oscillator').length, 1);
+    assert.equal(events.filter((event) => event.type === 'resume').length, 1);
+  });
 });
 
-test('preparing and preparing again leave a countdown wait active', async () => {
-  const original = globalThis.AudioContext;
-  const { Context, events } = mockAudio();
-  globalThis.AudioContext = Context;
-  try {
+test('prepare can be recalled while a countdown wait remains active', async () => {
+  await withAudio({}, async () => {
     const player = new MorsePlayer();
     const countdown = player.wait(0.04);
     await player.prepare();
     assert.equal(player.isPlaying, true);
     await player.prepare();
-    assert.equal(player.isPlaying, true);
     assert.equal(await countdown, true);
-    assert.deepEqual(events, [['resume']]);
-  } finally {
-    if (original === undefined) delete globalThis.AudioContext;
-    else globalThis.AudioContext = original;
-  }
+  });
 });
 
-test('preparing reports missing Web Audio without cancelling an existing wait', async () => {
+test('prepare waits for initial audio-clock progress before declaring output ready', async () => {
+  await withAudio({ manual: true, holdInitialClock: true }, async ({ contexts }) => {
+    const player = new MorsePlayer();
+    let ready = false;
+    const preparing = player.prepare().then(() => { ready = true; });
+    await sleep(30);
+    assert.equal(ready, false);
+    contexts[0].time = 0.01;
+    await preparing;
+    assert.equal(ready, true);
+  });
+});
+
+test('missing Web Audio gives a helpful error without cancelling an existing wait', async () => {
   const original = globalThis.AudioContext;
   const originalLegacy = globalThis.webkitAudioContext;
   delete globalThis.AudioContext;
   delete globalThis.webkitAudioContext;
   try {
     const player = new MorsePlayer();
-    const countdown = player.wait(0.01);
+    const countdown = player.wait(0.02);
     await assert.rejects(player.prepare(), /browser with Web Audio support/);
     assert.equal(player.isPlaying, true);
     assert.equal(await countdown, true);
@@ -185,49 +218,212 @@ test('preparing reports missing Web Audio without cancelling an existing wait', 
   }
 });
 
-test('audio starts lazily, resumes within the call, and can stop during a mark', async () => {
-  const original = globalThis.AudioContext;
-  const { Context, events } = mockAudio();
-  globalThis.AudioContext = Context;
-  try {
+test('cold Q schedules all four complete marks and exact intra-character gaps upfront', async () => {
+  await withAudio({ manual: true }, async ({ events, contexts }) => {
     const signals = [];
     const player = new MorsePlayer({ onSignal: (signal) => signals.push(signal) });
-    assert.deepEqual(events, []);
-    const playback = player.playCharacter('T', { wpm: 20, frequency: 725, volume: 40 });
-    assert.deepEqual(events, [['resume']]);
-    await Promise.resolve();
-    assert.deepEqual(signals, [true]);
-    assert.ok(events.some(([name, value]) => name === 'set' && value === 725));
-    assert.ok(events.some(([name, value]) => name === 'ramp' && value === 0.4));
+    const playback = player.playCharacter('Q', { wpm: 20, frequency: 725, volume: 40 });
+    assert.ok(events.some((event) => event.type === 'resume'));
+    await sleep(25);
+    const marks = scheduledMarks(events);
+    assert.equal(marks.length, 4);
+    assert.ok(marks[0].start >= contexts[0].currentTime + 0.049);
+    [0.18, 0.18, 0.06, 0.18].forEach((duration, index) => close(marks[index].duration, duration));
+    for (let index = 1; index < marks.length; index += 1) close(marks[index].start - marks[index - 1].end, 0.06);
+    assert.ok(events.some((event) => event.parameter === 'frequency' && event.value === 725));
+    assert.ok(events.some((event) => event.parameter === 'gain' && event.type === 'ramp' && event.value === 0.4));
+    assert.deepEqual(signals, []);
+    assert.equal(events.filter((event) => event.type === 'oscillator').length, 1);
     assert.equal(player.stop(), true);
     assert.equal(await playback, false);
-    assert.deepEqual(signals, [true, false]);
-    assert.ok(events.some(([name]) => name === 'hold'));
-  } finally {
-    if (original === undefined) delete globalThis.AudioContext;
-    else globalThis.AudioContext = original;
-  }
+    assert.ok(events.some((event) => event.parameter === 'gain' && event.type === 'hold'));
+    assert.equal(events.filter((event) => event.type === 'stop').length, 0);
+  });
 });
 
-test('pausing a mark switches the signal off and resumes the same character', async () => {
-  const original = globalThis.AudioContext;
-  const { Context, events } = mockAudio();
-  globalThis.AudioContext = Context;
-  try {
-    const signals = [];
-    const player = new MorsePlayer({ onSignal: (signal) => signals.push(signal) });
-    const playback = player.playCharacter('T', { wpm: 30 });
+test('a cold direct Q waits for the first render-clock tick before scheduling every mark', async () => {
+  await withAudio({ manual: true, holdInitialClock: true }, async ({ events, contexts }) => {
+    const player = new MorsePlayer();
+    const playback = player.playCharacter('Q', { wpm: 20 });
     await sleep(30);
-    player.pause();
-    assert.deepEqual(signals, [true, false]);
-    await sleep(150);
+    assert.equal(scheduledMarks(events).length, 0);
     assert.equal(player.isPlaying, true);
-    player.resume();
+    contexts[0].time = 0.01;
+    await sleep(25);
+    const marks = scheduledMarks(events);
+    assert.equal(marks.length, 4);
+    close(marks[0].start, 0.06);
+    player.stop();
+    assert.equal(await playback, false);
+  });
+});
+
+test('a frozen initial audio clock cannot finish or truncate Q through wall timers', async () => {
+  await withAudio({ manual: true }, async ({ events, contexts }) => {
+    const player = new MorsePlayer();
+    let completed = false;
+    const playback = player.playCharacter('Q', { wpm: 20 }).then((result) => { completed = result; return result; });
+    await sleep(25);
+    const scheduled = events.filter((event) => event.parameter === 'gain').length;
+    await sleep(300);
+    assert.equal(completed, false);
+    assert.equal(player.isPlaying, true);
+    assert.equal(events.filter((event) => event.parameter === 'gain').length, scheduled);
+    assert.equal(scheduledMarks(events).length, 4);
+    contexts[0].time = 0.7;
+    await sleep(60);
+    assert.equal(completed, false);
+    contexts[0].time = 1;
     assert.equal(await playback, true);
-    assert.deepEqual(signals, [true, false, true, false]);
-    assert.equal(events.filter(([name]) => name === 'oscillator').length, 2);
-  } finally {
-    if (original === undefined) delete globalThis.AudioContext;
-    else globalThis.AudioContext = original;
-  }
+  });
+});
+
+test('an event-loop stall does not create, skip, or reschedule native Q marks', async () => {
+  await withAudio({ manual: true }, async ({ events, contexts }) => {
+    const player = new MorsePlayer();
+    const playback = player.playCharacter('Q', { wpm: 20 });
+    await sleep(25);
+    const before = events.filter((event) => event.parameter === 'gain');
+    const blockedUntil = performance.now() + 100;
+    while (performance.now() < blockedUntil) {}
+    contexts[0].time = 0.7;
+    await sleep(0);
+    assert.deepEqual(events.filter((event) => event.parameter === 'gain'), before);
+    contexts[0].time = 1;
+    assert.equal(await playback, true);
+    assert.deepEqual(events.filter((event) => event.parameter === 'gain'), before);
+  });
+});
+
+test('pause cancels scheduled Q and resume preserves remaining first dah and every later mark', async () => {
+  await withAudio({ manual: true }, async ({ events, contexts }) => {
+    const player = new MorsePlayer();
+    const playback = player.playCharacter('Q', { wpm: 20 });
+    await sleep(25);
+    contexts[0].time = scheduledMarks(events)[0].start + 0.07;
+    assert.equal(player.pause(), true);
+    const pauseEvents = events.length;
+    assert.ok(events.some((event) => event.parameter === 'gain' && event.type === 'hold' && event.time === contexts[0].time));
+    contexts[0].time = 2;
+    await sleep(60);
+    assert.equal(player.isPlaying, true);
+    assert.equal(player.isPaused, true);
+    assert.equal(events.length, pauseEvents);
+    player.resume();
+    await sleep(0);
+    const resumedMarks = scheduledMarks(events.slice(pauseEvents));
+    assert.equal(resumedMarks.length, 4);
+    [0.11, 0.18, 0.06, 0.18].forEach((duration, index) => close(resumedMarks[index].duration, duration));
+    contexts[0].time = 3;
+    assert.equal(await playback, true);
+    assert.equal(events.filter((event) => event.type === 'oscillator').length, 1);
+  });
+});
+
+test('pausing before the first mark retains its remaining lead and the complete character', async () => {
+  await withAudio({ manual: true }, async ({ events, contexts }) => {
+    const player = new MorsePlayer();
+    const playback = player.playCharacter('Q', { wpm: 20 });
+    await sleep(25);
+    const originalMarks = scheduledMarks(events);
+    contexts[0].time = originalMarks[0].start - 0.03;
+    player.pause();
+    const pausedAt = events.length;
+    contexts[0].time = 2;
+    player.resume();
+    await sleep(0);
+    const resumed = scheduledMarks(events.slice(pausedAt));
+    assert.equal(resumed.length, 4);
+    close(resumed[0].start, 2.03);
+    [0.18, 0.18, 0.06, 0.18].forEach((duration, index) => close(resumed[index].duration, duration));
+    contexts[0].time = 3;
+    assert.equal(await playback, true);
+  });
+});
+
+test('pausing inside an intra-character gap preserves the exact remainder of that gap', async () => {
+  await withAudio({ manual: true }, async ({ events, contexts }) => {
+    const player = new MorsePlayer();
+    const playback = player.playCharacter('A', { wpm: 20 });
+    await sleep(25);
+    contexts[0].time = scheduledMarks(events)[0].end + 0.02;
+    player.pause();
+    const pauseEvents = events.length;
+    contexts[0].time = 1;
+    player.resume();
+    await sleep(0);
+    const marks = scheduledMarks(events.slice(pauseEvents));
+    assert.equal(marks.length, 1);
+    close(marks[0].start - 1.05, 0.04);
+    close(marks[0].duration, 0.18);
+    contexts[0].time = 2;
+    assert.equal(await playback, true);
+  });
+});
+
+test('stop during initial context resume prevents stale scheduling and resolves false immediately', async () => {
+  await withAudio({ manual: true, delayedResume: true }, async ({ events, contexts }) => {
+    const player = new MorsePlayer();
+    const playback = player.playCharacter('Q');
+    player.stop();
+    assert.equal(await playback, false);
+    contexts[0].finishResume();
+    await sleep(0);
+    assert.equal(scheduledMarks(events).length, 0);
+    assert.equal(player.isPlaying, false);
+  });
+});
+
+test('a scheduling error rejects playback and leaves no pending operation', async () => {
+  await withAudio({ failToneScheduling: true }, async () => {
+    const player = new MorsePlayer();
+    await assert.rejects(player.playCharacter('Q'), /Scheduling failed/);
+    assert.equal(player.isPlaying, false);
+    assert.equal(player.isPaused, false);
+  });
+});
+
+test('continuous character gaps use the configured deadline without adding a scheduling lead', async () => {
+  await withAudio({ manual: true }, async ({ events, contexts }) => {
+    const player = new MorsePlayer();
+    const first = player.playCharacter('E', { wpm: 20 });
+    await sleep(25);
+    const firstMark = scheduledMarks(events)[0];
+    contexts[0].time = firstMark.end + 0.01;
+    assert.equal(await first, true);
+    const timing = getTiming({ wpm: 20, farnsworth: 10 });
+    const gap = player.gap(timing.characterGap);
+    contexts[0].time = firstMark.end + timing.characterGap - 0.04;
+    assert.equal(await gap, true);
+    const second = player.playCharacter('T', { wpm: 20 });
+    await sleep(0);
+    const secondMark = scheduledMarks(events)[1];
+    close(secondMark.start - firstMark.end, timing.characterGap);
+    contexts[0].time = secondMark.end + 0.01;
+    assert.equal(await second, true);
+  });
+});
+
+test('pausing a continuous gap preserves its remaining duration and next exact start', async () => {
+  await withAudio({ manual: true }, async ({ events, contexts }) => {
+    const player = new MorsePlayer();
+    const first = player.playCharacter('E', { wpm: 20 });
+    await sleep(25);
+    const firstEnd = scheduledMarks(events)[0].end;
+    contexts[0].time = firstEnd + 0.01;
+    assert.equal(await first, true);
+    const gap = player.gap(0.5);
+    contexts[0].time = firstEnd + 0.19;
+    player.pause();
+    contexts[0].time = 2;
+    player.resume();
+    contexts[0].time = 2.28;
+    assert.equal(await gap, true);
+    const next = player.playCharacter('E', { wpm: 20 });
+    await sleep(0);
+    const mark = scheduledMarks(events).at(-1);
+    close(mark.start, 2.31);
+    contexts[0].time = 3;
+    assert.equal(await next, true);
+  });
 });

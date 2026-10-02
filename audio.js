@@ -16,7 +16,8 @@ function positiveNumber(value, fallback) {
 /**
  * PARIS has 31 units inside its characters and 19 units between them.
  * Farnsworth slows the spaces while leaving each character at its stated WPM.
- * See ARRL's standard: https://www.arrl.org/files/file/Technology/x9004008.pdf
+ * https://morsecode.world/international/timing/
+ * https://morsecode.world/international/timing/farnsworth.html
  */
 export function getTiming({ wpm = 20, farnsworth } = {}) {
   const characterSpeed = positiveNumber(wpm, 20);
@@ -50,46 +51,46 @@ export function buildCharacterSegments(character, settings = {}) {
   return segments;
 }
 
+
 const FADE_SECONDS = 0.004;
+const LOOKAHEAD_SECONDS = 0.05;
+const MINIMUM_LEAD_SECONDS = 0.003;
 const nowSeconds = () => globalThis.performance.now() / 1000;
 
-/**
- * One cancellable playback operation at a time. A new operation cancels the old
- * one. Both playCharacter() and wait() resolve false on stop, or true on finish.
- * Pausing retains the remaining duration of the current mark or gap.
- */
+/** Sound uses the render clock; page timers update indicators and completion only. */
 export class MorsePlayer {
   constructor({ onSignal } = {}) {
     this._onSignal = typeof onSignal === 'function' ? onSignal : () => {};
     this._context = null;
+    this._carrier = null;
+    this._resumePromise = null;
+    this._clockReady = false;
     this._operation = null;
     this._paused = false;
     this._signal = false;
+    this._lastAudioEnd = null;
+    this._nextStartAt = null;
   }
 
-  get isPlaying() {
-    return this._operation !== null;
-  }
+  get isPlaying() { return this._operation !== null; }
+  get isPaused() { return this._paused; }
 
-  get isPaused() {
-    return this._paused;
-  }
-
-  /** Unlock audio from a user gesture without starting or cancelling playback. */
+  /** Warm a connected, silent carrier from the Start gesture. */
   async prepare() {
     this._ensureContext();
-    if (this._context.state !== 'running') {
-      // The resume call must happen before await to retain the Start gesture.
-      await this._context.resume();
-    }
+    // Invoke resume before await while the user gesture is available.
+    const resumed = this._resumeContext();
+    await resumed;
+    if (!this._clockReady) await this._waitForAudioClock();
   }
 
   async playCharacter(character, settings = {}) {
     const segments = buildCharacterSegments(character, settings);
-    const operation = this._createOperation(segments, settings, true);
+    const operation = this._createOperation('audio', settings);
+    operation.segments = segments;
+    operation.leadRemaining = null;
     try {
       this._ensureContext();
-      // Invoke resume synchronously so the first call keeps its user gesture.
       this._prepareAudio(operation);
     } catch (error) {
       this._settle(operation, false, error);
@@ -97,15 +98,28 @@ export class MorsePlayer {
     return operation.promise;
   }
 
+  /** A full-duration delay, including countdowns before audio is prepared. */
   async wait(seconds) {
-    const duration = Number(seconds);
-    if (!Number.isFinite(duration) || duration < 0) {
-      throw new RangeError('The waiting time must be a finite, nonnegative number.');
-    }
-    const operation = this._createOperation(
-      [{ tone: false, duration }], {}, false,
-    );
-    this._runSegment(operation);
+    const duration = this._duration(seconds);
+    const operation = this._createOperation('wait');
+    operation.remaining = duration;
+    this._runWait(operation);
+    return operation.promise;
+  }
+
+  /**
+   * Reserve an audio-clock gap after the preceding character. Resolve up to
+   * 50 ms early so the next playCharacter can schedule at the exact deadline.
+   * wait() instead waits for its complete duration before resolving.
+   */
+  async gap(seconds) {
+    const duration = this._duration(seconds);
+    if (!this._context || this._lastAudioEnd === null) return this.wait(duration);
+    const deadline = this._lastAudioEnd + duration;
+    const operation = this._createOperation('gap');
+    operation.remaining = Math.max(0, deadline - this._context.currentTime);
+    operation.gapDeadline = deadline;
+    this._runGap(operation);
     return operation.promise;
   }
 
@@ -113,15 +127,24 @@ export class MorsePlayer {
     const operation = this._operation;
     if (!operation || this._paused) return false;
     this._paused = true;
-    if (operation.startedAt !== null) {
-      operation.remaining = Math.max(
-        0, operation.remaining - (nowSeconds() - operation.startedAt),
-      );
-      operation.startedAt = null;
-    }
     clearTimeout(operation.timer);
     operation.timer = null;
-    this._stopTone(operation);
+    if (operation.type === 'audio' && operation.audioStart !== null) {
+      const clock = this._context.currentTime;
+      operation.segments = this._remainingSegments(operation.segments, Math.max(0, clock - operation.audioStart));
+      operation.leadRemaining = clock < operation.audioStart
+        ? operation.audioStart - clock : LOOKAHEAD_SECONDS;
+      operation.audioStart = null;
+      operation.scheduled = [];
+      this._mute();
+    } else if (operation.type === 'wait' && operation.startedAt !== null) {
+      operation.remaining = Math.max(0, operation.remaining - (nowSeconds() - operation.startedAt));
+      operation.startedAt = null;
+    } else if (operation.type === 'gap') {
+      operation.remaining = Math.max(0, operation.gapDeadline - this._context.currentTime);
+      operation.gapDeadline = null;
+    }
+    this._setSignal(false);
     return true;
   }
 
@@ -129,41 +152,43 @@ export class MorsePlayer {
     const operation = this._operation;
     if (!operation || !this._paused) return false;
     this._paused = false;
-    if (operation.requiresAudio) {
-      try {
-        this._prepareAudio(operation);
-      } catch (error) {
-        this._settle(operation, false, error);
-      }
+    if (operation.type === 'audio') {
+      try { this._prepareAudio(operation); }
+      catch (error) { this._settle(operation, false, error); }
+    } else if (operation.type === 'gap') {
+      this._runGap(operation);
     } else {
-      this._runSegment(operation);
+      this._runWait(operation);
     }
     return true;
   }
 
   stop() {
+    this._nextStartAt = null;
+    this._lastAudioEnd = null;
     if (!this._operation) {
       this._paused = false;
+      this._mute();
+      this._setSignal(false);
       return false;
     }
     this._settle(this._operation, false);
     return true;
   }
 
-  _createOperation(segments, settings, requiresAudio) {
-    this.stop();
+  _duration(seconds) {
+    const duration = Number(seconds);
+    if (!Number.isFinite(duration) || duration < 0) {
+      throw new RangeError('The waiting time must be a finite, nonnegative number.');
+    }
+    return duration;
+  }
+
+  _createOperation(type, settings = {}) {
+    if (this._operation) this.stop();
     const operation = {
-      segments,
-      settings,
-      requiresAudio,
-      ready: !requiresAudio,
-      preparing: false,
-      index: 0,
-      remaining: segments[0]?.duration ?? 0,
-      startedAt: null,
-      timer: null,
-      sound: null,
-      settled: false,
+      type, settings, timer: null, startedAt: null, audioStart: null,
+      audioEnd: null, scheduled: [], preparing: false, settled: false,
     };
     operation.promise = new Promise((resolve, reject) => {
       operation.resolve = resolve;
@@ -176,109 +201,153 @@ export class MorsePlayer {
   _ensureContext() {
     if (this._context) return;
     const AudioContext = globalThis.AudioContext || globalThis.webkitAudioContext;
-    if (!AudioContext) {
-      throw new Error('Morse audio requires a browser with Web Audio support.');
+    if (!AudioContext) throw new Error('Morse audio requires a browser with Web Audio support.');
+    this._context = new AudioContext({ latencyHint: 'interactive' });
+    const oscillator = this._context.createOscillator();
+    const gain = this._context.createGain();
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(600, this._context.currentTime);
+    gain.gain.setValueAtTime(0, this._context.currentTime);
+    oscillator.connect(gain);
+    gain.connect(this._context.destination);
+    oscillator.start(this._context.currentTime);
+    this._carrier = { oscillator, gain };
+  }
+
+  _resumeContext() {
+    if (this._context.state === 'running') return Promise.resolve();
+    if (!this._resumePromise) {
+      this._clockReady = false;
+      const resumed = this._context.resume();
+      this._resumePromise = Promise.resolve(resumed).finally(() => { this._resumePromise = null; });
     }
-    this._context = new AudioContext();
+    return this._resumePromise;
+  }
+
+  async _waitForAudioClock() {
+    const initial = this._context.currentTime;
+    const deadline = nowSeconds() + 1;
+    while (this._context.currentTime <= initial) {
+      if (nowSeconds() >= deadline) throw new Error('Audio output is not ready. Try Start again.');
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+    this._clockReady = true;
   }
 
   _prepareAudio(operation) {
     if (this._operation !== operation || operation.preparing) return;
-    if (this._context.state === 'running') {
-      operation.ready = true;
-      this._runSegment(operation);
-      return;
-    }
-    operation.ready = false;
     operation.preparing = true;
-    const resumed = this._context.resume();
-    Promise.resolve(resumed).then(() => {
+    this.prepare().then(() => {
       operation.preparing = false;
-      if (this._operation !== operation) return;
-      operation.ready = true;
-      this._runSegment(operation);
+      if (this._operation !== operation || this._paused) return;
+      try { this._scheduleAudio(operation); }
+      catch (error) { this._settle(operation, false, error); }
     }, (error) => this._settle(operation, false, error));
   }
 
-  _runSegment(operation) {
-    if (this._operation !== operation || this._paused || !operation.ready) return;
-    // A pending context resume can arrive after playback has already started.
-    if (operation.startedAt !== null) return;
-    while (operation.remaining <= 0 && operation.index < operation.segments.length) {
-      operation.index += 1;
-      operation.remaining = operation.segments[operation.index]?.duration ?? 0;
-    }
-    if (operation.index >= operation.segments.length) {
-      this._settle(operation, true);
-      return;
-    }
-    const segment = operation.segments[operation.index];
-    operation.startedAt = nowSeconds();
-    try {
-      if (segment.tone) this._startTone(operation);
-    } catch (error) {
-      this._settle(operation, false, error);
-      return;
-    }
-    operation.timer = setTimeout(() => {
-      if (this._operation !== operation || this._paused) return;
-      operation.timer = null;
-      operation.startedAt = null;
-      operation.remaining = 0;
-      this._stopTone(operation);
-      this._runSegment(operation);
-    }, operation.remaining * 1000);
-  }
-
-  _startTone(operation) {
+  _scheduleAudio(operation) {
+    if (this._operation !== operation || this._paused || operation.audioStart !== null) return;
+    if (!operation.segments.length) return this._settle(operation, true);
     const context = this._context;
-    const oscillator = context.createOscillator();
-    const gain = context.createGain();
-    const start = context.currentTime;
-    const end = start + operation.remaining;
-    const fade = Math.min(FADE_SECONDS, operation.remaining / 3);
-    const frequency = Math.min(20000, Math.max(
-      20, positiveNumber(operation.settings.frequency, 600),
-    ));
+    const now = context.currentTime;
+    let start;
+    if (operation.leadRemaining !== null) {
+      start = now + Math.max(MINIMUM_LEAD_SECONDS, operation.leadRemaining);
+    } else if (this._nextStartAt !== null) {
+      start = Math.max(this._nextStartAt, now + MINIMUM_LEAD_SECONDS);
+    } else {
+      start = now + LOOKAHEAD_SECONDS;
+    }
+    this._nextStartAt = null;
+    const frequency = Math.min(20000, Math.max(20, positiveNumber(operation.settings.frequency, 600)));
     const suppliedVolume = Number(operation.settings.volume ?? 50);
     const volume = Number.isFinite(suppliedVolume)
       ? Math.min(100, Math.max(0, suppliedVolume)) / 100 : 0.5;
-    oscillator.type = 'sine';
-    oscillator.frequency.setValueAtTime(frequency, start);
-    gain.gain.setValueAtTime(0, start);
-    gain.gain.linearRampToValueAtTime(volume, start + fade);
-    gain.gain.setValueAtTime(volume, Math.max(start + fade, end - fade));
-    gain.gain.linearRampToValueAtTime(0, end);
-    oscillator.connect(gain);
-    gain.connect(context.destination);
-    oscillator.onended = () => {
-      oscillator.disconnect();
-      gain.disconnect();
-    };
-    operation.sound = { oscillator, gain };
-    oscillator.start(start);
-    oscillator.stop(end);
-    this._setSignal(true);
+    const gain = this._carrier.gain.gain;
+    this._carrier.oscillator.frequency.setValueAtTime(frequency, start);
+    // Leave any preceding stop fade intact, replacing only later automation.
+    gain.cancelScheduledValues(start);
+    gain.setValueAtTime(0, start);
+    operation.audioStart = start;
+    operation.scheduled = [];
+    let cursor = start;
+    for (const segment of operation.segments) {
+      const end = cursor + segment.duration;
+      operation.scheduled.push({ ...segment, start: cursor, end });
+      if (segment.tone) {
+        const fade = Math.min(FADE_SECONDS, segment.duration / 3);
+        gain.setValueAtTime(0, cursor);
+        gain.linearRampToValueAtTime(volume, cursor + fade);
+        gain.setValueAtTime(volume, end - fade);
+        gain.linearRampToValueAtTime(0, end);
+      }
+      cursor = end;
+    }
+    operation.audioEnd = cursor;
+    this._lastAudioEnd = cursor;
+    this._tickAudio(operation);
   }
 
-  _stopTone(operation) {
-    const sound = operation.sound;
-    operation.sound = null;
-    if (sound) {
-      const now = this._context.currentTime;
-      const parameter = sound.gain.gain;
-      if (typeof parameter.cancelAndHoldAtTime === 'function') {
-        parameter.cancelAndHoldAtTime(now);
-      } else {
-        const current = parameter.value;
-        parameter.cancelScheduledValues(now);
-        parameter.setValueAtTime(current, now);
-      }
-      parameter.linearRampToValueAtTime(0, now + FADE_SECONDS);
-      // A second stop call replaces the oscillator's previous scheduled stop.
-      sound.oscillator.stop(now + FADE_SECONDS);
+  _tickAudio(operation) {
+    if (this._operation !== operation || this._paused) return;
+    const clock = this._context.currentTime;
+    // A wall timer can fire while a cold or suspended render clock is frozen.
+    // Do not cancel any marks or resolve until the audio clock reaches the end.
+    if (clock >= operation.audioEnd) return this._settle(operation, true);
+    const active = operation.scheduled.find((segment) => clock >= segment.start && clock < segment.end);
+    this._setSignal(Boolean(active?.tone));
+    const next = clock < operation.audioStart
+      ? operation.audioStart : active?.end ?? operation.audioEnd;
+    operation.timer = setTimeout(() => this._tickAudio(operation),
+      Math.max(4, Math.min(100, (next - clock) * 1000)));
+  }
+
+  _runWait(operation) {
+    if (this._operation !== operation || this._paused) return;
+    if (operation.remaining <= 0) return this._settle(operation, true);
+    operation.startedAt = nowSeconds();
+    operation.timer = setTimeout(() => {
+      if (this._operation === operation && !this._paused) this._settle(operation, true);
+    }, operation.remaining * 1000);
+  }
+
+  _runGap(operation) {
+    if (this._operation !== operation || this._paused) return;
+    if (operation.gapDeadline === null) operation.gapDeadline = this._context.currentTime + operation.remaining;
+    const clock = this._context.currentTime;
+    const readyAt = operation.gapDeadline - LOOKAHEAD_SECONDS;
+    if (clock >= readyAt) {
+      this._nextStartAt = operation.gapDeadline;
+      this._settle(operation, true);
+    } else {
+      operation.timer = setTimeout(() => this._runGap(operation),
+        Math.max(4, Math.min(100, (readyAt - clock) * 1000)));
     }
-    this._setSignal(false);
+  }
+
+  _remainingSegments(segments, elapsed) {
+    const remaining = [];
+    for (const segment of segments) {
+      if (elapsed >= segment.duration) elapsed -= segment.duration;
+      else {
+        remaining.push({ ...segment, duration: segment.duration - elapsed });
+        elapsed = 0;
+      }
+    }
+    return remaining;
+  }
+
+  _mute() {
+    if (!this._carrier) return;
+    const now = this._context.currentTime;
+    const parameter = this._carrier.gain.gain;
+    if (typeof parameter.cancelAndHoldAtTime === 'function') parameter.cancelAndHoldAtTime(now);
+    else {
+      const value = parameter.value;
+      parameter.cancelScheduledValues(now);
+      parameter.setValueAtTime(value, now);
+    }
+    parameter.linearRampToValueAtTime(0, now + FADE_SECONDS);
   }
 
   _setSignal(signal) {
@@ -291,8 +360,9 @@ export class MorsePlayer {
     if (operation.settled) return;
     operation.settled = true;
     clearTimeout(operation.timer);
-    this._stopTone(operation);
     if (this._operation === operation) {
+      if (!completed && operation.type === 'audio') this._mute();
+      this._setSignal(false);
       this._operation = null;
       this._paused = false;
     }

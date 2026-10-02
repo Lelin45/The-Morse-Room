@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { LETTERS, DIGITS, LEVELS, generateSequence, generateLessonSequence, normalizeInput, formatGroups, gradeInput } from '../trainer.js';
+import { LETTERS, DIGITS, LEVELS, generateSequence, createPracticeGenerator, generateLessonSequence, normalizeInput, formatGroups, gradeInput } from '../trainer.js';
 
 const LETTER_LESSON_PAIRS = ['ET', 'AN', 'IM', 'SO', 'RK', 'DU', 'GB', 'QF', 'YL', 'CP', 'ZX', 'VW', 'HJ'];
 const EXPECTED_LESSON_ORDER = LETTER_LESSON_PAIRS.join('') + '0123456789';
@@ -44,7 +44,7 @@ test('each lesson practices every learned character exactly five times', () => {
   assert.throws(() => generateLessonSequence(19), /1 to 18/);
 });
 
-test('custom practice produces 100 characters using only the chosen pool', () => {
+test('random sequences produce 100 characters using only the chosen pool', () => {
   const sequence = generateSequence('q y f l q!', 100, { random: seededRandom() });
   assert.equal(sequence.length, 100);
   assert.ok([...sequence].every((character) => 'QYFL'.includes(character)));
@@ -54,6 +54,64 @@ test('custom practice produces 100 characters using only the chosen pool', () =>
   assert.throws(() => generateSequence('', 10), /Choose at least one/);
   assert.throws(() => generateSequence('AB', -1), /whole number/);
   assert.throws(() => generateSequence('AB', 1.5), /whole number/);
+});
+
+test('custom practice balances five chosen characters and avoids repeats across bag boundaries', () => {
+  const firstValues = [0, 0, 0, 0, 0.25, 0.999, 0.999, 0.999, 0];
+  const fallback = seededRandom();
+  let randomCalls = 0;
+  const generator = createPracticeGenerator('QYFLX', {
+    random: () => randomCalls < firstValues.length ? firstValues[randomCalls++] : fallback(),
+  });
+  const sequence = Array.from({ length: 1000 }, () => generator.next()).join('');
+  assert.equal(sequence.length, 1000);
+  const firstHundred = sequence.slice(0, 100);
+  for (const character of 'QYFLX') {
+    assert.equal([...sequence].filter((item) => item === character).length, 200);
+    assert.equal([...firstHundred].filter((item) => item === character).length, 20);
+  }
+  for (let index = 1; index < sequence.length; index += 1) {
+    assert.notEqual(sequence[index], sequence[index - 1]);
+  }
+  const groups = [];
+  for (let index = 0; index < sequence.length; index += 5) {
+    const group = sequence.slice(index, index + 5);
+    assert.equal([...group].sort().join(''), 'FLQXY');
+    groups.push(group);
+  }
+  assert.ok(new Set(groups).size > 1);
+});
+
+test('100 custom characters from four choices have 25 copies each despite spaces, case, and duplicates', () => {
+  const generator = createPracticeGenerator(['q y', ' f l ', 'Q!'], { random: seededRandom(71) });
+  const sequence = Array.from({ length: 100 }, () => generator.next()).join('');
+  assert.match(sequence, /^[QYFL]{100}$/);
+  for (const character of 'QYFL') {
+    assert.equal([...sequence].filter((item) => item === character).length, 25);
+  }
+  assert.ok([...sequence].every((character, index) => index === 0 || character !== sequence[index - 1]));
+});
+
+test('a zero-valued random source still produces balanced custom practice without repeats', () => {
+  const generator = createPracticeGenerator('q y f l q\n', { random: () => 0 });
+  const sequence = Array.from({ length: 100 }, () => generator.next()).join('');
+  for (const character of 'QYFL') {
+    assert.equal([...sequence].filter((item) => item === character).length, 25);
+  }
+  assert.ok([...sequence].every((character, index) => index === 0 || character !== sequence[index - 1]));
+});
+
+test('custom practice permits repetition when only one character is selected', () => {
+  const generator = createPracticeGenerator('t T!\n', { random: () => 0 });
+  assert.equal(Array.from({ length: 20 }, () => generator.next()).join(''), 'T'.repeat(20));
+});
+
+test('custom practice rejects an empty pool and random values outside the allowed range', () => {
+  assert.throws(() => createPracticeGenerator(' \n!'), /Choose at least one letter or number/);
+  for (const value of [-0.1, 1, NaN, Infinity]) {
+    const generator = createPracticeGenerator('AB', { random: () => value });
+    assert.throws(() => generator.next(), /Random values must be between/);
+  }
 });
 
 test('grouping inserts a space after five letters and keeps an unfinished final word', () => {

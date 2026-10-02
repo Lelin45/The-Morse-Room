@@ -55,6 +55,37 @@ export function generateSequence(pool, count, { random = Math.random } = {}) {
   return Array.from({ length: count }, () => characters[randomIndex(characters.length, random)]).join('');
 }
 
+/**
+ * Custom practice draws from shuffled bags with one copy of each character.
+ * A bag boundary cannot repeat the previous character unless the pool has one.
+ */
+export function createPracticeGenerator(pool, { random = Math.random } = {}) {
+  const characters = characterPool(pool);
+  if (characters.length === 0) {
+    throw new RangeError('Choose at least one letter or number.');
+  }
+  let bag = [];
+  let previous = '';
+  return {
+    next() {
+      if (bag.length === 0) {
+        bag = characters.slice();
+        for (let index = bag.length - 1; index > 0; index -= 1) {
+          const swapIndex = randomIndex(index + 1, random);
+          [bag[index], bag[swapIndex]] = [bag[swapIndex], bag[index]];
+        }
+        const lastIndex = bag.length - 1;
+        if (bag.length > 1 && bag[lastIndex] === previous) {
+          const swapIndex = randomIndex(lastIndex, random);
+          [bag[lastIndex], bag[swapIndex]] = [bag[swapIndex], bag[lastIndex]];
+        }
+      }
+      previous = bag.pop();
+      return previous;
+    },
+  };
+}
+
 /** Every learned character occurs exactly five times, then the entire lesson is shuffled. */
 export function generateLessonSequence(levelOrNumber, { random = Math.random } = {}) {
   const level = typeof levelOrNumber === 'number'

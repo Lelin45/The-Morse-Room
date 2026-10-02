@@ -16,8 +16,7 @@ function applyTheme(theme, save = false) {
   document.documentElement.dataset.theme = selected;
   const toggle = $('#theme-toggle');
   toggle.setAttribute('aria-checked', String(selected === 'dark'));
-  toggle.title = `Switch to ${selected === 'dark' ? 'light' : 'dark'} theme`;
-  $('meta[name="theme-color"]').content = selected === 'dark' ? '#121a18' : '#f7f6f2';
+  $('meta[name="theme-color"]').content = selected === 'dark' ? '#000000' : '#f7f6f2';
   if (save) {
     try { localStorage.setItem('morse-room-theme', selected); } catch { /* The switch also works without saved preferences. */ }
   }

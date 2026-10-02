@@ -14,7 +14,7 @@
         theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
       }
       document.documentElement.dataset.theme = theme;
-      document.querySelector('meta[name="theme-color"]').content = theme === 'dark' ? '#121a18' : '#f7f6f2';
+      document.querySelector('meta[name="theme-color"]').content = theme === 'dark' ? '#000000' : '#f7f6f2';
     })();
   </script>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='15' fill='%23212e2b'/%3E%3Ccircle cx='18' cy='32' r='5' fill='%23e7a655'/%3E%3Crect x='29' y='27' width='21' height='10' rx='5' fill='%23e7a655'/%3E%3C/svg%3E">
@@ -34,6 +34,8 @@
     <symbol id="i-headphones" viewBox="0 0 24 24"><path d="M4 14v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="12" width="4" height="8" rx="2"/><rect x="17" y="12" width="4" height="8" rx="2"/></symbol>
     <symbol id="i-volume" viewBox="0 0 24 24"><path d="M11 5 6 9H3v6h3l5 4ZM16 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/></symbol>
     <symbol id="i-shuffle" viewBox="0 0 24 24"><path d="m3 5 3 0c5 0 7 14 12 14h3m-4-4 4 4-4 4M3 19h3C11 19 13 5 18 5h3m-4-4 4 4-4 4"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20.5 13.5A8.5 8.5 0 0 1 10.5 3.5a8.5 8.5 0 1 0 10 10Z"/></symbol>
   </svg>
   <div class="app-shell">
     <aside class="sidebar">
@@ -54,7 +56,7 @@
       <div class="sidebar-footer"><span class="receiving-dot"></span>Receiving only<small>Your progress stays in this browser.</small></div>
     </aside>
     <main class="main-content">
-      <div class="topbar"><span id="breadcrumb">Your workspace <span>/</span> Learn</span><div class="topbar-actions"><span class="topbar-note"><svg><use href="#i-headphones"/></svg> Headphones recommended</span><button id="theme-toggle" type="button" role="switch" aria-label="Dark theme" aria-checked="false"><span id="theme-label">Dark theme</span><span class="theme-switch-track" aria-hidden="true"><span class="theme-switch-thumb"></span></span></button></div></div>
+      <div class="topbar"><span id="breadcrumb">Your workspace <span>/</span> Learn</span><div class="topbar-actions"><span class="topbar-note"><svg><use href="#i-headphones"/></svg> Headphones recommended</span><button id="theme-toggle" type="button" role="switch" aria-label="Dark mode" aria-checked="false"><svg class="theme-icon theme-icon-sun" aria-hidden="true"><use href="#i-sun"/></svg><span class="theme-switch-track" aria-hidden="true"><span class="theme-switch-thumb"></span></span><svg class="theme-icon theme-icon-moon" aria-hidden="true"><use href="#i-moon"/></svg></button></div></div>
       <div id="view-heading" class="view-heading"></div>
       <section id="setup-panel" aria-label="Training setup"></section>
       <section class="receiver" aria-label="Morse receiving workspace">

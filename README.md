@@ -114,7 +114,7 @@ At 20 WPM with 10 WPM Farnsworth, a dit lasts 60 ms, a dah 180 ms, a character g
 
 Morse marks are scheduled on the browser's audio clock. A silent preparation period lets the audio start before the first mark, and continuous practice keeps its configured gaps between characters and words.
 
-Use the **Dark theme** switch at the top right to change between light and dark themes. The first visit follows your device's theme; your choice is saved for later visits.
+Use the **sun/moon switch** at the top right to change between the light theme and a black theme with bright green text and controls. The first visit follows your device's theme; your choice is saved for later visits.
 
 Completed levels, sound settings, and your theme choice are stored in this browser's `localStorage`. They stay on your computer. Use the same browser and address to keep your progress when you update the app. Clearing site data or using another browser gives you a separate saved history.
 

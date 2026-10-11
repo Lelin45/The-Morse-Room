@@ -2,6 +2,7 @@ import { MORSE, MorsePlayer, getTiming } from './audio.js';
 import { LETTERS, DIGITS, LEVELS, generateSequence, createPracticeGenerator, generateLessonSequence, normalizeInput, formatGroups, gradeInput } from './trainer.js';
 import { LearnSession } from './learn-session.js';
 import { PracticeRecording, ReplayPlayer } from './replay.js';
+import { createChatRoom } from './chat.js';
 
 const $ = (selector) => document.querySelector(selector);
 const escapeHTML = (value) => String(value).replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
@@ -125,6 +126,7 @@ for (const key of Object.keys(sound)) {
 $('#test-tone').addEventListener('click', async () => {
   if (learn.playing || learn.countdown || tutorialBusy || answerBusy || replayPlayer.isPlaying || ['countdown', 'playing', 'paused'].includes(practice.phase)) return;
   cancelAudio();
+  chatRoom.stopAudio();
   const token = runId;
   toneBusy = true;
   $('#test-tone').disabled = true;
@@ -138,23 +140,39 @@ $('#test-tone').addEventListener('click', async () => {
   } catch (error) { handleAudioError(error); }
 });
 
-document.querySelectorAll('[data-mode]').forEach((element) => element.addEventListener('click', () => {
-  if (mode === element.dataset.mode) return;
+function setMode(nextMode) {
+  if (mode === nextMode) return;
   if (mode === 'practice' && ['countdown', 'playing', 'paused', 'interrupted'].includes(practice.phase)) stopPractice();
   cancelAudio();
+  if (mode === 'chat') chatRoom.close();
   if (mode === 'learn' && learn.phase === 'practice') learn.audible = false;
-  mode = element.dataset.mode;
+  mode = nextMode;
+  const url = new URL(location.href);
+  if (mode === 'chat') url.searchParams.set('chat', '1');
+  else { url.searchParams.delete('chat'); url.searchParams.delete('join'); }
+  history.replaceState(null, '', url);
   notify();
   render();
-}));
+}
+document.querySelectorAll('.mode-button[data-mode]').forEach((element) => element.addEventListener('click', () => setMode(element.dataset.mode)));
 
 function render() {
-  document.querySelectorAll('[data-mode]').forEach((element) => {
+  document.body.dataset.mode = mode;
+  document.querySelectorAll('.mode-button[data-mode]').forEach((element) => {
     const selected = element.dataset.mode === mode;
     element.classList.toggle('active', selected);
     element.setAttribute('aria-current', selected ? 'page' : 'false');
   });
-  $('#breadcrumb').innerHTML = `Your workspace <span>/</span> ${mode === 'learn' ? 'Learn' : 'Practice'}`;
+  $('#breadcrumb').innerHTML = `Your workspace <span>/</span> ${mode === 'learn' ? 'Learn' : mode === 'practice' ? 'Practice' : 'Chat'}`;
+  $('#chat-panel').hidden = mode !== 'chat';
+  $('#setup-panel').hidden = mode === 'chat';
+  if (mode === 'chat') {
+    $('#view-heading').hidden = true;
+    $('.receiver').hidden = true;
+    $('.bottom-note').hidden = true;
+    chatRoom.open();
+    return;
+  }
   const receiving = mode === 'practice' || ['practice', 'finished'].includes(learn.phase);
   $('.receiver').hidden = !receiving;
   $('.bottom-note').hidden = !receiving;
@@ -788,5 +806,11 @@ document.addEventListener('keydown', (event) => {
   previewPracticeKey(event);
 });
 
+const chatRoom = createChatRoom({
+  panel: $('#chat-panel'), bell: $('#chat-bell'), notifications: $('#chat-notifications'),
+  onEnter: () => setMode('chat'), onAudioStart: cancelAudio, getVolume: () => sound.volume,
+});
+const chatParameters = new URL(location.href).searchParams;
+if (chatParameters.has('chat') || chatParameters.has('join')) mode = 'chat';
 syncSound();
 render();

@@ -5,7 +5,7 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=22"
+    "node": ">=22.13"
   },
   "repository": {
     "type": "git",
@@ -14,6 +14,13 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "test": "node --test"
+    "test": "node --test",
+    "build": "node scripts/build.mjs",
+    "dev:chat": "npm run build && wrangler pages dev public --d1 DB=morse-room-chat-local --binding SITE_URL=http://localhost:8788 --port 8788 --persist-to .wrangler/state --compatibility-date 2026-10-11",
+    "db:local": "wrangler d1 migrations apply DB --local --config wrangler.local.jsonc --persist-to .wrangler/state",
+    "db:remote": "wrangler d1 migrations apply DB --remote --config wrangler.jsonc"
+  },
+  "devDependencies": {
+    "wrangler": "4.149.0"
   }
 }

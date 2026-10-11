@@ -19,6 +19,7 @@
   </script>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='15' fill='%23212e2b'/%3E%3Ccircle cx='18' cy='32' r='5' fill='%23e7a655'/%3E%3Crect x='29' y='27' width='21' height='10' rx='5' fill='%23e7a655'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="chat.css">
   <script type="module" src="app.js"></script>
 </head>
 <body>
@@ -36,6 +37,16 @@
     <symbol id="i-shuffle" viewBox="0 0 24 24"><path d="m3 5 3 0c5 0 7 14 12 14h3m-4-4 4 4-4 4M3 19h3C11 19 13 5 18 5h3m-4-4 4 4-4 4"/></symbol>
     <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/></symbol>
     <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20.5 13.5A8.5 8.5 0 0 1 10.5 3.5a8.5 8.5 0 1 0 10 10Z"/></symbol>
+    <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5H4l-2 2v-9.5A8.5 8.5 0 0 1 10.5 4H21Z"/><path d="M7 10h2m3 0h5M7 14h7"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></symbol>
+    <symbol id="i-user-plus" viewBox="0 0 24 24"><circle cx="9" cy="7" r="4"/><path d="M2 21v-2a7 7 0 0 1 14 0v2m3-13v8m-4-4h8"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><circle cx="8" cy="7" r="4"/><path d="M1 21v-2a7 7 0 0 1 14 0v2m1-17a4 4 0 0 1 0 8m2 3a6 6 0 0 1 5 6"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24"><path d="m10 13 4-4m-6 6-2 2a4 4 0 0 1-6-6l5-5a4 4 0 0 1 6 0m2 3 2-2a4 4 0 0 1 6 6l-5 5a4 4 0 0 1-6 0"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10v1"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><path d="m22 2-7 20-4-9-9-4 20-7ZM11 13 22 2"/></symbol>
+    <symbol id="i-back" viewBox="0 0 24 24"><path d="M20 12H4m6-6-6 6 6 6"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="13" height="13" rx="2"/><path d="M16 8V3H3v13h5"/></symbol>
   </svg>
   <div class="app-shell">
     <aside class="sidebar">
@@ -44,6 +55,7 @@
       <nav class="mode-nav" aria-label="Training mode">
         <button class="mode-button active" data-mode="learn"><svg><use href="#i-book"/></svg><span>Learn<small>One step at a time</small></span><span class="nav-dot"></span></button>
         <button class="mode-button" data-mode="practice"><svg><use href="#i-headphones"/></svg><span>Practice<small>Find your rhythm</small></span><span class="nav-dot"></span></button>
+        <button class="mode-button" data-mode="chat"><svg><use href="#i-chat"/></svg><span><span class="chat-nav-full">Morse Chat Room</span><span class="chat-nav-short">Chat</span><small>Practise with friends</small></span><span class="nav-dot"></span></button>
       </nav>
       <div class="settings-heading"><span class="sidebar-section-label">AUDIO SETTINGS</span><svg><use href="#i-volume"/></svg></div>
       <div class="sound-settings">
@@ -53,10 +65,11 @@
         <div class="setting"><label for="volume-number">Volume</label><div class="setting-value"><input id="volume-number" type="number" min="0" max="100" step="1" aria-label="Volume percentage"><span>%</span></div><input id="volume-range" type="range" min="0" max="100" step="1" aria-label="Volume slider"></div>
       </div>
       <button id="test-tone" class="button tone-test"><svg><use href="#i-volume"/></svg>Test your sound</button>
-      <div class="sidebar-footer"><span class="receiving-dot"></span>Receiving only<small>Your progress stays in this browser.</small></div>
+      <div class="sidebar-footer"><span class="receiving-dot"></span>Receiving only<small>Your progress stays in this browser.</small><small class="chat-footer-links"><a href="privacy.html">Privacy</a><span> · </span><a href="terms.html">Chat terms</a></small></div>
     </aside>
     <main class="main-content">
-      <div class="topbar"><span id="breadcrumb">Your workspace <span>/</span> Learn</span><div class="topbar-actions"><span class="topbar-note"><svg><use href="#i-headphones"/></svg> Headphones recommended</span><button id="theme-toggle" type="button" role="switch" aria-label="Dark mode" aria-checked="false"><svg class="theme-icon theme-icon-sun" aria-hidden="true"><use href="#i-sun"/></svg><span class="theme-switch-track" aria-hidden="true"><span class="theme-switch-thumb"></span></span><svg class="theme-icon theme-icon-moon" aria-hidden="true"><use href="#i-moon"/></svg></button></div></div>
+      <div class="topbar"><span id="breadcrumb">Your workspace <span>/</span> Learn</span><div class="topbar-actions"><span class="topbar-note"><svg><use href="#i-headphones"/></svg> Headphones recommended</span><div class="chat-notification-wrap"><button id="chat-bell" class="chat-bell" type="button" aria-label="Notifications" aria-expanded="false" aria-controls="chat-notifications"><svg aria-hidden="true"><use href="#i-bell"/></svg><span class="chat-notification-count" hidden></span></button><div id="chat-notifications" class="chat-notification-panel" aria-label="Notifications" hidden></div></div><button id="theme-toggle" type="button" role="switch" aria-label="Dark mode" aria-checked="false"><svg class="theme-icon theme-icon-sun" aria-hidden="true"><use href="#i-sun"/></svg><span class="theme-switch-track" aria-hidden="true"><span class="theme-switch-thumb"></span></span><svg class="theme-icon theme-icon-moon" aria-hidden="true"><use href="#i-moon"/></svg></button></div></div>
+      <section id="chat-panel" aria-label="Morse Chat Room" hidden></section>
       <div id="view-heading" class="view-heading"></div>
       <section id="setup-panel" aria-label="Training setup"></section>
       <section class="receiver" aria-label="Morse receiving workspace">

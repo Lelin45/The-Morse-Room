@@ -1,0 +1,18 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "morse-room-local",
+  "pages_build_output_dir": "./public",
+  "compatibility_date": "2026-10-11",
+  "send_metrics": false,
+  "vars": {
+    "SITE_URL": "http://localhost:8788"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "morse-room-chat-local",
+      "database_id": "morse-room-chat-local",
+      "migrations_dir": "migrations"
+    }
+  ]
+}

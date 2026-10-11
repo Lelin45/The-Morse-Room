@@ -1,0 +1,4 @@
+# Copy to .dev.vars for local chat development. Never commit real credentials.
+SITE_URL="http://localhost:8788"
+GOOGLE_CLIENT_ID=""
+GOOGLE_CLIENT_SECRET=""

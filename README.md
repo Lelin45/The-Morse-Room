@@ -1,14 +1,14 @@
 # Morse Room
 
-A receiving-only Morse code trainer that runs on your own computer in a browser. Learn letters and numbers, or practise with random characters and custom groups. No account is needed.
+A Morse code receiving trainer with free lessons and unlimited practice. Run it on your own computer, or visit [The Morse Room](https://learnmorse.lelinadhikari.com.np). Learn and Practice need no account. The optional Morse Chat Room uses Google sign-in to practise through conversations with friends.
 
 ## Requirements
 
-- **Node.js 22 or newer:** install it from the [official Node.js download page](https://nodejs.org/en/download). The installer includes npm.
+- **Node.js 22.13 or newer:** install it from the [official Node.js download page](https://nodejs.org/en/download). The installer includes npm.
 - **Windows, macOS, or Linux**, with a modern browser that supports Web Audio, such as Chrome, Edge, Firefox, or Safari.
 - **Git** is needed only if you choose the clone method below.
 
-The app has zero external dependencies. You do **not** need to run `npm install`. After downloading the app and installing Node.js, it works offline.
+Learn and Practice have zero runtime dependencies. You do **not** need to run `npm install` for the local trainer. After downloading the app and installing Node.js, these modes work offline. Chat needs an internet connection, Cloudflare Pages Functions, a D1 database, and configured Google sign-in.
 
 ## Download and run
 
@@ -118,6 +118,21 @@ Use the **sun/moon switch** at the top right to change between the light theme a
 
 Completed levels, sound settings, and your theme choice are stored in this browser's `localStorage`. They stay on your computer. Use the same browser and address to keep your progress when you update the app. Clearing site data or using another browser gives you a separate saved history.
 
+## Morse Chat Room
+
+Choose **Morse Chat Room** below Practice in the sidebar. Sign in with Google, then choose a unique username. Sign-in applies only to Chat.
+
+- **Friends:** send a request using an exact username or registered email. The recipient accepts or declines from the top-right notification bell. An accepted request opens a conversation for both people.
+- **Private groups:** create a named group and copy its invite code or link. Join using either. An invite link is kept through sign-in and username setup. Anyone with an invite can join and read the group history.
+- **Messages:** type ordinary text and send it as international Morse. Each message has **Show text** and **Listen** controls. Words stay hidden until revealed, and audio plays only when requested.
+- **Sound:** chat playback uses 18 WPM, 12 WPM Farnsworth, and 600 Hz, with the volume chosen in the sidebar. Listen changes to **Stop audio** during playback.
+- **Notifications:** the bell shows incoming friend requests and unread signals. An open conversation checks for messages every five seconds while the page is visible. The inbox checks every 30 seconds in Chat, every minute in Learn or Practice, and when you open the bell. Hidden tabs stop checking.
+- **Typing:** press Enter to send, or Shift + Enter for a new line. Unsent drafts are kept while switching conversations in the current page. Use **Load earlier signals** for older messages.
+
+Morse display and audio include only letters A-Z and numbers 0-9. Punctuation and symbols are skipped in the signal. **Show text** displays the original message, including case, punctuation, spacing, and new lines. Accented letters use their plain equivalents in Morse, while the original text stays unchanged. Each message needs at least one letter or number. An info note beside the message box explains this. Messages are stored with their readable text to support reveal and audio; Morse does not encrypt them.
+
+For the live site, follow [Chat setup](docs/CHAT_SETUP.md). It covers the Pages build settings, D1 migration/binding, the exact Google callback URL, and private environment settings. `npm start` keeps serving the local trainer without a chat backend. For local Pages/D1 development, use `npm install`, `npm run db:local`, and `npm run dev:chat` as described in the guide.
+
 ## Keyboard
 
 | Shortcut | Action |
@@ -136,4 +151,4 @@ From the project folder, run:
 npm test
 ```
 
-On Windows PowerShell, use `npm.cmd test` if scripts are blocked. Tests cover Morse mappings, Farnsworth timing, audio preparation and playback controls, all 18 lessons, incorrect-answer retries, shuffled custom rounds, word groups, and answer alignment.
+On Windows PowerShell, use `npm.cmd test` if scripts are blocked. Tests cover Morse mappings, Farnsworth timing, audio preparation and playback controls, all 18 lessons, incorrect-answer retries, shuffled custom rounds, word groups, answer alignment, chat encoding, sign-in validation, and conversation permissions.

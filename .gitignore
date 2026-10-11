@@ -1,4 +1,14 @@
 node_modules/
+public/
+.wrangler/
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
+wrangler.jsonc
+wrangler.toml
+*.p8
+*.pem
+client_secret_*.json
 .preview/
 .verification/
 .publish/

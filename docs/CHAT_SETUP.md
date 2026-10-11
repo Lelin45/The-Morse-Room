@@ -60,14 +60,25 @@ The build copies only the named browser files and the public privacy/terms pages
 
 In Cloudflare's D1 area, create a database named `morse-room-chat`. In the Pages project's **Settings > Bindings**, add a D1 binding named exactly `DB` and select that database. Set it for Production. If you enable chat in Preview, use a separate preview database and separate Google client configuration. Redeploy after changing bindings. [D1 bindings for Pages](https://developers.cloudflare.com/pages/functions/bindings/#d1-databases).
 
-To apply the checked-in SQL migrations, copy `wrangler.jsonc.example` to `wrangler.jsonc`, then replace the Pages project name and D1 database ID with your actual values. The example contains placeholders, and `wrangler.jsonc` is ignored by Git. Sign in to your own Cloudflare account and apply the migrations:
+To apply the checked-in SQL migrations, copy `wrangler.jsonc.example` to `wrangler.jsonc`, then replace the Pages project name and D1 database ID with your actual values. The example contains placeholders, and `wrangler.jsonc` is ignored by Git.
 
-```sh
-npx wrangler login
-npm run db:remote
+For token authentication, create a custom Cloudflare API token with **Account > D1 > Edit** and **Account > Cloudflare Pages > Edit**, restricted to the account containing this Pages project. Add these values to a local `.env` file:
+
+```dotenv
+CLOUDFLARE_API_TOKEN=""
+CLOUDFLARE_ACCOUNT_ID=""
+GOOGLE_CLIENT_ID=""
+GOOGLE_CLIENT_SECRET=""
+SITE_URL="https://learnmorse.lelinadhikari.com.np"
 ```
 
-`db:remote` targets the database in that private configuration. Check its name and ID first. It applies files under `migrations/`, including `0001_chat.sql` and `0002_friendship_lookup.sql`, and records which migrations have run. Running `db:local` instead changes only local D1. [D1 migration commands](https://developers.cloudflare.com/workers/wrangler/commands/d1/#migrations-apply), [D1 migrations](https://developers.cloudflare.com/d1/reference/migrations/).
+The file is ignored by Git and excluded from the public build. Keep the token and client secret in this file or Cloudflare's secret settings. Apply remote migrations using the token without a browser login:
+
+```sh
+node --env-file=.env node_modules/wrangler/bin/wrangler.js d1 migrations apply DB --remote --config wrangler.jsonc
+```
+
+This command targets the database in that private configuration. Check its name and ID first. It applies files under `migrations/`, including `0001_chat.sql` and `0002_friendship_lookup.sql`, and records which migrations have run. Running `db:local` instead changes only local D1. [API token creation](https://developers.cloudflare.com/fundamentals/api/get-started/create-token/), [Wrangler token authentication](https://developers.cloudflare.com/workers/authorization/), [D1 migrations](https://developers.cloudflare.com/d1/reference/migrations/).
 
 The ignored Wrangler file is for your local CLI. Git-connected production builds use the Pages dashboard bindings because the committed configuration is an example rather than an active production file. If you later commit a production Wrangler configuration, it becomes the source of truth for its supported settings; keep credentials in Cloudflare secrets. [Pages Wrangler configuration](https://developers.cloudflare.com/pages/functions/wrangler-configuration/).
 

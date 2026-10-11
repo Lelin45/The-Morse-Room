@@ -427,3 +427,85 @@ test('pausing a continuous gap preserves its remaining duration and next exact s
     assert.equal(await next, true);
   });
 });
+
+test('quick Morse key taps retain every complete mark in order with short gaps', async () => {
+  await withAudio({ manual: true }, async ({ events, contexts }) => {
+    const player = new MorsePlayer();
+    const settings = { wpm: 20, farnsworth: 8, frequency: 725, volume: 40 };
+    const taps = [player.playSymbol('.', settings), player.playSymbol('-', settings), player.playSymbol('.', settings)];
+    assert.ok(events.some((event) => event.type === 'resume'));
+    await sleep(25);
+    let marks = scheduledMarks(events);
+    assert.equal(marks.length, 1);
+    close(marks[0].duration, 0.06);
+    contexts[0].time = marks[0].end + 0.015;
+    assert.equal(await taps[0], true);
+    await sleep(0);
+    marks = scheduledMarks(events);
+    assert.equal(marks.length, 2);
+    close(marks[1].duration, 0.18);
+    close(marks[1].start - marks[0].end, 0.06);
+    contexts[0].time = marks[1].end + 0.015;
+    assert.equal(await taps[1], true);
+    await sleep(0);
+    marks = scheduledMarks(events);
+    assert.equal(marks.length, 3);
+    close(marks[2].duration, 0.06);
+    close(marks[2].start - marks[1].end, 0.06);
+    contexts[0].time = marks[2].end + 0.015;
+    assert.equal(await taps[2], true);
+    await sleep(0);
+    assert.equal(player.isPlaying, false);
+    assert.equal(events.filter((event) => event.type === 'oscillator').length, 1);
+    assert.ok(events.some((event) => event.parameter === 'frequency' && event.value === 725));
+    assert.ok(events.some((event) => event.parameter === 'gain' && event.type === 'ramp' && event.value === 0.4));
+  });
+});
+
+test('stopping Morse feedback cancels the playing mark and every queued tap', async () => {
+  await withAudio({ manual: true, delayedResume: true }, async ({ events, contexts }) => {
+    const player = new MorsePlayer();
+    const taps = [player.playSymbol('.'), player.playSymbol('-'), player.playSymbol('.')];
+    assert.equal(player.stop(), true);
+    assert.deepEqual(await Promise.all(taps), [false, false, false]);
+    contexts[0].finishResume();
+    contexts[0].time = 0.01;
+    await sleep(25);
+    assert.equal(scheduledMarks(events).length, 0);
+    assert.equal(player.isPlaying, false);
+    const next = player.playSymbol('-');
+    await sleep(0);
+    contexts[0].time = 0.02;
+    await sleep(25);
+    assert.equal(scheduledMarks(events).length, 1);
+    player.stop();
+    assert.equal(await next, false);
+  });
+});
+
+test('invalid feedback marks never cancel the current mark or queued keys', async () => {
+  await withAudio({ manual: true }, async ({ events }) => {
+    const player = new MorsePlayer();
+    const first = player.playSymbol('.');
+    const second = player.playSymbol('-');
+    await assert.rejects(player.playSymbol('/'), /dit or/);
+    await sleep(25);
+    assert.equal(scheduledMarks(events).length, 1);
+    assert.equal(player.isPlaying, true);
+    player.stop();
+    assert.deepEqual(await Promise.all([first, second]), [false, false]);
+  });
+});
+
+test('character playback replaces and cancels queued Morse key feedback', async () => {
+  await withAudio({ manual: true }, async ({ events }) => {
+    const player = new MorsePlayer();
+    const taps = [player.playSymbol('.'), player.playSymbol('-')];
+    const character = player.playCharacter('Q');
+    assert.deepEqual(await Promise.all(taps), [false, false]);
+    await sleep(25);
+    assert.equal(scheduledMarks(events).length, 4);
+    player.stop();
+    assert.equal(await character, false);
+  });
+});

@@ -120,16 +120,17 @@ Completed levels, sound settings, and your theme choice are stored in this brows
 
 ## Morse Chat Room
 
-Choose **Morse Chat Room** below Practice in the sidebar. Sign in with Google, then choose a unique username. Sign-in applies only to Chat.
+Choose **Morse Chat Room** below Practice in the sidebar. Use the account icon at the top right to sign in with Google, then choose a unique username. Your username, profile settings, and Sign out stay in that account menu across all tabs. Sign-in applies only to Chat.
 
 - **Friends:** send a request using an exact username or registered email. The recipient accepts or declines from the top-right notification bell. An accepted request opens a conversation for both people.
 - **Private groups:** create a named group and copy its invite code or link. Join using either. An invite link is kept through sign-in and username setup. Anyone with an invite can join and read the group history.
 - **Messages:** type ordinary text and send it as international Morse. Each message has **Show text** and **Listen** controls. Words stay hidden until revealed, and audio plays only when requested.
-- **Sound:** chat playback uses 18 WPM, 12 WPM Farnsworth, and 600 Hz, with the volume chosen in the sidebar. Listen changes to **Stop audio** during playback.
+- **Sound:** **Default** keeps chat at 18 WPM, 12 WPM Farnsworth, and 600 Hz. **Custom** enables the speed and frequency controls in the sidebar. Chat settings are saved separately from Learn and Practice; volume is shared. Listen changes to **Stop audio** during playback.
 - **Notifications:** the bell shows incoming friend requests and unread signals. An open conversation checks for messages every five seconds while the page is visible. The inbox checks every 30 seconds in Chat, every minute in Learn or Practice, and when you open the bell. Hidden tabs stop checking.
-- **Typing:** press Enter to send, or Shift + Enter for a new line. Unsent drafts are kept while switching conversations in the current page. Use **Load earlier signals** for older messages.
+- **Typing:** select **Send text** to write ordinary text, or **Send Morse code** to enter the signal yourself. In Morse mode, Left Arrow enters a dit (`.`), Right Arrow enters a dah (`-`), Space separates letters (`/`), and two spaces separate words (`//`). Each dit and dah plays as you type. Touch buttons provide the same controls. Use Backspace to correct and Enter to send. Morse groups must be valid letters or numbers; Show text decodes them.
+- **Drafts:** text and Morse drafts are kept separately while switching modes or conversations in the current page. In text mode, Shift + Enter adds a new line. Use **Load earlier signals** for older messages.
 
-Morse display and audio include only letters A-Z and numbers 0-9. Punctuation and symbols are skipped in the signal. **Show text** displays the original message, including case, punctuation, spacing, and new lines. Accented letters use their plain equivalents in Morse, while the original text stays unchanged. Each message needs at least one letter or number. An info note beside the message box explains this. Messages are stored with their readable text to support reveal and audio; Morse does not encrypt them.
+Morse display and audio include only letters A-Z and numbers 0-9. Punctuation and symbols are skipped in text messages' signals. **Show text** displays the original typed text, including case, punctuation, spacing, and new lines, or the decoded letters and numbers for a Morse message. Accented letters use their plain equivalents in Morse, while the original text stays unchanged. Each message needs at least one letter or number. An info note beside the message box explains this. Message boxes reserve room for the text so revealing it keeps the controls in place. Messages are stored with their readable text to support reveal and audio; Morse does not encrypt them.
 
 For the live site, follow [Chat setup](docs/CHAT_SETUP.md). It covers the Pages build settings, D1 migration/binding, the exact Google callback URL, and private environment settings. `npm start` keeps serving the local trainer without a chat backend. For local Pages/D1 development, use `npm install`, `npm run db:local`, and `npm run dev:chat` as described in the guide.
 

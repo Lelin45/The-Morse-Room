@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { morseText, validateMessage, encodeMorse, validateUsername } from '../chat-codec.js';
+import { morseText, validateMessage, encodeMorse, validateUsername, decodeMorse,
+  validateMorseMessage, MAX_MORSE_LENGTH } from '../chat-codec.js';
 import { MORSE, buildCharacterSegments } from '../audio.js';
 
 test('chat keeps the original text exactly while encoding only letters and numbers', () => {
@@ -49,4 +50,32 @@ test('usernames have a predictable case-insensitive identity', () => {
   for (const input of ['ab', 'name@example.com', 'has space', 'a'.repeat(25), '<script>']) {
     assert.throws(() => validateUsername(input), /3 to 24/);
   }
+});
+
+test('raw Morse uses slash letter boundaries and double-slash word boundaries', () => {
+  const input = '.... / .. // -- / -.-- // -. / .- / -- / . // .-.. / . / .-.. / .. / -.';
+  const decoded = validateMorseMessage(input);
+  assert.equal(decoded.text, 'HI MY NAME LELIN');
+  assert.equal(decoded.morse, encodeMorse(decoded.text));
+  assert.equal(decodeMorse('--.-/...../-----//.-/-.../.-..'), 'Q50 ABL');
+  assert.equal(decodeMorse(' .- / -... //  '), 'AB');
+  assert.equal(decodeMorse('.- -... // ...\t---\n...'), 'AB SOS');
+  assert.equal(decodeMorse('. / / -'), 'E T');
+});
+
+test('all 36 valid raw Morse groups round trip without punctuation codes', () => {
+  const text = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  const raw = [...text].map((letter) => MORSE[letter]).join('/');
+  assert.deepEqual(validateMorseMessage(raw), { text, morse: encodeMorse(text) });
+  for (const invalid of ['.-.-.-', '--..--', '..--..', '......', '----', '.-/a', '.-///-...', '/.-', '//']) {
+    assert.throws(() => validateMorseMessage(invalid), /not a letter or number|Use only|between letters|Include a Morse/);
+  }
+  for (const absent of [undefined, null, {}, '', '  ']) assert.throws(() => validateMorseMessage(absent), /Morse message first/);
+});
+
+test('raw Morse limits both submitted symbols and decoded characters', () => {
+  assert.throws(() => validateMorseMessage('.'.repeat(MAX_MORSE_LENGTH + 1)), /6,000 symbols/);
+  assert.throws(() => validateMorseMessage(Array(1001).fill('.').join('/')), /1,000 characters/);
+  const message = validateMorseMessage(Array(1000).fill('.').join('/'));
+  assert.equal(message.text.length, 1000);
 });

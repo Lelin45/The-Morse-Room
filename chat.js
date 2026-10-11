@@ -1,5 +1,5 @@
 import { MorsePlayer, getTiming } from './audio.js';
-import { morseText, validateMessage, validateUsername, MAX_MESSAGE_LENGTH } from './chat-codec.js';
+import { morseText, validateMessage, validateMorseMessage, validateUsername, MAX_MESSAGE_LENGTH, MAX_MORSE_LENGTH } from './chat-codec.js';
 
 const escape = (value) => String(value ?? '').replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
 const icon = (name) => `<svg aria-hidden="true"><use href="#i-${name}"/></svg>`;
@@ -9,7 +9,7 @@ const dateLabel = (value) => {
   return Number.isNaN(date.getTime()) ? '' : date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 };
 
-export function createChatRoom({ panel, bell, notifications, onEnter, onAudioStart, getVolume }) {
+export function createChatRoom({ panel, bell, notifications, accountToggle, accountMenu, onEnter, onAudioStart, getSound }) {
   const state = {
     active: false, ready: false, config: { available: false, providers: {} }, user: null,
     inbox: { friends: [], requests: [], conversations: [], unread: 0 }, conversation: null,
@@ -17,9 +17,10 @@ export function createChatRoom({ panel, bell, notifications, onEnter, onAudioSta
     revealed: new Set(), listening: null, audioToken: 0, loading: false, pollBusy: false,
     status: '', statusError: false, listKey: '', requestKey: '', messageKey: '', fetchId: 0,
     cursor: 0, readCursor: 0, nextInboxAt: 0, hasMore: false, joinConsumed: false, drafts: new Map(),
-    retryAt: 0, failures: 0,
+    retryAt: 0, failures: 0, composeMode: 'text', draftByMode: { text: '', morse: '' }, accountKey: '', pendingSends: new Map(),
   };
   const player = new MorsePlayer();
+  const feedbackPlayer = new MorsePlayer();
   const requestedJoin = new URL(location.href).searchParams.get('join');
   if (requestedJoin) {
     try { sessionStorage.setItem('morse-room-join', requestedJoin.slice(0, 80)); } catch { /* Joining also works by entering the code. */ }
@@ -57,6 +58,39 @@ export function createChatRoom({ panel, bell, notifications, onEnter, onAudioSta
     return `<span class="chat-item-avatar ${classes}" aria-hidden="true">${escape((username || '?').slice(0, 2).toUpperCase())}</span>`;
   }
 
+  function googleButton(available) {
+    return `<a class="button chat-provider-button ${available ? '' : 'is-disabled'}" ${available ? 'href="/api/auth/google"' : 'aria-disabled="true"'}><span class="sr-only">Sign in with Google</span><img class="chat-google-light" src="google-signin-light.png" width="180" height="40" alt="" aria-hidden="true"><img class="chat-google-dark" src="google-signin-dark.png" width="180" height="40" alt="" aria-hidden="true"></a>`;
+  }
+
+  function renderAccount() {
+    const key = JSON.stringify([state.ready, state.user, state.config]);
+    if (key === state.accountKey) return;
+    state.accountKey = key;
+    const available = state.config.available && state.config.providers.google;
+    accountToggle.innerHTML = state.user ? `${state.user.username ? avatar(state.user.username) : icon('user')}<span class="account-name">${escape(state.user.username ? `@${state.user.username}` : 'Account')}</span>` : icon('user');
+    accountToggle.setAttribute('aria-label', state.user ? `Account: ${state.user.username || 'choose a username'}` : 'Account: sign in');
+    accountMenu.innerHTML = state.user
+      ? `<div class="account-menu-heading"><strong>${escape(state.user.username ? `@${state.user.username}` : 'Your account')}</strong><small class="account-menu-meta">Signed in with Google</small></div>${state.user.username ? action('profile', 'Edit username', 'user', 'quiet') : action('open-chat', 'Choose username', 'user', 'quiet')}${action('open-chat', 'Morse Chat Room', 'chat', 'quiet')}${action('logout', 'Sign out', '', 'quiet')}<p class="account-status chat-error" role="status" hidden></p>`
+      : `<div class="account-menu-heading"><strong>Sign in to chat</strong><small class="account-menu-meta">Learn and Practice need no account.</small></div>${googleButton(available)}${!state.ready ? '<p>Checking sign-in...</p>' : !available ? '<p>Chat sign-in is being connected.</p>' : ''}<p class="chat-legal">By signing in, you agree to the <a href="terms.html">chat terms</a> and <a href="privacy.html">privacy notice</a>.</p>`;
+  }
+
+  function closeAccount() { accountMenu.hidden = true; accountToggle.setAttribute('aria-expanded', 'false'); }
+
+  async function logout() {
+    try {
+      await api('/logout', {});
+      stopAudio(); state.fetchId += 1;
+      state.user = null; state.inbox = { friends: [], requests: [], conversations: [], unread: 0 };
+      state.selected = null; state.conversation = null; state.messages = []; state.revealed.clear();
+      state.draft = ''; state.draftByMode = { text: '', morse: '' }; state.drafts.clear(); state.pendingSends.clear();
+      status(); closeAccount(); render(); updateBell();
+    } catch (error) {
+      status(error.message, true);
+      const node = accountMenu.querySelector('.account-status');
+      if (node) { node.hidden = false; node.textContent = error.message; }
+    }
+  }
+
   function render() {
     if (!state.active) return;
     if (!state.ready) {
@@ -65,11 +99,9 @@ export function createChatRoom({ panel, bell, notifications, onEnter, onAudioSta
     }
     if (!state.user) { renderWelcome(); return; }
     if (!state.user.username) { renderProfile(); return; }
-    panel.innerHTML = `<div class="chat-page-heading"><div><div class="eyebrow">A CONVERSATION WORTH LISTENING TO</div><h1>Morse Chat Room</h1><p>Send a thought. Receive a signal.</p></div></div>
-      <p class="chat-status ${state.statusError ? 'chat-error' : ''}" role="status" ${state.status ? '' : 'hidden'}>${escape(state.status)}</p>
+    panel.innerHTML = `<p class="chat-status ${state.statusError ? 'chat-error' : ''}" role="status" ${state.status ? '' : 'hidden'}>${escape(state.status)}</p>
       <div class="chat-shell" data-view="${state.view}">
         <aside class="chat-sidebar" aria-label="Your conversations">
-          <div class="chat-profile">${avatar(state.user.username)}<div class="chat-item-copy"><strong>@${escape(state.user.username)}</strong><small>Your listening circle</small></div>${action('logout', 'Sign out', '', 'quiet chat-signout')}</div>
           <div class="chat-toolbar">${action('friend', 'Add friend', 'user-plus')}${action('new-group', 'New group', 'users')}${action('join-group', 'Join group', 'link')}</div>
           <div class="chat-list-heading"><strong>Conversations</strong><span id="chat-conversation-count">${state.inbox.conversations.length}</span></div>
           <div class="chat-conversation-list"></div>
@@ -85,20 +117,20 @@ export function createChatRoom({ panel, bell, notifications, onEnter, onAudioSta
   function renderWelcome() {
     const available = state.config.available && state.config.providers.google;
     panel.innerHTML = `<div class="chat-intro">
-      <div class="chat-intro-copy"><div class="eyebrow">FROM ONE EAR TO ANOTHER</div><h1>Morse Chat Room</h1><p>A real conversation. A little code. A better ear.</p>
+      <div class="chat-intro-copy"><h2>Chat in Morse with friends</h2><p>Write a message or send your own dits and dahs.</p>
       <ul class="chat-feature-list"><li>${icon('user-plus')}Find friends by username or email.</li><li>${icon('users')}Make a private group. Invite by code or link.</li><li>${icon('volume')}Read the Morse, listen, or reveal the words.</li></ul>
-      <div class="chat-auth-actions"><a class="button chat-provider-button ${available ? '' : 'is-disabled'}" ${available ? 'href="/api/auth/google"' : 'aria-disabled="true"'}><span class="sr-only">Sign in with Google</span><img class="chat-google-light" src="google-signin-light.png" width="180" height="40" alt="" aria-hidden="true"><img class="chat-google-dark" src="google-signin-dark.png" width="180" height="40" alt="" aria-hidden="true"></a></div>
+      <div class="chat-auth-actions">${googleButton(available)}</div>
       <p class="chat-form-help">${available ? 'Pick a username after signing in. Learn and Practice stay free, with no account needed.' : 'Chat is being connected. Every lesson and practice session is available now.'}</p>
       ${available ? '' : action('retry', 'Check again', 'replay', 'quiet')}
       <p class="chat-status ${state.statusError ? 'chat-error' : ''}" role="status" ${state.status ? '' : 'hidden'}>${escape(state.status)}</p>
       <p class="chat-legal">By using chat, you agree to the <a href="terms.html">chat terms</a>. Read our <a href="privacy.html">privacy notice</a>.</p></div>
-      <div class="chat-demo"><span class="small-label">A LITTLE PREVIEW</span><div class="chat-message"><div class="chat-message-meta"><strong>A friendly signal</strong><span>Example</span></div><p class="chat-message-morse">.... .. / -- -.-- / -. .- -- . / .. ... / .-.. . .-.. .. -.</p><p class="chat-message-text" id="chat-demo-text" hidden>Hi my name is Lelin</p><div class="chat-message-actions">${action('demo-reveal', 'Show text', 'eye')}${action('demo-listen', 'Listen', 'volume')}</div></div><p>Try listening first. Reveal the words whenever you like.</p><p class="chat-code-note">${icon('info')}<span>Morse code includes only letters and numbers. Show text displays your message exactly as typed.</span></p></div>
+      <div class="chat-demo"><span class="small-label">A LITTLE PREVIEW</span><div class="chat-message"><div class="chat-message-meta"><strong>A friendly signal</strong><span>Example</span></div><p class="chat-message-morse">.... . .-.. .-.. --- / ..-. .-. .. . -. -..</p><p class="chat-message-text is-concealed" id="chat-demo-text" aria-hidden="true">Hello friend</p><div class="chat-message-actions">${action('demo-reveal', 'Show text', 'eye')}${action('demo-listen', 'Listen', 'volume')}</div></div><p>Try listening first. Reveal the words whenever you like.</p><p class="chat-code-note">${icon('info')}<span>Morse code includes only letters and numbers. Show text displays your message exactly as typed.</span></p></div>
     </div>`;
   }
 
   function renderProfile() {
     panel.innerHTML = `<div class="chat-intro chat-profile-intro"><div class="chat-intro-copy"><div class="eyebrow">YOUR FIRST SIGNAL</div><h1>What should we call you?</h1><p>Choose a username so friends can find you. Your email stays out of your public profile.</p>
-      <form class="chat-profile-form"><label class="chat-field">Username<input name="username" autocomplete="username" placeholder="e.g. lelin" minlength="3" maxlength="24" pattern="[A-Za-z0-9_]{3,24}" required></label><p class="chat-form-help">3 to 24 letters, numbers, or underscores. Each username is unique.</p><p class="chat-status" role="status" hidden></p><button class="button primary" type="submit">Enter chat ${icon('arrow')}</button> ${action('logout', 'Sign out', '', 'quiet')}</form></div></div>`;
+      <form class="chat-profile-form"><label class="chat-field">Username<input name="username" autocomplete="username" placeholder="e.g. user123" minlength="3" maxlength="24" pattern="[A-Za-z0-9_]{3,24}" required></label><p class="chat-form-help">3 to 24 letters, numbers, or underscores. Each username is unique.</p><p class="chat-status" role="status" hidden></p><button class="button primary" type="submit">Enter chat ${icon('arrow')}</button></form></div></div>`;
     panel.querySelector('form').addEventListener('submit', async (event) => {
       event.preventDefault();
       if (state.busy) return;
@@ -140,20 +172,79 @@ export function createChatRoom({ panel, bell, notifications, onEnter, onAudioSta
       <div class="chat-history-actions" ${state.hasMore ? '' : 'hidden'}>${action('earlier', 'Load earlier signals', 'replay')}</div>
       <div class="chat-message-list" aria-label="Messages"></div>
       <p class="chat-new-signal" role="status" aria-live="polite" hidden></p>
-      <form class="chat-compose"><label for="chat-draft" class="sr-only">Message to send as Morse code</label><textarea id="chat-draft" name="text" rows="2" maxlength="${MAX_MESSAGE_LENGTH}" placeholder="Type a message. We send it as Morse." aria-describedby="chat-code-note" required></textarea><div class="chat-compose-meta"><span>Enter to send · Shift + Enter for a new line</span><span id="chat-draft-count">0 / 1,000</span></div><p class="chat-code-note" id="chat-code-note">${icon('info')}<span>Morse code includes only letters and numbers. Show text displays your message exactly as typed.</span></p><div class="chat-compose-footer"><span>Audio: 18 WPM · 600 Hz</span><button type="submit" class="button primary">Send signal ${icon('send')}</button></div></form>`;
+      <form class="chat-compose"><div class="chat-compose-heading"><span>Message</span><div class="chat-send-mode segmented" aria-label="Message input mode"><button type="button" data-send-mode="text">Send text</button><button type="button" data-send-mode="morse">Send Morse code</button></div></div><label for="chat-draft" class="sr-only">Message to send as Morse code</label><textarea id="chat-draft" name="text" rows="2" aria-describedby="chat-code-note chat-morse-help" required></textarea><div class="chat-compose-meta"><span id="chat-compose-shortcuts"></span><span id="chat-draft-count"></span></div><div class="chat-morse-help" id="chat-morse-help" hidden><p><kbd>←</kbd> dit (.) <span>·</span> <kbd>→</kbd> dah (-) <span>·</span> <kbd>Space</kbd> next letter (/) <span>·</span> <kbd>Space twice</kbd> next word (//)</p><p>Each dit and dah plays as you type. Use Backspace to correct and Enter to send.</p><div class="chat-key-tools"><button type="button" class="button quiet" data-morse-key=".">Dit .</button><button type="button" class="button quiet" data-morse-key="-">Dah -</button><button type="button" class="button quiet" data-morse-key="/">Letter /</button><button type="button" class="button quiet" data-morse-key="//">Word //</button></div></div><p class="chat-code-note" id="chat-code-note">${icon('info')}<span>Morse code includes only letters and numbers. Show text displays your original text or decodes your Morse message.</span></p><div class="chat-compose-footer"><button type="submit" class="button primary">Send signal ${icon('send')}</button></div></form>`;
     state.messageKey = '';
     renderMessages(true);
     const draft = view.querySelector('#chat-draft');
     draft.value = state.draft;
-    const update = () => { state.draft = draft.value; view.querySelector('#chat-draft-count').textContent = `${draft.value.length} / 1,000`; };
-    update();
-    draft.addEventListener('input', update);
+    updateComposer();
+    draft.addEventListener('input', (event) => {
+      updateDraft();
+      if (state.composeMode === 'morse' && event.inputType === 'insertText' && /^[.-]$/.test(event.data || '')) playFeedback(event.data);
+    });
     draft.addEventListener('keydown', (event) => {
+      if (event.isComposing || event.ctrlKey || event.metaKey || event.altKey) return;
+      if (state.composeMode === 'morse' && ['ArrowLeft', 'ArrowRight', ' '].includes(event.key)) {
+        event.preventDefault();
+        if (!event.repeat) insertMorse(event.key === 'ArrowLeft' ? '.' : event.key === 'ArrowRight' ? '-' : '/');
+        return;
+      }
       if (event.key === 'Enter' && !event.shiftKey && !event.isComposing && !event.repeat) {
         event.preventDefault(); view.querySelector('.chat-compose').requestSubmit();
       }
     });
     view.querySelector('.chat-compose').addEventListener('submit', sendMessage);
+  }
+
+  function updateDraft() {
+    const input = panel.querySelector('#chat-draft');
+    if (!input) return;
+    state.draft = input.value;
+    state.draftByMode[state.composeMode] = input.value;
+    if (state.selected) state.drafts.set(String(state.selected), { ...state.draftByMode, mode: state.composeMode });
+    const maximum = state.composeMode === 'morse' ? MAX_MORSE_LENGTH : MAX_MESSAGE_LENGTH;
+    panel.querySelector('#chat-draft-count').textContent = `${input.value.length.toLocaleString()} / ${maximum.toLocaleString()}`;
+  }
+
+  function updateComposer() {
+    const input = panel.querySelector('#chat-draft');
+    if (!input) return;
+    const morse = state.composeMode === 'morse';
+    input.value = state.draftByMode[state.composeMode];
+    input.maxLength = morse ? MAX_MORSE_LENGTH : MAX_MESSAGE_LENGTH;
+    input.placeholder = morse ? 'Use ← for dit, → for dah, and Space between letters.' : 'Type a message. Your friend receives Morse.';
+    input.classList.toggle('is-morse', morse);
+    input.spellcheck = !morse;
+    input.setAttribute('autocapitalize', morse ? 'off' : 'sentences');
+    panel.querySelector('#chat-morse-help').hidden = !morse;
+    panel.querySelector('#chat-compose-shortcuts').textContent = morse ? 'Enter to send · Backspace to correct' : 'Enter to send · Shift + Enter for a new line';
+    panel.querySelectorAll('[data-send-mode]').forEach((button) => {
+      const selected = button.dataset.sendMode === state.composeMode;
+      button.classList.toggle('active', selected); button.setAttribute('aria-pressed', String(selected));
+    });
+    updateDraft();
+  }
+
+  function insertMorse(symbol) {
+    const input = panel.querySelector('#chat-draft');
+    if (!input || state.composeMode !== 'morse' || input.readOnly) return;
+    const start = input.selectionStart;
+    const end = input.selectionEnd;
+    const before = input.value.slice(0, start);
+    if (symbol.includes('/')) {
+      if (!before || before.endsWith('//')) return;
+      if (symbol === '//' && before.endsWith('/')) symbol = '/';
+    }
+    if (input.value.length - (end - start) + symbol.length > MAX_MORSE_LENGTH) return;
+    input.setRangeText(symbol, start, end, 'end');
+    updateDraft(); input.focus({ preventScroll: true });
+    if (symbol === '.' || symbol === '-') playFeedback(symbol);
+  }
+
+  function playFeedback(symbol) {
+    if (state.listening) stopAudio();
+    onAudioStart();
+    void feedbackPlayer.playSymbol(symbol, getSound()).catch((error) => status(error.message || 'Audio could not play.', true));
   }
 
   function renderMessages(scrollToEnd = false) {
@@ -167,7 +258,7 @@ export function createChatRoom({ panel, bell, notifications, onEnter, onAudioSta
     const focused = document.activeElement;
     const focusedListen = focused?.dataset?.listen;
     const focusedReveal = focused?.dataset?.reveal;
-    list.innerHTML = state.messages.length ? state.messages.map((item) => `<article class="chat-message ${String(item.senderId) === String(state.user.id) ? 'mine' : ''}" data-message="${escape(item.id)}"><div class="chat-message-meta"><strong>@${escape(item.username)}</strong><time>${escape(dateLabel(item.createdAt))}</time></div><p class="chat-message-morse" aria-label="Morse code message">${escape(item.morse)}</p><p class="chat-message-text" ${state.revealed.has(String(item.id)) ? '' : 'hidden'}>${escape(item.text)}</p><div class="chat-message-actions"><button type="button" class="button quiet" data-reveal="${escape(item.id)}" aria-expanded="${state.revealed.has(String(item.id))}">${icon('eye')}${state.revealed.has(String(item.id)) ? 'Hide text' : 'Show text'}</button><button type="button" class="button quiet" data-listen="${escape(item.id)}" aria-pressed="${state.listening === String(item.id)}">${icon(state.listening === String(item.id) ? 'stop' : 'volume')}${state.listening === String(item.id) ? 'Stop audio' : 'Listen'}</button></div></article>`).join('') : '<div class="chat-empty"><h3>You found each other.</h3><p>Send a hello in Morse. The words stay hidden until revealed.</p></div>';
+    list.innerHTML = state.messages.length ? state.messages.map((item) => `<article class="chat-message ${String(item.senderId) === String(state.user.id) ? 'mine' : ''}" data-message="${escape(item.id)}"><div class="chat-message-meta"><strong>@${escape(item.username)}</strong><time>${escape(dateLabel(item.createdAt))}</time></div><p class="chat-message-morse" aria-label="Morse code message">${escape(item.morse)}</p><p class="chat-message-text ${state.revealed.has(String(item.id)) ? '' : 'is-concealed'}" aria-hidden="${!state.revealed.has(String(item.id))}">${escape(item.text)}</p><div class="chat-message-actions"><button type="button" class="button quiet" data-reveal="${escape(item.id)}" aria-expanded="${state.revealed.has(String(item.id))}">${icon('eye')}${state.revealed.has(String(item.id)) ? 'Hide text' : 'Show text'}</button><button type="button" class="button quiet" data-listen="${escape(item.id)}" aria-pressed="${state.listening === String(item.id)}">${icon(state.listening === String(item.id) ? 'stop' : 'volume')}${state.listening === String(item.id) ? 'Stop audio' : 'Listen'}</button></div></article>`).join('') : '<div class="chat-empty"><h3>You found each other.</h3><p>Send a hello in Morse. The words stay hidden until revealed.</p></div>';
     if (scrollToEnd || nearBottom) list.scrollTop = list.scrollHeight;
     else list.scrollTop = previousTop;
     if (focusedListen) [...list.querySelectorAll('[data-listen]')].find((button) => button.dataset.listen === focusedListen)?.focus({ preventScroll: true });
@@ -175,6 +266,7 @@ export function createChatRoom({ panel, bell, notifications, onEnter, onAudioSta
   }
 
   function updateBell() {
+    renderAccount();
     const count = state.user?.username ? state.inbox.requests.length + state.inbox.unread : 0;
     const badge = bell.querySelector('.chat-notification-count');
     badge.textContent = count > 99 ? '99+' : String(count);
@@ -212,7 +304,10 @@ export function createChatRoom({ panel, bell, notifications, onEnter, onAudioSta
       if (fetchId !== state.fetchId || !state.active) return;
       state.conversation = data.conversation; state.members = data.members || []; state.messages = data.messages || [];
       state.cursor = state.messages.at(-1)?.id || 0; state.readCursor = 0; state.hasMore = Boolean(data.hasMore);
-      state.draft = state.drafts.get(String(id)) || '';
+      const savedDraft = state.drafts.get(String(id));
+      state.composeMode = savedDraft?.mode || state.composeMode;
+      state.draftByMode = { text: savedDraft?.text || '', morse: savedDraft?.morse || '' };
+      state.draft = state.draftByMode[state.composeMode];
       renderConversation();
       if (state.cursor) {
         const through = state.cursor;
@@ -230,8 +325,7 @@ export function createChatRoom({ panel, bell, notifications, onEnter, onAudioSta
   }
 
   function saveDraft() {
-    const input = panel.querySelector('#chat-draft');
-    if (input) { state.draft = input.value; if (state.selected) state.drafts.set(String(state.selected), input.value); }
+    updateDraft();
   }
 
   async function sendMessage(event) {
@@ -240,29 +334,39 @@ export function createChatRoom({ panel, bell, notifications, onEnter, onAudioSta
     const input = event.target.querySelector('textarea');
     const submit = event.target.querySelector('[type=submit]');
     const id = state.selected;
+    const kind = state.composeMode;
+    const submitted = input.value;
     try {
-      const text = validateMessage(input.value);
-      state.busy = true; submit.disabled = true;
+      const payload = kind === 'morse' ? { kind, morse: submitted } : { kind, text: validateMessage(submitted) };
+      if (kind === 'morse') validateMorseMessage(submitted);
+      state.busy = true; submit.disabled = true; input.readOnly = true;
       // Keep the same id for retries, so a lost response cannot create a second message.
-      const clientId = event.target.dataset.pendingText === text ? event.target.dataset.clientId : crypto.randomUUID();
-      event.target.dataset.pendingText = text; event.target.dataset.clientId = clientId;
-      const data = await api(`/conversations/${encodeURIComponent(id)}/messages`, { text, clientId });
+      const pendingMessage = JSON.stringify(payload);
+      const pendingKey = `${id}:${kind}`;
+      const pending = state.pendingSends.get(pendingKey);
+      const clientId = pending?.message === pendingMessage ? pending.clientId : crypto.randomUUID();
+      state.pendingSends.set(pendingKey, { message: pendingMessage, clientId });
+      const data = await api(`/conversations/${encodeURIComponent(id)}/messages`, { ...payload, clientId });
+      state.pendingSends.delete(pendingKey);
+      const storedDraft = state.drafts.get(String(id));
+      if (storedDraft?.[kind] === submitted) {
+        storedDraft[kind] = '';
+        if (!storedDraft.text && !storedDraft.morse) state.drafts.delete(String(id));
+      }
       if (String(id) === String(state.selected)) {
         if (!state.messages.some((item) => String(item.id) === String(data.message.id))) state.messages.push(data.message);
         state.messages.sort((first, second) => Number(first.id) - Number(second.id));
-        input.value = ''; state.draft = '';
-        state.drafts.delete(String(id));
-        event.target.querySelector('#chat-draft-count').textContent = '0 / 1,000';
-        delete event.target.dataset.pendingText; delete event.target.dataset.clientId;
+        state.draftByMode[kind] = '';
+        input.value = ''; state.draft = ''; updateDraft();
         renderMessages(true); status(); input.focus({ preventScroll: true });
       }
       await refreshInbox();
     } catch (error) { status(error.message, true); }
-    finally { state.busy = false; submit.disabled = false; }
+    finally { state.busy = false; submit.disabled = false; input.readOnly = false; }
   }
 
   function stopAudio() {
-    state.audioToken += 1; player.stop(); state.listening = null;
+    state.audioToken += 1; player.stop(); feedbackPlayer.stop(); state.listening = null;
     renderMessages();
     const preview = panel.querySelector('[data-chat-action=demo-listen]');
     if (preview) preview.innerHTML = `${icon('volume')}Listen`;
@@ -277,7 +381,7 @@ export function createChatRoom({ panel, bell, notifications, onEnter, onAudioSta
     const preview = panel.querySelector('[data-chat-action=demo-listen]');
     if (id === 'demo' && preview) preview.innerHTML = `${icon('stop')}Stop audio`;
     try {
-      const settings = { wpm: 18, farnsworth: 12, frequency: 600, volume: getVolume() };
+      const settings = getSound();
       await player.prepare();
       const words = morseText(text).split(' ');
       for (let word = 0; word < words.length; word += 1) {
@@ -295,7 +399,8 @@ export function createChatRoom({ panel, bell, notifications, onEnter, onAudioSta
   function showDialog(kind, initialCode = '') {
     document.querySelector('.chat-dialog')?.remove();
     const settings = {
-      friend: { title: 'Add a friend', label: 'Username or email', name: 'target', placeholder: 'lelin or friend@example.com', help: 'Your friend needs a chat account. They accept your request before you can message each other.', submit: 'Send request' },
+      friend: { title: 'Add a friend', label: 'Username or email', name: 'target', placeholder: 'user123 or friend@example.com', help: 'Your friend needs a chat account. They accept your request before you can message each other.', submit: 'Send request' },
+      profile: { title: 'Edit username', label: 'Username', name: 'username', placeholder: 'user123', help: 'Use 3 to 24 letters, numbers, or underscores. Your friends will see your new username.', submit: 'Save username' },
       'new-group': { title: 'Start a private group', label: 'Group name', name: 'name', placeholder: 'The evening signals', help: 'Only people with your invite code or link can join.', submit: 'Create group' },
       'join-group': { title: 'Join a group', label: 'Invite code or link', name: 'code', placeholder: 'Paste a code or invite link', help: 'Ask a group member for their code or invite link.', submit: 'Join group' },
     }[kind];
@@ -321,7 +426,11 @@ export function createChatRoom({ panel, bell, notifications, onEnter, onAudioSta
       const feedback = dialog.querySelector('.chat-dialog-status');
       try {
         let value = String(new FormData(event.target).get(settings.name)).trim();
-        if (kind === 'friend') {
+        if (kind === 'profile') {
+          await api('/profile', { username: validateUsername(value) });
+          state.user = (await api('/me')).user;
+          dialog.close(); await refreshInbox(); render(); renderAccount();
+        } else if (kind === 'friend') {
           await api('/friends/request', { target: value.replace(/^@/, '') });
           dialog.close(); status('Request sent. Your friend can accept it from the notification bell.');
         } else {
@@ -403,6 +512,16 @@ export function createChatRoom({ panel, bell, notifications, onEnter, onAudioSta
   }
 
   panel.addEventListener('click', async (event) => {
+    const sendMode = event.target.closest('[data-send-mode]');
+    if (sendMode) {
+      if (!state.busy && ['text', 'morse'].includes(sendMode.dataset.sendMode)) {
+        saveDraft(); stopAudio(); state.composeMode = sendMode.dataset.sendMode;
+        updateComposer(); panel.querySelector('#chat-draft')?.focus({ preventScroll: true });
+      }
+      return;
+    }
+    const morseKey = event.target.closest('[data-morse-key]');
+    if (morseKey) { insertMorse(morseKey.dataset.morseKey); return; }
     const conversation = event.target.closest('[data-conversation]');
     if (conversation) { await selectConversation(conversation.dataset.conversation); return; }
     const reveal = event.target.closest('[data-reveal]');
@@ -411,8 +530,10 @@ export function createChatRoom({ panel, bell, notifications, onEnter, onAudioSta
       if (state.revealed.has(id)) state.revealed.delete(id); else state.revealed.add(id);
       // Update in place so keyboard focus stays on the button.
       const text = reveal.closest('.chat-message').querySelector('.chat-message-text');
-      text.hidden = !state.revealed.has(id); reveal.setAttribute('aria-expanded', String(!text.hidden));
-      reveal.innerHTML = `${icon('eye')}${text.hidden ? 'Show text' : 'Hide text'}`;
+      const shown = state.revealed.has(id);
+      text.classList.toggle('is-concealed', !shown); text.setAttribute('aria-hidden', String(!shown));
+      reveal.setAttribute('aria-expanded', String(shown));
+      reveal.innerHTML = `${icon('eye')}${shown ? 'Hide text' : 'Show text'}`;
       return;
     }
     const audio = event.target.closest('[data-listen]');
@@ -450,21 +571,21 @@ export function createChatRoom({ panel, bell, notifications, onEnter, onAudioSta
         break;
       }
       case 'logout':
-        try {
-          await api('/logout', {}); stopAudio(); state.user = null; state.inbox = { friends: [], requests: [], conversations: [], unread: 0 };
-          state.selected = null; state.conversation = null; state.messages = []; state.revealed.clear(); state.draft = ''; state.drafts.clear(); status(); render(); updateBell();
-        } catch (error) { status(error.message, true); }
+        await logout();
         break;
       case 'demo-reveal': {
-        const text = panel.querySelector('#chat-demo-text'); text.hidden = !text.hidden;
-        button.innerHTML = `${icon('eye')}${text.hidden ? 'Show text' : 'Hide text'}`; button.setAttribute('aria-expanded', String(!text.hidden));
+        const text = panel.querySelector('#chat-demo-text');
+        const shown = text.classList.contains('is-concealed');
+        text.classList.toggle('is-concealed', !shown); text.setAttribute('aria-hidden', String(!shown));
+        button.innerHTML = `${icon('eye')}${shown ? 'Hide text' : 'Show text'}`; button.setAttribute('aria-expanded', String(shown));
         break;
       }
-      case 'demo-listen': await listen('Hi my name is Lelin', 'demo'); break;
+      case 'demo-listen': await listen('Hello friend', 'demo'); break;
     }
   });
 
   bell.addEventListener('click', () => {
+    closeAccount();
     notifications.hidden = !notifications.hidden;
     bell.setAttribute('aria-expanded', String(!notifications.hidden));
     if (!notifications.hidden) {
@@ -473,6 +594,25 @@ export function createChatRoom({ panel, bell, notifications, onEnter, onAudioSta
     }
   });
   function closeNotifications() { notifications.hidden = true; bell.setAttribute('aria-expanded', 'false'); }
+  accountToggle.addEventListener('click', () => {
+    closeNotifications();
+    accountMenu.hidden = !accountMenu.hidden;
+    accountToggle.setAttribute('aria-expanded', String(!accountMenu.hidden));
+    if (!accountMenu.hidden) accountMenu.querySelector('button,a[href]')?.focus();
+  });
+  accountMenu.addEventListener('click', async (event) => {
+    const button = event.target.closest('[data-chat-action]');
+    if (!button || button.disabled) return;
+    if (button.dataset.chatAction === 'logout') {
+      button.disabled = true; await logout(); button.disabled = false;
+    } else if (button.dataset.chatAction === 'open-chat') {
+      closeAccount(); onEnter();
+    } else if (button.dataset.chatAction === 'profile') {
+      closeAccount(); showDialog('profile', state.user.username);
+    }
+  });
+  document.addEventListener('click', (event) => { if (!event.target.closest('.account-control')) closeAccount(); });
+  document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && !accountMenu.hidden) { closeAccount(); accountToggle.focus(); } });
   document.addEventListener('click', (event) => { if (!event.target.closest('.chat-notification-wrap')) closeNotifications(); });
   document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && !notifications.hidden) { closeNotifications(); bell.focus(); } });
   notifications.addEventListener('click', async (event) => {

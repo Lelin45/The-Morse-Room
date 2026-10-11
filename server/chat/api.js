@@ -1,11 +1,11 @@
-import { validateMessage, encodeMorse, validateUsername } from '../../chat-codec.js';
+import { validateMessage, validateMorseMessage, encodeMorse, validateUsername } from '../../chat-codec.js';
 import { ApiError, one, all, run, batch, randomToken, requireSite, requireOrigin, readJSON, pair, pairKey } from './db.js';
 import { authProviders, startOAuth, finishOAuth, identityUser, createSession, sessionUser,
   endSession, clearOAuthCookie } from './auth.js';
 import { rateLimit } from './db.js';
 
 const LIMIT = 100;
-const MESSAGE_SELECT = `SELECT m.id, m.sender_id AS senderId, u.username, m.text, m.morse, m.created_at AS createdAt
+const MESSAGE_SELECT = `SELECT m.id, m.sender_id AS senderId, u.username, m.text, m.morse, m.kind, m.created_at AS createdAt
   FROM chat_messages m JOIN chat_users u ON u.id = m.sender_id`;
 
 function json(data, status = 200, extraHeaders = {}) {
@@ -192,22 +192,32 @@ async function conversationDetail(id, user, url, env) {
 
 async function sendMessage(id, user, body, env) {
   await conversationRequired(id, user, env);
+  const kind = body.kind === undefined ? 'text' : body.kind;
+  if (kind !== 'text' && kind !== 'morse') throw new ApiError(400, 'invalid_message_kind', 'Choose text or Morse code for your message.');
   let text;
-  try { text = validateMessage(body.text); }
+  let morse;
+  try {
+    if (kind === 'morse') ({ text, morse } = validateMorseMessage(body.morse));
+    else {
+      text = validateMessage(body.text);
+      morse = encodeMorse(text);
+    }
+  }
   catch (error) { throw new ApiError(400, 'invalid_message', error.message); }
   const clientId = identifier(body.clientId, 'message reference');
+  const matches = (saved) => saved.kind === kind && saved.text === text && saved.morse === morse;
   let message = await one(env, `${MESSAGE_SELECT} WHERE m.conversation_id = ? AND m.sender_id = ? AND m.client_id = ?`, id, user.id, clientId);
   if (message) {
-    if (message.text !== text) throw new ApiError(409, 'message_conflict', 'This message reference was already used for different text.');
+    if (!matches(message)) throw new ApiError(409, 'message_conflict', 'This message reference was already used for a different message.');
     return { message };
   }
   await rateLimit(env, `messages:${user.id}`, 60, 60);
-  await run(env, `INSERT INTO chat_messages(conversation_id, sender_id, text, morse, client_id, created_at)
-    SELECT ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM chat_members WHERE conversation_id = ? AND user_id = ?)
-    ON CONFLICT(conversation_id, sender_id, client_id) DO NOTHING`, id, user.id, text, encodeMorse(text), clientId, Date.now(), id, user.id);
+  await run(env, `INSERT INTO chat_messages(conversation_id, sender_id, text, morse, kind, client_id, created_at)
+    SELECT ?, ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM chat_members WHERE conversation_id = ? AND user_id = ?)
+    ON CONFLICT(conversation_id, sender_id, client_id) DO NOTHING`, id, user.id, text, morse, kind, clientId, Date.now(), id, user.id);
   message = await one(env, `${MESSAGE_SELECT} WHERE m.conversation_id = ? AND m.sender_id = ? AND m.client_id = ?`, id, user.id, clientId);
   if (!message) throw new ApiError(403, 'membership_required', 'Join this conversation before sending messages.');
-  if (message.text !== text) throw new ApiError(409, 'message_conflict', 'This message reference was already used for different text.');
+  if (!matches(message)) throw new ApiError(409, 'message_conflict', 'This message reference was already used for a different message.');
   return { message };
 }
 

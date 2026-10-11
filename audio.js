@@ -70,9 +70,11 @@ export class MorsePlayer {
     this._signal = false;
     this._lastAudioEnd = null;
     this._nextStartAt = null;
+    this._symbolQueue = [];
+    this._symbolDrain = null;
   }
 
-  get isPlaying() { return this._operation !== null; }
+  get isPlaying() { return this._operation !== null || this._symbolDrain !== null; }
   get isPaused() { return this._paused; }
 
   /** Warm a connected, silent carrier from the Start gesture. */
@@ -86,6 +88,53 @@ export class MorsePlayer {
 
   async playCharacter(character, settings = {}) {
     const segments = buildCharacterSegments(character, settings);
+    if (this._symbolDrain) this.stop();
+    return this._playAudio(segments, settings);
+  }
+
+  /** Keep every quick key tap, playing its complete dit or dah in order. */
+  async playSymbol(symbol, settings = {}) {
+    if (symbol !== '.' && symbol !== '-') throw new RangeError('Use . for a dit or - for a dah.');
+    if (!this._symbolDrain && this._operation) this.stop();
+    const entry = { symbol, settings: { ...settings } };
+    entry.promise = new Promise((resolve, reject) => {
+      entry.resolve = resolve;
+      entry.reject = reject;
+    });
+    this._symbolQueue.push(entry);
+    if (!this._symbolDrain) {
+      const drain = {};
+      this._symbolDrain = drain;
+      this._drainSymbols(drain);
+    }
+    return entry.promise;
+  }
+
+  async _drainSymbols(drain) {
+    let entry;
+    try {
+      while (this._symbolDrain === drain && this._symbolQueue.length) {
+        entry = this._symbolQueue.shift();
+        const timing = getTiming(entry.settings);
+        const completed = await this._playAudio([
+          { tone: true, duration: entry.symbol === '.' ? timing.dit : timing.dah },
+        ], entry.settings);
+        entry.resolve(completed);
+        entry = null;
+        if (!completed || this._symbolDrain !== drain) return;
+        if (this._symbolQueue.length && !await this.gap(timing.intraCharacterGap)) return;
+      }
+    } catch (error) {
+      entry?.reject(error);
+      if (this._symbolDrain === drain) {
+        for (const queued of this._symbolQueue.splice(0)) queued.reject(error);
+      }
+    } finally {
+      if (this._symbolDrain === drain) this._symbolDrain = null;
+    }
+  }
+
+  async _playAudio(segments, settings) {
     const operation = this._createOperation('audio', settings);
     operation.segments = segments;
     operation.leadRemaining = null;
@@ -164,13 +213,16 @@ export class MorsePlayer {
   }
 
   stop() {
+    const hadSymbols = this._symbolDrain !== null;
+    this._symbolDrain = null;
+    for (const queued of this._symbolQueue.splice(0)) queued.resolve(false);
     this._nextStartAt = null;
     this._lastAudioEnd = null;
     if (!this._operation) {
       this._paused = false;
       this._mute();
       this._setSignal(false);
-      return false;
+      return hadSymbols;
     }
     this._settle(this._operation, false);
     return true;

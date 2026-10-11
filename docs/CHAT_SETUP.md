@@ -127,13 +127,14 @@ Copy the resulting client ID and secret directly into the Cloudflare fields abov
 
 ## 6. Check the finished deployment
 
-After the database migration, binding, Google configuration, and redeployment:
+After all database migrations, binding, Google configuration, and redeployment:
 
 1. Open the production site's Chat view. Confirm **Sign in with Google** is available.
 2. Sign in, choose a valid username, and test a room message between two real accounts or separate browser profiles.
 3. Verify refresh and sign-out behavior. Test a direct message with a second account.
 4. Open `/api/config` and confirm `available` and `providers.google` are `true`. The Google client secret must never appear in this response or in browser source.
 5. Check the public privacy and terms links from the homepage and Google's consent screen.
+6. Confirm migration `0003_morse_messages.sql` has run before using the Morse composer. It adds the message kind with a default of `text`, keeping existing messages readable. Test an arrow-key message using `/` between letters and `//` between words, then use Show text and Listen on the receiving account.
 
 If Google reports `redirect_uri_mismatch`, compare the client's registered URI to `SITE_URL` plus `/api/auth/google/callback`. A missing database usually means the `DB` binding or migration is absent, or the project needs redeployment. `npm start` serves the offline trainer; it does not emulate Pages Functions or D1.
 

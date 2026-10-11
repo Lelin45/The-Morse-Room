@@ -117,6 +117,7 @@ test('messages use server identity and Morse encoding, and duplicate client IDs 
     const first = await api(env, `/api/conversations/${id}/messages`, { method: 'POST', cookie: alice, body });
     assert.equal(first.response.status, 201);
     assert.equal(first.data.message.senderId, 'alice');
+    assert.equal(first.data.message.kind, 'text');
     assert.equal(first.data.message.text, body.text);
     assert.equal(first.data.message.morse, encodeMorse(body.text));
     assert.equal(first.data.message.morse, '.... . .-.. .-.. --- / -... --- -... / .---- ..---');
@@ -130,6 +131,78 @@ test('messages use server identity and Morse encoding, and duplicate client IDs 
       body: { ...body, text: 'Different' } })).response.status, 409);
     assert.equal((await api(env, `/api/conversations/${id}/messages`, { method: 'POST', cookie: alice,
       body: { text: '🙂', clientId: 'emoji' } })).response.status, 400);
+  } finally { env.DB.close(); }
+});
+
+test('raw Morse sends are decoded by the server and stay idempotent across formatting changes', async () => {
+  const env = testEnv();
+  try {
+    const alice = await person(env, 'alice');
+    const bob = await person(env, 'bob');
+    const id = await friends(env, alice, bob);
+    const body = { kind: 'morse', morse: '.... / .. // -- / -.-- // .---- / ..---',
+      text: 'forged readable text', clientId: 'raw-one' };
+    const first = await api(env, `/api/conversations/${id}/messages`, { method: 'POST', cookie: alice, body });
+    assert.equal(first.response.status, 201);
+    assert.deepEqual([first.data.message.kind, first.data.message.text, first.data.message.morse],
+      ['morse', 'HI MY 12', '.... .. / -- -.-- / .---- ..---']);
+    const received = (await api(env, `/api/conversations/${id}`, { cookie: bob })).data.messages[0];
+    assert.equal(received.kind, 'morse');
+    assert.equal(received.text, 'HI MY 12');
+    const repeat = await api(env, `/api/conversations/${id}/messages`, { method: 'POST', cookie: alice,
+      body: { ...body, morse: '.... / ..//--/-.--//.----/..---/' } });
+    assert.equal(repeat.data.message.id, first.data.message.id);
+    assert.equal(env.DB.sqlite.prepare('SELECT COUNT(*) n FROM chat_messages').get().n, 1);
+    assert.equal(env.DB.sqlite.prepare("SELECT count FROM chat_rate_limits WHERE actor = 'messages:alice'").get().count, 1);
+    for (const changed of [
+      { kind: 'text', text: 'HI MY 12', clientId: body.clientId },
+      { ...body, morse: '....//..//--/-.--//.----/..---' },
+      { ...body, morse: '.... / .. // -- / -.-- // .---- / ...--' },
+    ]) {
+      const conflict = await api(env, `/api/conversations/${id}/messages`, { method: 'POST', cookie: alice, body: changed });
+      assert.equal(conflict.response.status, 409);
+      assert.equal(conflict.data.error.code, 'message_conflict');
+    }
+  } finally { env.DB.close(); }
+});
+
+test('raw Morse enforces membership, valid groups, and the selected message kind', async () => {
+  const env = testEnv();
+  try {
+    const alice = await person(env, 'alice');
+    const bob = await person(env, 'bob');
+    const carol = await person(env, 'carol');
+    const id = await friends(env, alice, bob);
+    assert.equal((await api(env, `/api/conversations/${id}/messages`, { method: 'POST', cookie: carol,
+      body: { kind: 'morse', morse: '.... / ..', clientId: 'outsider' } })).response.status, 404);
+    for (const body of [
+      { kind: 'morse', morse: '..--..', clientId: 'punctuation' },
+      { kind: 'morse', morse: '.... / ..!', clientId: 'symbol' },
+      { kind: 'morse', morse: '.-///-...', clientId: 'separator' },
+      { kind: 'morse', text: 'HI', clientId: 'missing' },
+      { kind: 'unknown', text: 'HI', clientId: 'kind' },
+      { kind: null, text: 'HI', clientId: 'null-kind' },
+    ]) {
+      assert.equal((await api(env, `/api/conversations/${id}/messages`, { method: 'POST', cookie: alice, body })).response.status, 400);
+    }
+    assert.equal(env.DB.sqlite.prepare('SELECT COUNT(*) n FROM chat_messages').get().n, 0);
+  } finally { env.DB.close(); }
+});
+
+test('migrated text messages retain their original content and receive the text kind by default', async () => {
+  const env = testEnv();
+  try {
+    const alice = await person(env, 'alice');
+    const bob = await person(env, 'bob');
+    const id = await friends(env, alice, bob);
+    const text = '  Original,\nspacing!  ';
+    env.DB.sqlite.prepare(`INSERT INTO chat_messages(conversation_id,sender_id,text,morse,client_id,created_at)
+      VALUES (?, ?, ?, ?, ?, ?)`).run(id, 'alice', text, encodeMorse(text), 'old-client', Date.now());
+    const received = (await api(env, `/api/conversations/${id}`, { cookie: bob })).data.messages[0];
+    assert.equal(received.kind, 'text');
+    assert.equal(received.text, text);
+    assert.equal((await api(env, `/api/conversations/${id}/messages`, { method: 'POST', cookie: alice,
+      body: { text, clientId: 'old-client' } })).data.message.id, received.id);
   } finally { env.DB.close(); }
 });
 

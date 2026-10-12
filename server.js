@@ -9,6 +9,7 @@ const types = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascrip
 const publicFiles = new Set([
   '/index.html', '/styles.css', '/app.js', '/audio.js', '/trainer.js',
   '/learn-session.js', '/replay.js', '/chat.js', '/chat-codec.js', '/chat.css',
+  '/mobile-shell.js', '/mobile-practice-session.js', '/timed-morse.js',
   '/privacy.html', '/terms.html',
   '/google-signin-light.png', '/google-signin-dark.png',
 ]);

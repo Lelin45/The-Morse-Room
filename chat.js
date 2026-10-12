@@ -1,4 +1,5 @@
 import { MorsePlayer, getTiming } from './audio.js';
+import { TimedMorseInput } from './timed-morse.js';
 import { morseText, validateMessage, validateMorseMessage, validateUsername, MAX_MESSAGE_LENGTH, MAX_MORSE_LENGTH } from './chat-codec.js';
 
 const escape = (value) => String(value ?? '').replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
@@ -21,6 +22,19 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
   };
   const player = new MorsePlayer();
   const feedbackPlayer = new MorsePlayer();
+  const mobile = matchMedia('(max-width: 760px)');
+  const morseInput = new TimedMorseInput({
+    getLetterGap: () => Math.max(700, Math.min(1500, getTiming(getSound()).characterGap * 1000)),
+    onChange(value) {
+      const input = panel.querySelector('#chat-draft');
+      if (state.composeMode !== 'morse' || !input) return;
+      input.value = value;
+      input.setSelectionRange(value.length, value.length);
+      updateDraft(); updateMorseBoundary();
+    },
+    onBoundary: () => updateMorseBoundary(),
+    maxLength: MAX_MORSE_LENGTH,
+  });
   const requestedJoin = new URL(location.href).searchParams.get('join');
   if (requestedJoin) {
     try { sessionStorage.setItem('morse-room-join', requestedJoin.slice(0, 80)); } catch { /* Joining also works by entering the code. */ }
@@ -172,24 +186,27 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
       <div class="chat-history-actions" ${state.hasMore ? '' : 'hidden'}>${action('earlier', 'Load earlier signals', 'replay')}</div>
       <div class="chat-message-list" aria-label="Messages"></div>
       <p class="chat-new-signal" role="status" aria-live="polite" hidden></p>
-      <form class="chat-compose"><div class="chat-compose-heading"><span>Message</span><div class="chat-send-mode segmented" aria-label="Message input mode"><button type="button" data-send-mode="text">Send text</button><button type="button" data-send-mode="morse">Send Morse code</button></div></div><label for="chat-draft" class="sr-only">Message to send as Morse code</label><textarea id="chat-draft" name="text" rows="2" aria-describedby="chat-code-note chat-morse-help" required></textarea><div class="chat-compose-meta"><span id="chat-compose-shortcuts"></span><span id="chat-draft-count"></span></div><div class="chat-morse-help" id="chat-morse-help" hidden><p><kbd>←</kbd> dit (.) <span>·</span> <kbd>→</kbd> dah (-) <span>·</span> <kbd>Space</kbd> next letter (/) <span>·</span> <kbd>Space twice</kbd> next word (//)</p><p>Each dit and dah plays as you type. Use Backspace to correct and Enter to send.</p><div class="chat-key-tools"><button type="button" class="button quiet" data-morse-key=".">Dit .</button><button type="button" class="button quiet" data-morse-key="-">Dah -</button><button type="button" class="button quiet" data-morse-key="/">Letter /</button><button type="button" class="button quiet" data-morse-key="//">Word //</button></div></div><p class="chat-code-note" id="chat-code-note">${icon('info')}<span>Morse code includes only letters and numbers. Show text displays your original text or decodes your Morse message.</span></p><div class="chat-compose-footer"><button type="submit" class="button primary">Send signal ${icon('send')}</button></div></form>`;
+      <form class="chat-compose"><div class="chat-compose-heading"><span>Message</span><div class="chat-send-mode segmented" aria-label="Message input mode"><button type="button" data-send-mode="text">Send text</button><button type="button" data-send-mode="morse">Send Morse code</button></div></div><label for="chat-draft" class="sr-only">Message to send as Morse code</label><textarea id="chat-draft" name="text" rows="2" aria-describedby="chat-code-note chat-morse-help" required></textarea><div class="chat-compose-meta"><span id="chat-compose-shortcuts"></span><span id="chat-draft-count"></span></div><div class="chat-morse-help" id="chat-morse-help" hidden><p><span class="chat-desktop-morse-help"><kbd>←</kbd> dit <span>·</span> <kbd>→</kbd> dah <span>·</span> </span>Pause between letters. Space between words. <span id="chat-morse-boundary" aria-live="off"></span></p><div class="morse-paddles"><button type="button" class="morse-paddle dit" data-morse-key="." aria-label="Dit"><strong>.</strong><span>Dit</span></button><button type="button" class="morse-space" data-morse-key="word" aria-label="Space between words">Space</button><button type="button" class="morse-paddle dah" data-morse-key="-" aria-label="Dah"><strong>-</strong><span>Dah</span></button></div></div><p class="chat-code-note" id="chat-code-note">${icon('info')}<span>Morse uses only letters and numbers. Show text reveals your message.</span></p><div class="chat-compose-footer"><button type="button" class="button quiet chat-morse-undo" data-morse-key="undo" hidden>Undo</button><button type="submit" class="button primary">Send signal ${icon('send')}</button></div></form>`;
     state.messageKey = '';
     renderMessages(true);
     const draft = view.querySelector('#chat-draft');
     draft.value = state.draft;
     updateComposer();
-    draft.addEventListener('input', (event) => {
-      updateDraft();
-      if (state.composeMode === 'morse' && event.inputType === 'insertText' && /^[.-]$/.test(event.data || '')) playFeedback(event.data);
+    draft.addEventListener('input', () => {
+      if (state.composeMode === 'morse') morseInput.replace(draft.value);
+      else updateDraft();
     });
     draft.addEventListener('keydown', (event) => {
-      if (event.isComposing || event.ctrlKey || event.metaKey || event.altKey) return;
-      if (state.composeMode === 'morse' && ['ArrowLeft', 'ArrowRight', ' '].includes(event.key)) {
+      if (event.isComposing || event.ctrlKey || event.metaKey || event.altKey || state.busy) return;
+      if (state.composeMode === 'morse' && ['ArrowLeft', 'ArrowRight', ' ', '.', '-'].includes(event.key)) {
         event.preventDefault();
-        if (!event.repeat) insertMorse(event.key === 'ArrowLeft' ? '.' : event.key === 'ArrowRight' ? '-' : '/');
+        if (!event.repeat) insertMorse(event.key === 'ArrowLeft' ? '.' : event.key === 'ArrowRight' ? '-' : event.key === ' ' ? 'word' : event.key);
         return;
       }
-      if (event.key === 'Enter' && !event.shiftKey && !event.isComposing && !event.repeat) {
+      if (state.composeMode === 'morse' && event.key === 'Backspace' && draft.selectionStart === draft.value.length && draft.selectionEnd === draft.value.length) {
+        event.preventDefault(); insertMorse('undo'); return;
+      }
+      if (event.key === 'Enter' && !event.shiftKey && !event.repeat) {
         event.preventDefault(); view.querySelector('.chat-compose').requestSubmit();
       }
     });
@@ -212,37 +229,54 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
     const morse = state.composeMode === 'morse';
     input.value = state.draftByMode[state.composeMode];
     input.maxLength = morse ? MAX_MORSE_LENGTH : MAX_MESSAGE_LENGTH;
-    input.placeholder = morse ? 'Use ← for dit, → for dah, and Space between letters.' : 'Type a message. Your friend receives Morse.';
+    input.placeholder = morse ? (mobile.matches ? 'Tap dit and dah below.' : 'Left arrow: dit. Right arrow: dah. Pause for a new letter.') : 'Type a message. Your friend receives Morse.';
     input.classList.toggle('is-morse', morse);
+    input.readOnly = state.busy || (morse && mobile.matches);
+    input.setAttribute('inputmode', morse && mobile.matches ? 'none' : 'text');
+    if (morse) morseInput.replace(input.value);
+    else morseInput.stop();
     input.spellcheck = !morse;
     input.setAttribute('autocapitalize', morse ? 'off' : 'sentences');
     panel.querySelector('#chat-morse-help').hidden = !morse;
-    panel.querySelector('#chat-compose-shortcuts').textContent = morse ? 'Enter to send · Backspace to correct' : 'Enter to send · Shift + Enter for a new line';
+    panel.querySelector('#chat-compose-shortcuts').textContent = morse ? (mobile.matches ? '' : 'Enter to send · Backspace to correct') : 'Enter to send · Shift + Enter for a new line';
+    panel.querySelector('.chat-morse-undo').hidden = !morse;
     panel.querySelectorAll('[data-send-mode]').forEach((button) => {
       const selected = button.dataset.sendMode === state.composeMode;
       button.classList.toggle('active', selected); button.setAttribute('aria-pressed', String(selected));
+      button.disabled = state.busy;
     });
+    panel.querySelectorAll('.chat-compose [data-morse-key], .chat-compose [type=submit]').forEach((button) => { button.disabled = state.busy; });
     updateDraft();
+  }
+
+  function updateMorseBoundary() {
+    const label = panel.querySelector('#chat-morse-boundary');
+    if (!label) return;
+    label.textContent = morseInput.letterPending ? 'Letter in progress' : morseInput.value ? 'Next letter ready' : '';
+    label.dataset.pending = String(morseInput.letterPending);
+  }
+
+  function focusComposer() {
+    const input = panel.querySelector('#chat-draft');
+    if (!state.active || !input || mobile.matches) return;
+    input.focus({ preventScroll: true });
   }
 
   function insertMorse(symbol) {
     const input = panel.querySelector('#chat-draft');
-    if (!input || state.composeMode !== 'morse' || input.readOnly) return;
-    const start = input.selectionStart;
-    const end = input.selectionEnd;
-    const before = input.value.slice(0, start);
-    if (symbol.includes('/')) {
-      if (!before || before.endsWith('//')) return;
-      if (symbol === '//' && before.endsWith('/')) symbol = '/';
-    }
-    if (input.value.length - (end - start) + symbol.length > MAX_MORSE_LENGTH) return;
-    input.setRangeText(symbol, start, end, 'end');
-    updateDraft(); input.focus({ preventScroll: true });
-    if (symbol === '.' || symbol === '-') playFeedback(symbol);
+    if (!input || state.composeMode !== 'morse' || state.busy) return;
+    try {
+      if (symbol === 'word') morseInput.word();
+      else if (symbol === 'undo') morseInput.backspace();
+      else if (symbol === '.' || symbol === '-') {
+        if (state.listening) stopAudio();
+        morseInput.append(symbol); playFeedback(symbol);
+      }
+      focusComposer();
+    } catch (error) { status(error.message, true); }
   }
 
   function playFeedback(symbol) {
-    if (state.listening) stopAudio();
     onAudioStart();
     void feedbackPlayer.playSymbol(symbol, getSound()).catch((error) => status(error.message || 'Audio could not play.', true));
   }
@@ -317,7 +351,7 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
       }
       await refreshInbox();
       status();
-      panel.querySelector('#chat-draft')?.focus({ preventScroll: true });
+      focusComposer();
     } catch (error) {
       if (fetchId !== state.fetchId) return;
       state.selected = null; state.conversation = null; state.view = 'list'; render(); status(error.message, true);
@@ -335,11 +369,13 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
     const submit = event.target.querySelector('[type=submit]');
     const id = state.selected;
     const kind = state.composeMode;
+    if (kind === 'morse') morseInput.flush();
     const submitted = input.value;
     try {
       const payload = kind === 'morse' ? { kind, morse: submitted } : { kind, text: validateMessage(submitted) };
       if (kind === 'morse') validateMorseMessage(submitted);
       state.busy = true; submit.disabled = true; input.readOnly = true;
+      panel.querySelectorAll('.chat-compose [data-morse-key], [data-send-mode]').forEach((button) => { button.disabled = true; });
       // Keep the same id for retries, so a lost response cannot create a second message.
       const pendingMessage = JSON.stringify(payload);
       const pendingKey = `${id}:${kind}`;
@@ -357,15 +393,26 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
         if (!state.messages.some((item) => String(item.id) === String(data.message.id))) state.messages.push(data.message);
         state.messages.sort((first, second) => Number(first.id) - Number(second.id));
         state.draftByMode[kind] = '';
-        input.value = ''; state.draft = ''; updateDraft();
-        renderMessages(true); status(); input.focus({ preventScroll: true });
+        const currentInput = panel.querySelector('#chat-draft');
+        if (state.composeMode === kind && currentInput) {
+          currentInput.value = ''; state.draft = '';
+          if (kind === 'morse') morseInput.replace('');
+          updateDraft();
+        }
+        renderMessages(true); status(); focusComposer();
       }
       await refreshInbox();
     } catch (error) { status(error.message, true); }
-    finally { state.busy = false; submit.disabled = false; input.readOnly = false; }
+    finally {
+      state.busy = false; submit.disabled = false;
+      const currentInput = panel.querySelector('#chat-draft');
+      if (currentInput) currentInput.readOnly = state.composeMode === 'morse' && mobile.matches;
+      panel.querySelectorAll('.chat-compose [data-morse-key], .chat-compose [type=submit], [data-send-mode]').forEach((button) => { button.disabled = false; });
+    }
   }
 
   function stopAudio() {
+    morseInput.flush();
     state.audioToken += 1; player.stop(); feedbackPlayer.stop(); state.listening = null;
     renderMessages();
     const preview = panel.querySelector('[data-chat-action=demo-listen]');
@@ -516,7 +563,8 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
     if (sendMode) {
       if (!state.busy && ['text', 'morse'].includes(sendMode.dataset.sendMode)) {
         saveDraft(); stopAudio(); state.composeMode = sendMode.dataset.sendMode;
-        updateComposer(); panel.querySelector('#chat-draft')?.focus({ preventScroll: true });
+        if (mobile.matches) panel.querySelector('#chat-draft')?.blur();
+        updateComposer(); focusComposer();
       }
       return;
     }
@@ -641,6 +689,12 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
       const url = new URL(location.href); url.searchParams.delete('chat_error'); history.replaceState(null, '', url);
     }
   }
+  mobile.addEventListener('change', () => {
+    if (state.active && panel.querySelector('#chat-draft')) {
+      saveDraft(); morseInput.flush(); updateComposer();
+      if (state.composeMode === 'morse' && mobile.matches) panel.querySelector('#chat-draft').blur();
+    }
+  });
   void boot();
   let timer = setInterval(() => { void poll(); }, 5000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) void poll(); });

@@ -78,7 +78,7 @@ The level introduction shows the two new characters with their Morse patterns un
 
 Each level practises every character learned so far exactly five times in shuffled order. Level 4 uses `ETANIMSO` for 40 signals; level 18 uses all 36 letters and numbers for 180 signals. A visible **5, 4, 3, 2, 1** countdown runs before the first practice signal.
 
-Type one character in the left column and press **Enter**. A green tick or red cross marks your answer; the right column shows the correct character and its Morse pattern. A correct answer plays the next signal automatically. A wrong answer repeats the same signal until you answer correctly. Complete every signal correctly to unlock the next level.
+On a computer, type one character in the left column and press **Enter**. On a phone, listen to the full signal, then tap its letter or number on the built-in keyboard. The tap checks your answer automatically without opening the phone keyboard. A green tick or red cross marks your answer; the right column shows the correct character and its Morse pattern. A correct answer plays the next signal automatically. A wrong answer repeats the same signal until you answer correctly. Complete every signal correctly to unlock the next level.
 
 Use **Replay** beside the typing box to hear the current signal again. Click a revealed answer in the right column to hear that character without changing your progress.
 
@@ -94,7 +94,7 @@ Answer feedback, scores, and level completion messages appear centered below bot
 
 The **Characters** reference stays open in both Random and Custom practice, showing all letters and numbers with their Morse patterns. Click a character to hear a sample, or press its letter/number key while outside a typing field. A keyboard sample pauses a running test; **Resume** continues from its saved point. Typing in the answer box, custom selection, or settings does not play samples. These samples leave your custom selection and received count unchanged; type your chosen pool in the selection box.
 
-Type continuously in the left column. Spaces and letter case do not affect checking. Answers stay hidden during playback and while paused. **Pause** and **Resume** preserve your place, including during the countdown.
+On a computer, type continuously in the left column. On a phone, receive one character at a time and tap the built-in keyboard to answer. The next signal plays automatically after each answer, and word-group spaces are added to your copy. Practice mistakes advance to the next signal; Learn mistakes repeat the same signal. Spaces and letter case do not affect checking. Answers stay hidden during playback and while paused. **Pause** and **Resume** preserve your place, including during the countdown.
 
 The **Session audio** bar sits above the playback controls. Drag its slider to replay any received audio, including after a test finishes. Rewinding pauses the test; **Resume** continues from the saved point. Use **Pause replay** or **Resume replay** to control the replay separately. Replaying audio never adds characters to your answer key or changes your score.
 
@@ -102,7 +102,7 @@ After a finite run ends, press **Submit copy** when you finish typing. **Stop & 
 
 ## Sound and saved progress
 
-Adjust character speed from 5 to 60 WPM, Farnsworth speed from 1 WPM up to character speed, frequency from 200 to 1,200 Hz, and volume from 0 to 100%. Farnsworth increases the gaps between characters and words while keeping the selected character speed. Changes during a session apply to the next character. Use **Test your sound** before starting.
+On phones, open the speaker icon in the top header to adjust audio settings. Adjust character speed from 5 to 60 WPM, Farnsworth speed from 1 WPM up to character speed, frequency from 200 to 1,200 Hz, and volume from 0 to 100%. Farnsworth increases the gaps between characters and words while keeping the selected character speed. Changes during a session apply to the next character. Use **Test your sound** before starting.
 
 Timing follows the [standard PARIS calculation](https://morsecode.world/international/timing/) and [Farnsworth calculation](https://morsecode.world/international/timing/farnsworth.html). With character speed `C` and Farnsworth speed `F`, all durations below are in seconds:
 
@@ -127,7 +127,7 @@ Choose **Morse Chat Room** below Practice in the sidebar. Use the account icon a
 - **Messages:** type ordinary text and send it as international Morse. Each message has **Show text** and **Listen** controls. Words stay hidden until revealed, and audio plays only when requested.
 - **Sound:** **Default** keeps chat at 18 WPM, 12 WPM Farnsworth, and 600 Hz. **Custom** enables the speed and frequency controls in the sidebar. Chat settings are saved separately from Learn and Practice; volume is shared. Listen changes to **Stop audio** during playback.
 - **Notifications:** the bell shows incoming friend requests and unread signals. An open conversation checks for messages every five seconds while the page is visible. The inbox checks every 30 seconds in Chat, every minute in Learn or Practice, and when you open the bell. Hidden tabs stop checking.
-- **Typing:** select **Send text** to write ordinary text, or **Send Morse code** to enter the signal yourself. In Morse mode, Left Arrow enters a dit (`.`), Right Arrow enters a dah (`-`), Space separates letters (`/`), and two spaces separate words (`//`). Each dit and dah plays as you type. Touch buttons provide the same controls. Use Backspace to correct and Enter to send. Morse groups must be valid letters or numbers; Show text decodes them.
+- **Typing:** select **Send text** to write ordinary text, or **Send Morse code** to enter the signal yourself. On a computer, Left Arrow enters a dit (`.`) and Right Arrow enters a dah (`-`). On a phone, use the two round Dit and Dah buttons; the phone keyboard stays closed. A pause completes the current letter automatically, and the next tap starts a new letter. Space creates a word gap. The default pause is 700 ms; slower custom spacing can extend it up to 1.5 seconds. Each tap plays its tone. Use Backspace or **Undo** to correct, and Enter or **Send signal** to send. Morse groups must be valid letters or numbers; Show text decodes them.
 - **Drafts:** text and Morse drafts are kept separately while switching modes or conversations in the current page. In text mode, Shift + Enter adds a new line. Use **Load earlier signals** for older messages.
 
 Morse display and audio include only letters A-Z and numbers 0-9. Punctuation and symbols are skipped in text messages' signals. **Show text** displays the original typed text, including case, punctuation, spacing, and new lines, or the decoded letters and numbers for a Morse message. Accented letters use their plain equivalents in Morse, while the original text stays unchanged. Each message needs at least one letter or number. An info note beside the message box explains this. Message boxes reserve room for the text so revealing it keeps the controls in place. Messages are stored with their readable text to support reveal and audio; Morse does not encrypt them.

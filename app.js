@@ -1,10 +1,12 @@
 import { MORSE, MorsePlayer, getTiming } from './audio.js';
 import { LETTERS, DIGITS, LEVELS, generateSequence, createPracticeGenerator, generateLessonSequence, normalizeInput, formatGroups, gradeInput } from './trainer.js';
 import { LearnSession } from './learn-session.js';
+import { MobilePracticeSession } from './mobile-practice-session.js';
 import { PracticeRecording, ReplayPlayer } from './replay.js';
 import { createChatRoom } from './chat.js';
 
 const $ = (selector) => document.querySelector(selector);
+const mobileViewport = matchMedia('(max-width: 760px)');
 const escapeHTML = (value) => String(value).replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
 const icon = (name) => `<svg aria-hidden="true"><use href="#i-${name}"/></svg>`;
 const button = (id, label, symbol, classes = '', disabled = false) => `<button id="${id}" class="button ${classes}" ${disabled ? 'disabled' : ''}>${symbol ? icon(symbol) : ''}${label}</button>`;
@@ -61,7 +63,22 @@ let replayViewing = false;
 let replayScrubbing = false;
 let replayRunId = 0;
 const learn = { level: Math.min(18, Math.max(0, ...progress.completed) + 1), phase: 'intro', sequence: '', session: null, index: 0, records: [], input: '', audible: false, playing: false, countdown: false, tutorialIndex: 0, tutorialHeard: false };
-const practice = { source: 'random', filter: 'all', custom: 'QYFL', length: 'continuous', count: 50, words: 50, groupSize: 5, phase: 'idle', sequence: '', played: 0, answer: '', grading: null, session: null };
+const practice = { source: 'random', filter: 'all', custom: 'QYFL', length: 'continuous', count: 50, words: 50, groupSize: 5, phase: 'idle', sequence: '', played: 0, answer: '', grading: null, session: null, steps: null, resolveCharacter: null, mobileInput: '', mobileReplayBusy: false };
+const mobileTrainingPanel = document.createElement('div');
+mobileTrainingPanel.className = 'mobile-training';
+mobileTrainingPanel.hidden = true;
+$('.receiver').insertBefore(mobileTrainingPanel, $('.writing-columns'));
+
+function mobileTrainingActive() {
+  return mode === 'learn' ? mobileViewport.matches && learn.phase === 'practice'
+    : mode === 'practice' && practice.session?.mobile && ['countdown', 'playing', 'paused', 'ready', 'interrupted'].includes(practice.phase);
+}
+
+function releaseMobileAnswer(completed = false) {
+  const resolve = practice.resolveCharacter;
+  practice.resolveCharacter = null;
+  resolve?.(completed);
+}
 
 const signals = { main: false, answer: false, replay: false };
 function setSignal(source, active) {
@@ -87,6 +104,7 @@ function notify(text = '', success = false) {
 
 function cancelAudio() {
   runId += 1;
+  releaseMobileAnswer();
   player.stop();
   stopReplay();
   stopAnswerAudio();
@@ -96,6 +114,7 @@ function cancelAudio() {
   learn.playing = false;
   learn.countdown = false;
   countdownValue = 0;
+  practice.mobileReplayBusy = false;
   $('#test-tone').disabled = false;
 }
 
@@ -200,6 +219,8 @@ function render() {
   syncSound();
   $('#chat-panel').hidden = mode !== 'chat';
   $('#setup-panel').hidden = mode === 'chat';
+  mobileTrainingPanel.hidden = true;
+  document.body.dataset.trainingActive = 'false';
   if (mode === 'chat') {
     $('#view-heading').hidden = true;
     $('.receiver').hidden = true;
@@ -414,10 +435,13 @@ function renderAudioTimeline() {
 async function startAudioReplay(offset = 0) {
   if (mode !== 'practice' || !recording.characterCount || practice.phase === 'countdown' || toneBusy || answerBusy) return;
   if (practice.phase === 'playing') {
-    if (!player.pause()) return;
+    if (!practice.session?.mobile || !practice.steps?.awaitingAnswer) {
+      if (!player.pause()) return;
+    } else if (practice.mobileReplayBusy && !player.pause()) return;
     practice.resumePhase = 'playing';
     practice.phase = 'paused';
     renderActions();
+    syncMobileTrainingControls();
   }
   stopAnswerAudio();
   replayViewing = true;
@@ -481,9 +505,76 @@ function renderWorkspace() {
   renderActions();
 }
 
+function renderMobileTraining() {
+  const active = mobileTrainingActive();
+  mobileTrainingPanel.hidden = !active;
+  document.body.dataset.trainingActive = String(Boolean(active));
+  if (!active) { mobileTrainingPanel.innerHTML = ''; return; }
+  const learning = mode === 'learn';
+  const total = learning ? LEVELS[learn.level - 1].practiceCount : practice.session.total;
+  const position = learning ? learn.index + 1 : Math.min(practice.played + (practice.steps?.awaitingAnswer ? 0 : 1), total || Infinity);
+  const entryId = learning ? 'letter-entry' : 'practice-mobile-entry';
+  const replayId = learning ? 'replay-letter' : 'replay-mobile-character';
+  const last = learning ? learn.records.at(-1) : null;
+  const finishedReceiving = !learning && ['ready', 'interrupted'].includes(practice.phase);
+  mobileTrainingPanel.innerHTML = `<p class="mobile-training-status" role="status" aria-live="polite"></p><div class="mobile-entry-row"><input id="${entryId}" class="mobile-character-entry" type="text" readonly inputmode="none" autocomplete="off" aria-label="Your answer to the current signal" value="${escapeHTML(learning ? learn.input : practice.mobileInput)}" placeholder="?"><button id="${replayId}" class="button entry-replay" aria-label="Replay the current signal">${icon('replay')}<span>Replay</span></button></div><p class="mobile-training-copy">${total ? `Signal ${Math.min(position, total)} of ${total}` : `Signal ${position}`}<span>${learning ? `${learn.index} correct` : `${normalizeInput(practice.answer).length} answered`}</span></p>${last ? `<p class="mobile-training-feedback ${last.correct ? 'correct' : 'incorrect'}"><span class="mobile-training-feedback-pattern" aria-label="Previous answer ${last.expected}: ${morseWords(last.expected)}">${last.expected} <span class="morse-pattern" aria-hidden="true">${morseDisplay(last.expected)}</span></span>${last.correct ? 'Correct. Listen to the next signal.' : 'Try the same signal again.'}</p>` : ''}<div class="mobile-keyboard" role="group" aria-label="Choose the character you heard" ${finishedReceiving ? 'hidden' : ''}>${[...LETTERS + DIGITS].map((character) => `<button type="button" class="mobile-key" data-training-key="${character}" aria-label="Answer ${character}" disabled>${character}</button>`).join('')}</div>`;
+  mobileTrainingPanel.querySelector(`#${replayId}`).addEventListener('click', learning ? playLearnCharacter : replayMobilePracticeCharacter);
+  mobileTrainingPanel.querySelectorAll('[data-training-key]').forEach((key) => key.addEventListener('click', () => submitMobileCharacter(key.dataset.trainingKey)));
+  syncMobileTrainingControls();
+}
+
+function syncMobileTrainingControls() {
+  if (mobileTrainingPanel.hidden) return;
+  const learning = mode === 'learn';
+  const waiting = learning ? learn.audible && !learn.playing && !learn.countdown && !answerBusy
+    : practice.phase === 'playing' && practice.steps?.awaitingAnswer && !practice.mobileReplayBusy && !replayPlayer.isPlaying && !answerBusy;
+  const busy = learning ? learn.playing || learn.countdown || Boolean(answerBusy)
+    : ['countdown', 'paused'].includes(practice.phase) || practice.mobileReplayBusy || replayPlayer.isPlaying || !practice.steps?.awaitingAnswer;
+  mobileTrainingPanel.querySelectorAll('[data-training-key]').forEach((key) => { key.disabled = !waiting; });
+  const replay = mobileTrainingPanel.querySelector('.entry-replay');
+  if (replay) replay.disabled = Boolean(busy);
+  const status = mobileTrainingPanel.querySelector('.mobile-training-status');
+  status.textContent = learning ? learn.countdown ? 'Get ready to listen.' : learn.playing ? 'Listen to the signal.' : waiting ? 'Tap the character you heard.' : 'Replay the signal to continue.'
+    : practice.phase === 'paused' ? 'Paused. Your signal is saved.' : practice.phase === 'ready' ? 'All signals answered. Submit to see your results.' : practice.phase === 'countdown' ? 'Get ready to listen.' : waiting ? 'Tap the character you heard.' : practice.mobileReplayBusy || replayPlayer.isPlaying ? 'Replaying your signal.' : practice.phase === 'interrupted' ? 'Audio stopped. Check your received signals.' : 'Listen to the signal.';
+}
+
+function submitMobileCharacter(character) {
+  if (!mobileTrainingActive() || !/^[A-Z0-9]$/.test(character)) return;
+  if (mode === 'learn') {
+    if (!learn.audible || learn.playing || learn.countdown || answerBusy) return;
+    learn.input = character;
+    checkLearn();
+    return;
+  }
+  if (practice.phase !== 'playing' || !practice.steps?.awaitingAnswer || practice.mobileReplayBusy || replayPlayer.isPlaying || answerBusy) return;
+  practice.steps.submitCharacter(character);
+  practice.mobileInput = character;
+  practice.answer = practice.steps.copy;
+  $('#practice-mobile-entry').value = character;
+  syncMobileTrainingControls();
+  releaseMobileAnswer(true);
+}
+
+async function replayMobilePracticeCharacter() {
+  if (!practice.session?.mobile || practice.phase !== 'playing' || !practice.steps?.awaitingAnswer || practice.mobileReplayBusy || replayPlayer.isPlaying) return;
+  const token = runId;
+  practice.mobileReplayBusy = true;
+  stopAnswerAudio();
+  syncMobileTrainingControls();
+  updateTransport();
+  try {
+    await player.playCharacter(practice.steps.currentCharacter, { ...sound });
+    if (token !== runId) return;
+    practice.mobileReplayBusy = false;
+    syncMobileTrainingControls();
+    updateTransport();
+  } catch (error) { if (token === runId) handleAudioError(error); }
+}
+
 function renderLearnWorkspace() {
   const level = LEVELS[learn.level - 1];
-  $('#keyboard-note').innerHTML = `Your shortcuts <kbd>Enter</kbd> check and continue <kbd>Alt + R</kbd> replay`;
+  $('#keyboard-note').innerHTML = mobileTrainingActive() ? 'Tap a character to check. The next signal plays automatically.' : `Your shortcuts <kbd>Enter</kbd> check and continue <kbd>Alt + R</kbd> replay`;
+  renderMobileTraining();
   if (!['practice', 'finished'].includes(learn.phase)) {
     $('#copy-panel').innerHTML = '';
     $('#answer-panel').innerHTML = '';
@@ -500,14 +591,14 @@ function renderLearnWorkspace() {
     return;
   }
   const last = learn.records.at(-1);
-  $('#copy-panel').innerHTML = `${copies ? `<div class="learn-copy-list">${copies}</div>` : ''}
+  $('#copy-panel').innerHTML = mobileTrainingActive() ? `<div class="learn-copy-list">${copies}</div>` : `${copies ? `<div class="learn-copy-list">${copies}</div>` : ''}
     <div class="entry-row"><div class="letter-input-controls"><input id="letter-entry" class="letter-entry" type="text" maxlength="1" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Type the character you hear" value="${escapeHTML(learn.input)}"><button id="replay-letter" class="button entry-replay" aria-label="Replay the current signal" title="Replay the current signal">${icon('replay')}<span class="entry-replay-label">Replay</span></button></div><small>Listen to signal ${learn.index + 1} of ${level.practiceCount}.<br>Type one character, then press <kbd>Enter</kbd>.</small></div>`;
-  $('#session-feedback').hidden = false;
+  $('#session-feedback').hidden = mobileTrainingActive();
   $('#session-feedback').innerHTML = `<p class="lesson-feedback ${last ? last.correct ? 'correct' : 'incorrect' : ''}">${last ? last.correct ? `Correct. Now receive signal ${learn.index + 1}.` : `You copied ${escapeHTML(last.actual)}. The signal was ${last.expected}. Signal ${last.position} will repeat until you get it right.` : 'Take your time. You can replay the signal.'}</p>`;
   $('#answer-panel').innerHTML = answers ? `<div class="learn-answer-list">${answers}</div><p class="review-label" style="margin-top:12px">Click a character to hear it again.</p><div class="answer-legend"><span>Correct</span><span>Retried</span></div>` : emptyAnswers('Listen first. Then check.', 'Press Enter after typing a character to reveal its letter and Morse symbols here.');
   const entry = $('#letter-entry');
-  $('#replay-letter').addEventListener('click', playLearnCharacter);
-  if (entry) {
+  if (!mobileTrainingActive()) $('#replay-letter').addEventListener('click', playLearnCharacter);
+  if (entry && !mobileTrainingActive()) {
     entry.addEventListener('input', (event) => { learn.input = event.target.value.toUpperCase(); });
     entry.addEventListener('keydown', (event) => { if (event.key === 'Enter') { event.preventDefault(); if (!event.repeat && !event.isComposing) checkLearn(); } });
     entry.focus({ preventScroll: true });
@@ -518,7 +609,8 @@ function renderLearnWorkspace() {
 function renderPracticeWorkspace() {
   const reviewed = practice.phase === 'reviewed';
   const groupSize = practice.session?.groupSize || 0;
-  $('#keyboard-note').innerHTML = `Your shortcuts <kbd>Alt + P</kbd> pause / resume <kbd>Ctrl + Enter</kbd> submit`;
+  $('#keyboard-note').innerHTML = mobileTrainingActive() ? 'Listen, then tap one character. Answers appear after you submit or stop.' : `Your shortcuts <kbd>Alt + P</kbd> pause / resume <kbd>Ctrl + Enter</kbd> submit`;
+  renderMobileTraining();
   if (reviewed) {
     const grade = practice.grading;
     $('#copy-panel').innerHTML = `<p class="review-label">Your submitted copy</p><div class="result-grid">${grade.rows.map((row, index) => `${groupSize && row.expectedIndex !== null && row.expectedIndex > 0 && row.expectedIndex % groupSize === 0 ? '<span class="result-word-break"></span>' : ''}${copyCell(row.actual, row.status, index)}`).join('')}</div><div class="answer-legend"><span>Correct</span><span>Wrong or missed</span><span>Extra input</span></div>`;
@@ -566,11 +658,12 @@ function renderPracticeWorkspace() {
 
 function renderActions() {
   renderAudioTimeline();
+  $('#receiver-actions').hidden = mode === 'learn' && mobileTrainingActive();
   if (mode === 'learn') {
     if (learn.phase === 'practice') {
       const busy = learn.playing || learn.countdown || Boolean(answerBusy);
       if ($('#replay-letter')) $('#replay-letter').disabled = busy;
-      $('#receiver-actions').innerHTML = `<span class="action-help">Press <kbd>Enter</kbd> to check. The next signal plays automatically.</span>${button('check-letter', 'Check letter', 'check', 'primary', !learn.audible || busy)}`;
+      $('#receiver-actions').innerHTML = mobileTrainingActive() ? '<span class="action-help">Tap your answer. Mistakes repeat the same signal.</span>' : `<span class="action-help">Press <kbd>Enter</kbd> to check. The next signal plays automatically.</span>${button('check-letter', 'Check letter', 'check', 'primary', !learn.audible || busy)}`;
       $('#check-letter')?.addEventListener('click', checkLearn);
     } else if (learn.phase === 'finished') {
       $('#receiver-actions').innerHTML = `<div class="action-group">${button('retry-level', 'Practise this level again', 'replay')}</div><span class="action-help">${learn.level === 18 ? 'All 18 levels complete. Keep listening in Practice.' : 'Your progress has been saved.'}</span>${button('advance-level', learn.level === 18 ? 'Open Practice' : `Go to level ${learn.level + 1}`, 'arrow', 'primary')}`;
@@ -591,7 +684,7 @@ function renderActions() {
     const ready = practice.phase === 'ready';
     const interrupted = practice.phase === 'interrupted';
     $('#receiver-actions').innerHTML = active
-      ? `<div class="action-group">${button('pause-practice', practice.phase === 'paused' ? 'Resume' : 'Pause', practice.phase === 'paused' ? 'play' : 'pause')}${button('stop-practice', 'Stop & check', 'stop', 'quiet stop')}</div><span class="action-help">${practice.phase === 'paused' ? 'Your place is saved. Answers are still hidden.' : 'Copy continuously. Stop whenever you’re ready.'}</span>${button('submit-practice', 'Submit copy', 'check', 'primary', true)}`
+      ? `<div class="action-group">${button('pause-practice', practice.phase === 'paused' ? 'Resume' : 'Pause', practice.phase === 'paused' ? 'play' : 'pause')}${button('stop-practice', 'Stop & check', 'stop', 'quiet stop')}</div><span class="action-help">${practice.phase === 'paused' ? 'Your place is saved. Answers are still hidden.' : practice.session?.mobile ? 'Listen, then tap your answer.' : 'Copy continuously. Stop whenever you’re ready.'}</span>${practice.session?.mobile ? '' : button('submit-practice', 'Submit copy', 'check', 'primary', true)}`
       : ready || interrupted
         ? `<div class="action-group">${button('stop-practice', 'Stop & check', 'stop', 'quiet stop')}</div><span class="action-help">${ready ? 'Audio complete. You can finish typing before submitting.' : 'Audio stopped. Check the characters you heard.'}</span>${button('submit-practice', 'Submit copy', 'check', 'primary')}`
         : `<div class="action-group">${button('start-practice', practice.phase === 'reviewed' ? 'Start another session' : 'Start listening', 'play', 'primary')}</div><span class="action-help">${practice.phase === 'reviewed' ? 'A fresh sequence, a fresh start.' : 'Listen continuously. Check when you’re done.'}</span>`;
@@ -614,11 +707,12 @@ function updateTransport() {
     count = `${learn.index} / ${level.practiceCount} correct`;
     percentage = learn.index / level.practiceCount * 100;
   } else {
-    label = ({ idle: 'Ready when you are', countdown: `Starting in ${countdownValue}…`, playing: 'Listening. Keep copying…', paused: 'Paused. Your place is saved.', ready: 'Audio complete. Submit when ready.', reviewed: 'Your copy has been checked.', interrupted: 'Playback interrupted.' })[practice.phase];
+    label = ({ idle: 'Ready when you are', countdown: `Starting in ${countdownValue}…`, playing: practice.session?.mobile ? practice.steps?.awaitingAnswer ? 'Your turn. Tap one character.' : 'Listen to the signal…' : 'Listening. Keep copying…', paused: 'Paused. Your place is saved.', ready: 'Audio complete. Submit when ready.', reviewed: 'Your copy has been checked.', interrupted: 'Playback interrupted.' })[practice.phase];
     count = practice.session ? practice.session.total ? `${practice.played} / ${practice.session.total} characters` : `${practice.played} characters received` : 'Your own pace';
     percentage = practice.session?.total ? practice.played / practice.session.total * 100 : practice.phase === 'reviewed' ? 100 : 0;
   }
   if (answerBusy) label = `Listening to character ${answerBusy}…`;
+  if (practice.mobileReplayBusy) label = 'Replaying the current signal…';
   if (replayPlayer.isPlaying) label = 'Replaying session audio…';
   if (toneBusy) label = 'Testing your sound…';
   $('#signal-label').textContent = label;
@@ -633,6 +727,7 @@ function updateTransport() {
   document.querySelectorAll('[data-answer]').forEach((cell) => { cell.disabled = learn.playing || learn.countdown || tutorialBusy || toneBusy || (mode === 'practice' && practice.phase !== 'reviewed'); });
   document.querySelectorAll('[data-reference]').forEach((cell) => { cell.disabled = learn.playing || learn.countdown || tutorialBusy || toneBusy || replayPlayer.isPlaying || (mode === 'practice' && ['countdown', 'playing'].includes(practice.phase)); });
   renderAudioTimeline();
+  syncMobileTrainingControls();
 }
 
 function startLesson() {
@@ -759,11 +854,12 @@ async function startPractice() {
   cancelAudio();
   recording.clear();
   const token = runId;
-  Object.assign(practice, { phase: 'countdown', resumePhase: 'countdown', sequence: '', played: 0, answer: '', grading: null, session });
+  session.mobile = mobileViewport.matches;
+  Object.assign(practice, { phase: 'countdown', resumePhase: 'countdown', sequence: '', played: 0, answer: '', grading: null, session, steps: session.mobile ? new MobilePracticeSession(session) : null, mobileInput: '', mobileReplayBusy: false });
   countdownValue = 5;
   notify();
   render();
-  $('#practice-copy').focus({ preventScroll: true });
+  if (!session.mobile) $('#practice-copy').focus({ preventScroll: true });
   try {
     await player.prepare();
     if (token !== runId || !await playCountdown(token)) return;
@@ -774,12 +870,22 @@ async function startPractice() {
     while (token === runId && (session.total === null || practice.played < session.total)) {
       const character = session.generator ? session.generator.next() : generateSequence(session.pool, 1);
       const config = { ...sound };
+      if (session.mobile) {
+        practice.steps.startCharacter(character);
+        practice.mobileInput = '';
+        renderMobileTraining();
+        updateTransport();
+      }
       if (!await player.playCharacter(character, config) || token !== runId) return;
       // Only complete characters enter the answer key. An interrupted mark is excluded.
       practice.sequence += character;
       practice.played += 1;
+      if (session.mobile) practice.steps.completeCharacter();
       recording.appendCharacter(character, config);
       updateTransport();
+      if (session.mobile) {
+        if (!await new Promise((resolve) => { practice.resolveCharacter = resolve; }) || token !== runId) return;
+      }
       if (session.total !== null && practice.played === session.total) break;
       const timing = getTiming(config);
       const gap = session.groupSize && practice.played % session.groupSize === 0 ? timing.wordGap : timing.characterGap;
@@ -789,27 +895,30 @@ async function startPractice() {
     }
     if (token !== runId) return;
     practice.phase = 'ready';
+    if (session.mobile) renderMobileTraining();
     renderActions();
     updateTransport();
     $('#answer-panel').innerHTML = emptyAnswers('Ready to check your copy?', 'The audio is finished. Press Submit to reveal and compare your answers.');
-    $('#practice-copy').focus({ preventScroll: true });
+    if (!session.mobile) $('#practice-copy').focus({ preventScroll: true });
   } catch (error) { if (token === runId) handleAudioError(error); }
 }
 
 function pausePractice() {
   if (['countdown', 'playing'].includes(practice.phase)) {
-    if (!player.pause()) return;
+    const awaitingMobileAnswer = practice.session?.mobile && practice.steps?.awaitingAnswer && !practice.mobileReplayBusy;
+    if (!awaitingMobileAnswer && !player.pause()) return;
     practice.resumePhase = practice.phase;
     practice.phase = 'paused';
   } else if (practice.phase === 'paused') {
     stopReplay();
     stopAnswerAudio();
-    if (!player.resume()) return;
+    const awaitingMobileAnswer = practice.session?.mobile && practice.steps?.awaitingAnswer && !practice.mobileReplayBusy;
+    if (!awaitingMobileAnswer && !player.resume()) return;
     practice.phase = practice.resumePhase || 'playing';
   } else return;
   renderActions();
   updateTransport();
-  $('#practice-copy')?.focus({ preventScroll: true });
+  if (!practice.session?.mobile) $('#practice-copy')?.focus({ preventScroll: true });
 }
 
 function reviewPractice() {
@@ -834,10 +943,23 @@ function submitPractice() {
 }
 
 document.addEventListener('keydown', (event) => {
+  const keyTarget = event.target instanceof Element ? event.target : document.activeElement;
+  const editingField = keyTarget?.isContentEditable || keyTarget?.closest('input:not([readonly]),textarea:not([readonly]),select,[role="textbox"],dialog[open]');
+  if (mobileTrainingActive() && !editingField && !event.ctrlKey && !event.metaKey && !event.altKey && !event.repeat && !event.isComposing && /^[A-Za-z0-9]$/.test(event.key)) {
+    event.preventDefault();
+    submitMobileCharacter(event.key.toUpperCase());
+    return;
+  }
   if (event.altKey && event.key.toLowerCase() === 'r' && mode === 'learn' && learn.phase === 'practice') { event.preventDefault(); playLearnCharacter(); }
   if (event.altKey && event.key.toLowerCase() === 'p' && mode === 'practice') { event.preventDefault(); pausePractice(); }
   if ((event.ctrlKey || event.metaKey) && event.key === 'Enter' && mode === 'practice') { event.preventDefault(); submitPractice(); }
   previewPracticeKey(event);
+});
+
+mobileViewport.addEventListener('change', () => {
+  if (mode === 'chat') return;
+  renderWorkspace();
+  updateTransport();
 });
 
 const chatRoom = createChatRoom({

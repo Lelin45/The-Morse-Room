@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
   <meta name="theme-color" content="#f7f6f2">
   <meta name="description" content="A personal Morse code receiving trainer with progressive lessons, custom practice, and adjustable Farnsworth timing.">
   <title>Morse Room | Listen. Type. Learn.</title>
@@ -21,6 +21,7 @@
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="chat.css">
   <script type="module" src="app.js"></script>
+  <script type="module" src="mobile-shell.js"></script>
 </head>
 <body>
   <svg class="svg-library" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
@@ -50,6 +51,7 @@
     <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="13" height="13" rx="2"/><path d="M16 8V3H3v13h5"/></symbol>
   </svg>
   <div class="app-shell">
+    <div class="topbar"><h1 id="page-title" class="page-title">Learn Morse Code</h1><div class="topbar-actions"><button id="audio-settings-toggle" class="audio-settings-toggle" type="button" aria-label="Audio settings" aria-expanded="false" aria-controls="audio-controls"><svg aria-hidden="true"><use href="#i-volume"/></svg></button><span class="topbar-note"><svg><use href="#i-headphones"/></svg> Headphones recommended</span><div class="chat-notification-wrap"><button id="chat-bell" class="chat-bell" type="button" aria-label="Notifications" aria-expanded="false" aria-controls="chat-notifications"><svg aria-hidden="true"><use href="#i-bell"/></svg><span class="chat-notification-count" hidden></span></button><div id="chat-notifications" class="chat-notification-panel" aria-label="Notifications" hidden></div></div><button id="theme-toggle" type="button" role="switch" aria-label="Dark mode" aria-checked="false"><svg class="theme-icon theme-icon-sun" aria-hidden="true"><use href="#i-sun"/></svg><span class="theme-switch-track" aria-hidden="true"><span class="theme-switch-thumb"></span></span><svg class="theme-icon theme-icon-moon" aria-hidden="true"><use href="#i-moon"/></svg></button><div class="account-control"><button id="account-toggle" class="account-toggle" type="button" aria-label="Account: sign in" aria-expanded="false" aria-controls="account-menu"><svg aria-hidden="true"><use href="#i-user"/></svg></button><div id="account-menu" class="account-menu" aria-label="Account" hidden></div></div></div></div>
     <aside class="sidebar">
       <a class="brand" href="./" aria-label="Morse Room home"><span class="brand-mark"><i></i><b></b></span><span>Morse Room<small>LISTEN. TYPE. LEARN.</small></span></a>
       <div class="sidebar-section-label">YOUR WORKSPACE</div>
@@ -58,6 +60,7 @@
         <button class="mode-button" data-mode="practice"><svg><use href="#i-headphones"/></svg><span>Practice<small>Find your rhythm</small></span><span class="nav-dot"></span></button>
         <button class="mode-button" data-mode="chat"><svg><use href="#i-chat"/></svg><span><span class="chat-nav-full">Morse Chat Room</span><span class="chat-nav-short">Chat</span><small>Practise with friends</small></span><span class="nav-dot"></span></button>
       </nav>
+      <section id="audio-controls" class="audio-controls" aria-label="Audio settings">
       <div class="settings-heading"><span class="sidebar-section-label">AUDIO SETTINGS</span><svg><use href="#i-volume"/></svg></div>
       <div class="chat-audio-presets" hidden><span class="sidebar-section-label">CHAT AUDIO</span><div class="segmented" aria-label="Chat audio settings"><button id="chat-audio-default" type="button" aria-pressed="true">Default</button><button id="chat-audio-custom" type="button" aria-pressed="false">Custom</button></div><p>Choose Custom to adjust speed and tone.</p></div>
       <div class="sound-settings">
@@ -67,10 +70,10 @@
         <div class="setting"><label for="volume-number">Volume</label><div class="setting-value"><input id="volume-number" type="number" min="0" max="100" step="1" aria-label="Volume percentage"><span>%</span></div><input id="volume-range" type="range" min="0" max="100" step="1" aria-label="Volume slider"></div>
       </div>
       <button id="test-tone" class="button tone-test"><svg><use href="#i-volume"/></svg>Test your sound</button>
+      </section>
       <div class="sidebar-footer"><span class="receiving-dot"></span>Receiving only<small>Your progress stays in this browser.</small><small class="chat-footer-links"><a href="privacy.html">Privacy</a><span> · </span><a href="terms.html">Chat terms</a></small></div>
     </aside>
     <main class="main-content">
-      <div class="topbar"><h1 id="page-title" class="page-title">Learn Morse Code</h1><div class="topbar-actions"><span class="topbar-note"><svg><use href="#i-headphones"/></svg> Headphones recommended</span><div class="chat-notification-wrap"><button id="chat-bell" class="chat-bell" type="button" aria-label="Notifications" aria-expanded="false" aria-controls="chat-notifications"><svg aria-hidden="true"><use href="#i-bell"/></svg><span class="chat-notification-count" hidden></span></button><div id="chat-notifications" class="chat-notification-panel" aria-label="Notifications" hidden></div></div><button id="theme-toggle" type="button" role="switch" aria-label="Dark mode" aria-checked="false"><svg class="theme-icon theme-icon-sun" aria-hidden="true"><use href="#i-sun"/></svg><span class="theme-switch-track" aria-hidden="true"><span class="theme-switch-thumb"></span></span><svg class="theme-icon theme-icon-moon" aria-hidden="true"><use href="#i-moon"/></svg></button><div class="account-control"><button id="account-toggle" class="account-toggle" type="button" aria-label="Account: sign in" aria-expanded="false" aria-controls="account-menu"><svg aria-hidden="true"><use href="#i-user"/></svg></button><div id="account-menu" class="account-menu" aria-label="Account" hidden></div></div></div></div>
       <section id="chat-panel" aria-label="Morse Chat Room" hidden></section>
       <div id="view-heading" class="view-heading"></div>
       <section id="setup-panel" aria-label="Training setup"></section>

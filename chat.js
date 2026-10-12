@@ -138,7 +138,7 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
       ${available ? '' : action('retry', 'Check again', 'replay', 'quiet')}
       <p class="chat-status ${state.statusError ? 'chat-error' : ''}" role="status" ${state.status ? '' : 'hidden'}>${escape(state.status)}</p>
       <p class="chat-legal">By using chat, you agree to the <a href="terms.html">chat terms</a>. Read our <a href="privacy.html">privacy notice</a>.</p></div>
-      <div class="chat-demo"><span class="small-label">A LITTLE PREVIEW</span><div class="chat-message"><div class="chat-message-meta"><strong>A friendly signal</strong><span>Example</span></div><p class="chat-message-morse">.... . .-.. .-.. --- / ..-. .-. .. . -. -..</p><p class="chat-message-text is-concealed" id="chat-demo-text" aria-hidden="true">Hello friend</p><div class="chat-message-actions">${action('demo-reveal', 'Show text', 'eye')}${action('demo-listen', 'Listen', 'volume')}</div></div><p>Try listening first. Reveal the words whenever you like.</p><p class="chat-code-note">${icon('info')}<span>Morse code includes only letters and numbers. Show text displays your message exactly as typed.</span></p></div>
+      <div class="chat-demo"><span class="small-label">A LITTLE PREVIEW</span><div class="chat-message-row"><div class="chat-message"><div class="chat-message-meta"><strong>A friendly signal</strong><span>Example</span></div><p class="chat-message-morse">.... . .-.. .-.. --- / ..-. .-. .. . -. -..</p><p class="chat-message-text is-concealed" id="chat-demo-text" aria-hidden="true">Hello friend</p></div><div class="chat-message-actions">${action('demo-reveal', 'Show text', 'eye')}${action('demo-listen', 'Listen', 'volume')}</div></div><p>Try listening first. Reveal the words whenever you like.</p><p class="chat-code-note">${icon('info')}<span>Morse code includes only letters and numbers. Show text displays your message exactly as typed.</span></p></div>
     </div>`;
   }
 
@@ -186,7 +186,13 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
       <div class="chat-history-actions" ${state.hasMore ? '' : 'hidden'}>${action('earlier', 'Load earlier signals', 'replay')}</div>
       <div class="chat-message-list" aria-label="Messages"></div>
       <p class="chat-new-signal" role="status" aria-live="polite" hidden></p>
-      <form class="chat-compose"><div class="chat-compose-heading"><span>Message</span><div class="chat-send-mode segmented" aria-label="Message input mode"><button type="button" data-send-mode="text">Send text</button><button type="button" data-send-mode="morse">Send Morse code</button></div></div><label for="chat-draft" class="sr-only">Message to send as Morse code</label><textarea id="chat-draft" name="text" rows="2" aria-describedby="chat-code-note chat-morse-help" required></textarea><div class="chat-compose-meta"><span id="chat-compose-shortcuts"></span><span id="chat-draft-count"></span></div><div class="chat-morse-help" id="chat-morse-help" hidden><p><span class="chat-desktop-morse-help"><kbd>←</kbd> dit <span>·</span> <kbd>→</kbd> dah <span>·</span> </span>Pause between letters. Space between words. <span id="chat-morse-boundary" aria-live="off"></span></p><div class="morse-paddles"><button type="button" class="morse-paddle dit" data-morse-key="." aria-label="Dit"><strong>.</strong><span>Dit</span></button><button type="button" class="morse-space" data-morse-key="word" aria-label="Space between words">Space</button><button type="button" class="morse-paddle dah" data-morse-key="-" aria-label="Dah"><strong>-</strong><span>Dah</span></button></div></div><p class="chat-code-note" id="chat-code-note">${icon('info')}<span>Morse uses only letters and numbers. Show text reveals your message.</span></p><div class="chat-compose-footer"><button type="button" class="button quiet chat-morse-undo" data-morse-key="undo" hidden>Undo</button><button type="submit" class="button primary">Send signal ${icon('send')}</button></div></form>`;
+      <form class="chat-compose">
+        <div class="chat-compose-heading"><div class="chat-compose-label"><span>Message</span><details class="chat-code-info"><summary aria-label="About Morse messages">${icon('info')}</summary><p id="chat-code-note">Morse code includes only letters and numbers. Show text displays your original message, including punctuation, or decodes your Morse.</p></details></div><div class="chat-send-mode segmented" aria-label="Message input mode"><button type="button" data-send-mode="text" aria-label="Send text">Text</button><button type="button" data-send-mode="morse" aria-label="Send Morse code">Morse</button></div></div>
+        <label for="chat-draft" class="sr-only">Message to send as Morse code</label><div class="chat-compose-input-row"><textarea id="chat-draft" name="text" rows="1" aria-describedby="chat-code-note chat-morse-help" required></textarea><button type="submit" class="button primary chat-send-button" aria-label="Send signal"><span>Send signal</span>${icon('send')}</button></div>
+        <div class="chat-compose-meta"><span id="chat-draft-count"></span></div>
+        <div class="chat-morse-help" id="chat-morse-help" hidden><p><span class="chat-desktop-morse-help"><kbd>←</kbd> dit <span>·</span> <kbd>→</kbd> dah <span>·</span> </span>Pause between letters. Space between words. <span id="chat-morse-boundary" aria-live="off"></span></p><div class="morse-paddles"><button type="button" class="morse-paddle dit" data-morse-key="." aria-label="Dit"><strong>.</strong><span>Dit</span></button><button type="button" class="morse-space" data-morse-key="word" aria-label="Space between words">Space</button><button type="button" class="morse-paddle dah" data-morse-key="-" aria-label="Dah"><strong>-</strong><span>Dah</span></button></div></div>
+        <div class="chat-compose-footer"><button type="button" class="button quiet chat-morse-undo" data-morse-key="undo" hidden>Undo</button></div>
+      </form>`;
     state.messageKey = '';
     renderMessages(true);
     const draft = view.querySelector('#chat-draft');
@@ -206,7 +212,7 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
       if (state.composeMode === 'morse' && event.key === 'Backspace' && draft.selectionStart === draft.value.length && draft.selectionEnd === draft.value.length) {
         event.preventDefault(); insertMorse('undo'); return;
       }
-      if (event.key === 'Enter' && !event.shiftKey && !event.repeat) {
+      if (event.key === 'Enter' && !mobile.matches && !event.shiftKey && !event.repeat) {
         event.preventDefault(); view.querySelector('.chat-compose').requestSubmit();
       }
     });
@@ -221,6 +227,15 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
     if (state.selected) state.drafts.set(String(state.selected), { ...state.draftByMode, mode: state.composeMode });
     const maximum = state.composeMode === 'morse' ? MAX_MORSE_LENGTH : MAX_MESSAGE_LENGTH;
     panel.querySelector('#chat-draft-count').textContent = `${input.value.length.toLocaleString()} / ${maximum.toLocaleString()}`;
+    growComposer(input);
+  }
+
+  function growComposer(input) {
+    const morse = state.composeMode === 'morse';
+    const minimum = mobile.matches ? (morse ? 42 : 44) : 44;
+    const maximum = mobile.matches ? (morse ? 84 : 116) : 104;
+    input.style.height = 'auto';
+    input.style.height = `${Math.max(minimum, Math.min(maximum, input.scrollHeight + 2))}px`;
   }
 
   function updateComposer() {
@@ -229,7 +244,7 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
     const morse = state.composeMode === 'morse';
     input.value = state.draftByMode[state.composeMode];
     input.maxLength = morse ? MAX_MORSE_LENGTH : MAX_MESSAGE_LENGTH;
-    input.placeholder = morse ? (mobile.matches ? 'Tap dit and dah below.' : 'Left arrow: dit. Right arrow: dah. Pause for a new letter.') : 'Type a message. Your friend receives Morse.';
+    input.placeholder = morse ? 'Morse code' : 'Message';
     input.classList.toggle('is-morse', morse);
     input.readOnly = state.busy || (morse && mobile.matches);
     input.setAttribute('inputmode', morse && mobile.matches ? 'none' : 'text');
@@ -238,8 +253,8 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
     input.spellcheck = !morse;
     input.setAttribute('autocapitalize', morse ? 'off' : 'sentences');
     panel.querySelector('#chat-morse-help').hidden = !morse;
-    panel.querySelector('#chat-compose-shortcuts').textContent = morse ? (mobile.matches ? '' : 'Enter to send · Backspace to correct') : 'Enter to send · Shift + Enter for a new line';
     panel.querySelector('.chat-morse-undo').hidden = !morse;
+    panel.querySelector('.chat-compose-footer').hidden = !morse;
     panel.querySelectorAll('[data-send-mode]').forEach((button) => {
       const selected = button.dataset.sendMode === state.composeMode;
       button.classList.toggle('active', selected); button.setAttribute('aria-pressed', String(selected));
@@ -292,7 +307,12 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
     const focused = document.activeElement;
     const focusedListen = focused?.dataset?.listen;
     const focusedReveal = focused?.dataset?.reveal;
-    list.innerHTML = state.messages.length ? state.messages.map((item) => `<article class="chat-message ${String(item.senderId) === String(state.user.id) ? 'mine' : ''}" data-message="${escape(item.id)}"><div class="chat-message-meta"><strong>@${escape(item.username)}</strong><time>${escape(dateLabel(item.createdAt))}</time></div><p class="chat-message-morse" aria-label="Morse code message">${escape(item.morse)}</p><p class="chat-message-text ${state.revealed.has(String(item.id)) ? '' : 'is-concealed'}" aria-hidden="${!state.revealed.has(String(item.id))}">${escape(item.text)}</p><div class="chat-message-actions"><button type="button" class="button quiet" data-reveal="${escape(item.id)}" aria-expanded="${state.revealed.has(String(item.id))}">${icon('eye')}${state.revealed.has(String(item.id)) ? 'Hide text' : 'Show text'}</button><button type="button" class="button quiet" data-listen="${escape(item.id)}" aria-pressed="${state.listening === String(item.id)}">${icon(state.listening === String(item.id) ? 'stop' : 'volume')}${state.listening === String(item.id) ? 'Stop audio' : 'Listen'}</button></div></article>`).join('') : '<div class="chat-empty"><h3>You found each other.</h3><p>Send a hello in Morse. The words stay hidden until revealed.</p></div>';
+    list.innerHTML = state.messages.length ? state.messages.map((item) => {
+      const mine = String(item.senderId) === String(state.user.id);
+      const listening = state.listening === String(item.id);
+      const shown = state.revealed.has(String(item.id));
+      return `<div class="chat-message-row ${mine ? 'mine' : ''}" data-message="${escape(item.id)}"><article class="chat-message ${mine ? 'mine' : ''} ${listening ? 'listening' : ''}"><div class="chat-message-meta"><strong>@${escape(item.username)}</strong><time>${escape(dateLabel(item.createdAt))}</time></div><p class="chat-message-morse" aria-label="Morse code message">${escape(item.morse)}</p><p class="chat-message-text ${shown ? '' : 'is-concealed'}" aria-hidden="${!shown}">${escape(item.text)}</p></article><div class="chat-message-actions"><button type="button" class="button quiet" data-reveal="${escape(item.id)}" aria-expanded="${shown}">${icon('eye')}${shown ? 'Hide text' : 'Show text'}</button><button type="button" class="button quiet" data-listen="${escape(item.id)}" aria-pressed="${listening}">${icon(listening ? 'stop' : 'volume')}${listening ? 'Stop audio' : 'Listen'}</button></div></div>`;
+    }).join('') : '<div class="chat-empty"><h3>You found each other.</h3><p>Send a hello in Morse. The words stay hidden until revealed.</p></div>';
     if (scrollToEnd || nearBottom) list.scrollTop = list.scrollHeight;
     else list.scrollTop = previousTop;
     if (focusedListen) [...list.querySelectorAll('[data-listen]')].find((button) => button.dataset.listen === focusedListen)?.focus({ preventScroll: true });
@@ -577,7 +597,7 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
       const id = reveal.dataset.reveal;
       if (state.revealed.has(id)) state.revealed.delete(id); else state.revealed.add(id);
       // Update in place so keyboard focus stays on the button.
-      const text = reveal.closest('.chat-message').querySelector('.chat-message-text');
+      const text = reveal.closest('.chat-message-row').querySelector('.chat-message-text');
       const shown = state.revealed.has(id);
       text.classList.toggle('is-concealed', !shown); text.setAttribute('aria-hidden', String(!shown));
       reveal.setAttribute('aria-expanded', String(shown));
@@ -693,6 +713,16 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
     if (state.active && panel.querySelector('#chat-draft')) {
       saveDraft(); morseInput.flush(); updateComposer();
       if (state.composeMode === 'morse' && mobile.matches) panel.querySelector('#chat-draft').blur();
+    }
+  });
+  window.addEventListener('resize', () => {
+    const input = panel.querySelector('#chat-draft');
+    if (state.active && input) growComposer(input);
+  });
+  document.addEventListener('click', (event) => {
+    if (!event.target.closest('.chat-code-info')) {
+      const note = panel.querySelector('.chat-code-info');
+      if (note) note.open = false;
     }
   });
   void boot();

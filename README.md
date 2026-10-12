@@ -1,6 +1,6 @@
 # Morse Room
 
-A Morse code receiving trainer with free lessons and unlimited practice. Run it on your own computer, or visit [The Morse Room](https://learnmorse.lelinadhikari.com.np). Learn and Practice need no account. The optional Morse Chat Room uses Google sign-in to practise through conversations with friends.
+A Morse code trainer with free lessons, sending practice, and receiving practice. Run it on your own computer, or visit [The Morse Room](https://learnmorse.lelinadhikari.com.np). Learn and Practice need no account. The optional Morse Chat Room uses Google sign-in to practise through conversations with friends.
 
 ## Requirements
 
@@ -86,23 +86,24 @@ Answer feedback, scores, and level completion messages appear centered below bot
 
 ## Practice
 
-- **Random:** practise all letters and numbers, letters only, or numbers only.
-- **Custom:** choose a character pool, such as `Q Y F L`. Each shuffled round plays every selected character once. The same character cannot occur twice in a row across rounds, unless you selected only one character.
-- **Continuous:** keep receiving until you stop.
-- **Character count:** receive a fixed number, such as 10 or 100.
-- **Random word groups:** set the number of words and letters per word. For example, 50 words of five letters plays 250 random characters with proper word gaps. Spaces are added automatically as you type each group.
+Choose **Receiving** or **Sending**, then **Letters**, **Numbers**, or **Custom**.
 
-The **Characters** reference stays open in both Random and Custom practice, showing all letters and numbers with their Morse patterns. Click a character to hear a sample, or press its letter/number key while outside a typing field. A keyboard sample pauses a running test; **Resume** continues from its saved point. Typing in the answer box, custom selection, or settings does not play samples. These samples leave your custom selection and received count unchanged; type your chosen pool in the selection box.
+For Letters and Numbers, choose **Unlimited** or **Set number of characters**. These modes have no copy-and-answer columns.
 
-On a computer, type continuously in the left column. On a phone, receive one character at a time and tap the built-in keyboard to answer. The next signal plays automatically after each answer, and word-group spaces are added to your copy. Practice mistakes advance to the next signal; Learn mistakes repeat the same signal. Spaces and letter case do not affect checking. Answers stay hidden during playback and while paused. **Pause** and **Resume** preserve your place, including during the countdown.
+- **Receiving:** hear one signal, then press its letter or number on a computer keyboard. On a phone, tap the built-in QWERTY keyboard with its number row. A wrong answer shows a red alert and replays the same signal. Only a correct answer moves forward. **Show correct answer** reveals the character and Morse pattern, then replays it; you still need to answer correctly.
+- **Sending:** a character appears. Enter its Morse with Left Arrow for dit and Right Arrow for dah on a computer, or the round Dit/Dah buttons on a phone. Pause between letters and use Space between words. **Check** checks your signal; a mistake keeps the same target. Undo and Show correct answer are available.
 
-The **Session audio** bar sits above the playback controls. Drag its slider to replay any received audio, including after a test finishes. Rewinding pauses the test; **Resume** continues from the saved point. Use **Pause replay** or **Resume replay** to control the replay separately. Replaying audio never adds characters to your answer key or changes your score.
+**Custom Receiving** keeps continuous copying. Select your characters, listen, and type in the copy field. Answers stay hidden until **Submit copy** after a finite session, or **Stop & check**. Pause keeps answers hidden. Case and optional spaces do not affect grading. The audio slider replays received audio without changing the session or score.
 
-After a finite run ends, press **Submit copy** when you finish typing. **Stop & check** ends a run and reveals results immediately. Only fully played characters are checked. The right column shows their Morse patterns and lets you replay them. Missing or extra characters are aligned so a single omission does not turn later correct answers into errors.
+Custom sessions offer Unlimited, a set character count, Random word groups, and Real word groups. Random groups use the selected character pool with proper word gaps and automatic spaces as you type. **Real word groups** uses whole English words, with 2 to 50 words and exactly 2 to 10 letters per word. Real words use the word bank rather than the selected character pool. Each session shuffles a fresh selection without repeated words. **Custom Sending** shows one character or word at a time and advances after a correct Morse answer.
+
+Real-word practice includes 2,996 offline words, including 94 two-letter entries. The words are a curated subset of [Yet Another Word List (YAWL)](https://github.com/elasticdog/yawl), by Mendel Leo Cooper and Alan Beale. The selected word data is public domain; see the [author's notice](https://raw.githubusercontent.com/elasticdog/yawl/master/yawl-0.3.2.03/README). Two-letter words include dictionary terms, interjections, and musical notes. OK is included as a common addition.
+
+On a phone, **Characters** is a separate tab after Practice. It shows all 36 letters and numbers with their Morse patterns; tap any character to hear it. On a computer, the reference stays inside Practice. Mobile Learn also uses the QWERTY keyboard. Desktop shortcut hints stay off mobile screens.
 
 ## Sound and saved progress
 
-On phones, open the speaker icon in the top header to adjust audio settings. Adjust character speed from 5 to 60 WPM, Farnsworth speed from 1 WPM up to character speed, frequency from 200 to 1,200 Hz, and volume from 0 to 100%. Farnsworth increases the gaps between characters and words while keeping the selected character speed. Changes during a session apply to the next character. Use **Test your sound** before starting.
+On phones, tap **Speed** above Learn or Practice, or the speaker icon in the header, to adjust WPM, Farnsworth, frequency, and volume. Adjust character speed from 5 to 60 WPM, Farnsworth speed from 1 WPM up to character speed, frequency from 200 to 1,200 Hz, and volume from 0 to 100%. Farnsworth increases the gaps between characters and words while keeping the selected character speed. Changes during a session apply to the next character. Use **Test your sound** before starting.
 
 Timing follows the [standard PARIS calculation](https://morsecode.world/international/timing/) and [Farnsworth calculation](https://morsecode.world/international/timing/farnsworth.html). With character speed `C` and Farnsworth speed `F`, all durations below are in seconds:
 
@@ -124,11 +125,11 @@ Choose **Morse Chat Room** below Practice in the sidebar. Use the account icon a
 
 - **Friends:** send a request using an exact username or registered email. The recipient accepts or declines from the top-right notification bell. An accepted request opens a conversation for both people.
 - **Private groups:** create a named group and copy its invite code or link. Join using either. An invite link is kept through sign-in and username setup. Anyone with an invite can join and read the group history.
-- **Messages:** type ordinary text and send it as international Morse. Each message has **Show text** and **Listen** controls. Words stay hidden until revealed, and audio plays only when requested.
+- **Messages:** type ordinary text and send it as international Morse. Each message has **Show text** and **Listen** controls below its bubble. Words stay hidden until revealed, and audio plays only when requested.
 - **Sound:** **Default** keeps chat at 18 WPM, 12 WPM Farnsworth, and 600 Hz. **Custom** enables the speed and frequency controls in the sidebar. Chat settings are saved separately from Learn and Practice; volume is shared. Listen changes to **Stop audio** during playback.
 - **Notifications:** the bell shows incoming friend requests and unread signals. An open conversation checks for messages every five seconds while the page is visible. The inbox checks every 30 seconds in Chat, every minute in Learn or Practice, and when you open the bell. Hidden tabs stop checking.
-- **Typing:** select **Send text** to write ordinary text, or **Send Morse code** to enter the signal yourself. On a computer, Left Arrow enters a dit (`.`) and Right Arrow enters a dah (`-`). On a phone, use the two round Dit and Dah buttons; the phone keyboard stays closed. A pause completes the current letter automatically, and the next tap starts a new letter. Space creates a word gap. The default pause is 700 ms; slower custom spacing can extend it up to 1.5 seconds. Each tap plays its tone. Use Backspace or **Undo** to correct, and Enter or **Send signal** to send. Morse groups must be valid letters or numbers; Show text decodes them.
-- **Drafts:** text and Morse drafts are kept separately while switching modes or conversations in the current page. In text mode, Shift + Enter adds a new line. Use **Load earlier signals** for older messages.
+- **Typing:** select **Text** to write ordinary text, or **Morse** to enter the signal yourself. On a computer, Left Arrow enters a dit (`.`) and Right Arrow enters a dah (`-`). On a phone, use the two round Dit and Dah buttons; the phone keyboard stays closed. A pause completes the current letter automatically, and the next tap starts a new letter. Space creates a word gap. The default pause is 700 ms; slower custom spacing can extend it up to 1.5 seconds. Each tap plays its tone. Use Backspace or **Undo** to correct, and the Send button beside the field to send. Morse groups must be valid letters or numbers; Show text decodes them.
+- **Drafts:** text and Morse drafts are kept separately while switching modes or conversations in the current page. Use **Load earlier signals** for older messages.
 
 Morse display and audio include only letters A-Z and numbers 0-9. Punctuation and symbols are skipped in text messages' signals. **Show text** displays the original typed text, including case, punctuation, spacing, and new lines, or the decoded letters and numbers for a Morse message. Accented letters use their plain equivalents in Morse, while the original text stays unchanged. Each message needs at least one letter or number. An info note beside the message box explains this. Message boxes reserve room for the text so revealing it keeps the controls in place. Messages are stored with their readable text to support reveal and audio; Morse does not encrypt them.
 

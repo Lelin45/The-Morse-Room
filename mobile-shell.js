@@ -42,6 +42,13 @@ function closeSettings() {
   settingsButton.setAttribute('aria-expanded', 'false');
 }
 
+document.querySelectorAll('[data-open-audio]').forEach((button) => {
+  button.addEventListener('click', () => {
+    document.body.classList.add('audio-settings-open');
+    settingsButton.setAttribute('aria-expanded', 'true');
+  });
+});
+
 settingsButton.addEventListener('click', () => {
   const open = document.body.classList.toggle('audio-settings-open');
   settingsButton.setAttribute('aria-expanded', String(open));
@@ -49,7 +56,7 @@ settingsButton.addEventListener('click', () => {
 document.addEventListener('click', (event) => {
   if (event.target.closest('.mode-button[data-mode]')) closeSettings();
   if (document.body.classList.contains('audio-settings-open')
-    && !event.target.closest('#audio-controls, #audio-settings-toggle')) closeSettings();
+    && !event.target.closest('#audio-controls, #audio-settings-toggle, [data-open-audio]')) closeSettings();
 });
 document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape' && document.body.classList.contains('audio-settings-open')) {

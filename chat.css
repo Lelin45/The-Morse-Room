@@ -558,9 +558,21 @@ html[data-theme='dark'] .chat-provider-button.is-disabled:hover {
   overflow-y: auto;
 }
 
-.chat-message {
+.chat-message-row {
+  display: flex;
+  flex-direction: column;
   align-self: flex-start;
+  width: fit-content;
   max-width: min(88%, 600px);
+  min-width: 0;
+}
+
+.chat-message-row.mine {
+  align-self: flex-end;
+}
+
+.chat-message {
+  width: 100%;
   min-width: 0;
   padding: 13px 15px;
   border: 1px solid var(--line);
@@ -570,7 +582,6 @@ html[data-theme='dark'] .chat-provider-button.is-disabled:hover {
 }
 
 .chat-message.mine {
-  align-self: flex-end;
   border-radius: 12px 12px 4px 12px;
   background: var(--soft-green);
 }
@@ -637,16 +648,19 @@ html[data-theme='dark'] .chat-provider-button.is-disabled:hover {
 
 .chat-message-actions {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 11px;
+  flex-wrap: nowrap;
+  gap: 4px;
+  margin-top: 2px;
+  background: transparent;
 }
 
 .chat-message-actions .button {
-  min-width: 94px;
+  min-width: 88px;
   min-height: 34px;
-  padding: 7px 10px;
-  font-size: 10px;
+  padding: 5px 8px;
+  border: 0;
+  background: transparent;
+  font-size: 11px;
 }
 
 .chat-message.listening {
@@ -2154,5 +2168,287 @@ body[data-mode='chat'] #chat-panel {
   .morse-paddles {
     margin-top: 0;
     margin-bottom: 0;
+  }
+}
+
+/* Keep message actions separate from the bubble and the composer compact. */
+.chat-message-row .chat-message {
+  max-width: 100%;
+}
+
+.chat-message-actions,
+.chat-message-actions .button.quiet,
+html[data-theme='dark'] .chat-message-actions .button.quiet,
+.chat-message-actions .button[aria-pressed='true'],
+html[data-theme='dark'] .chat-message-actions .button[aria-pressed='true'] {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.chat-message-row.mine .chat-message-actions {
+  justify-content: flex-end;
+}
+
+.chat-message-actions .button[aria-pressed='true'] {
+  color: var(--green);
+}
+
+.chat-demo .chat-message-row {
+  max-width: 100%;
+  margin: 13px 0 15px;
+}
+
+.chat-demo .chat-message {
+  margin: 0;
+}
+
+.chat-compose-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.chat-code-info {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.chat-code-info summary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  color: var(--muted);
+  cursor: pointer;
+  list-style: none;
+}
+
+.chat-code-info summary::-webkit-details-marker {
+  display: none;
+}
+
+.chat-code-info summary svg {
+  width: 16px;
+  height: 16px;
+}
+
+.chat-code-info[open] summary {
+  background: var(--soft-green);
+  color: var(--green);
+}
+
+.chat-code-info p {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  z-index: 5;
+  width: min(270px, calc(100vw - 55px));
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--card);
+  color: var(--text);
+  box-shadow: 0 3px 18px #00000014;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.chat-compose-input-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 8px;
+  min-width: 0;
+}
+
+.chat-compose-input-row textarea,
+.chat-compose-input-row textarea.is-morse {
+  min-height: 44px;
+  max-height: 104px;
+  resize: none;
+}
+
+.chat-compose-input-row .chat-send-button {
+  min-height: 44px;
+  height: 44px;
+  padding: 9px 14px;
+}
+
+.chat-compose-meta {
+  justify-content: flex-end;
+}
+
+.chat-compose-footer[hidden] {
+  display: none;
+}
+
+.chat-compose-footer .chat-morse-undo {
+  min-height: 28px;
+  margin-left: auto;
+  padding: 4px 8px;
+  border: 0;
+  font-size: 11px;
+}
+
+@media (max-width: 760px) {
+  .chat-conversation-header {
+    min-height: 48px;
+    padding: 5px 8px;
+  }
+
+  .chat-conversation-header h2 {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  .chat-member-summary {
+    font-size: 10px;
+    line-height: 1.4;
+  }
+
+  .chat-message-list {
+    gap: 8px;
+    padding: 10px 8px;
+  }
+
+  .chat-message-row {
+    max-width: 90%;
+  }
+
+  .chat-message-row .chat-message {
+    padding: 9px 11px;
+  }
+
+  .chat-message-meta {
+    margin-bottom: 5px;
+    font-size: 10px;
+    line-height: 1.4;
+  }
+
+  .chat-message-meta strong {
+    font-size: 11px;
+  }
+
+  .chat-message-morse {
+    font-size: 15px;
+    letter-spacing: 1px;
+    line-height: 1.6;
+  }
+
+  .chat-message-text {
+    margin-top: 7px;
+    padding-top: 7px;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .chat-message-actions {
+    gap: 2px;
+    margin-top: 0;
+  }
+
+  .chat-message-actions .button {
+    min-height: 36px;
+    padding: 5px 7px;
+    font-size: 11px;
+  }
+
+  .chat-message-actions .button svg {
+    width: 15px;
+    height: 15px;
+  }
+
+  .chat-compose,
+  .chat-compose:has(textarea.is-morse) {
+    gap: 4px;
+    padding: 5px 8px max(6px, env(safe-area-inset-bottom));
+  }
+
+  .chat-compose-heading {
+    min-height: 28px;
+  }
+
+  .chat-compose-label > span {
+    display: none;
+  }
+
+  .chat-send-mode button {
+    min-height: 28px;
+    padding: 4px 11px;
+    font-size: 11px;
+  }
+
+  .chat-code-info summary {
+    width: 32px;
+    height: 28px;
+  }
+
+  .chat-compose-input-row {
+    gap: 7px;
+  }
+
+  .chat-compose-input-row textarea,
+  body.keyboard-open .chat-compose-input-row textarea {
+    min-height: 44px;
+    height: 44px;
+    max-height: 116px;
+    padding: 10px 13px;
+    border-radius: 22px;
+    font-size: 16px;
+    line-height: 22px;
+  }
+
+  .chat-compose-input-row textarea::placeholder,
+  .chat-compose-input-row textarea.is-morse::placeholder {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    font-size: 13px;
+    letter-spacing: 0;
+  }
+
+  .chat-compose-input-row textarea.is-morse {
+    min-height: 42px;
+    max-height: 84px;
+    padding: 9px 13px;
+    font-size: 18px;
+    line-height: 22px;
+  }
+
+  .chat-compose-input-row .chat-send-button.button.primary,
+  .chat-compose-input-row .chat-send-button.button.primary:disabled {
+    width: 44px;
+    min-width: 44px;
+    max-width: 44px;
+    height: 44px;
+    min-height: 44px;
+    padding: 0;
+    border-radius: 50%;
+  }
+
+  .chat-send-button > span {
+    display: none;
+  }
+
+  .chat-send-button svg {
+    width: 19px;
+    height: 19px;
+  }
+
+  .chat-compose-meta {
+    display: none;
+  }
+
+  .chat-compose-footer {
+    min-height: 0;
+  }
+
+  .chat-compose-footer .chat-morse-undo {
+    min-height: 28px;
+    padding: 3px 8px;
   }
 }

@@ -1,0 +1,483 @@
+.mobile-characters-tab,
+.mobile-audio-access {
+  display: none;
+}
+
+.practice-round-panel {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 24px;
+  text-align: center;
+}
+
+body[data-practice-round='true'] .writing-columns {
+  display: none;
+}
+
+.practice-target {
+  margin: 12px 0;
+  color: var(--ink);
+  font-family: 'Courier New', monospace;
+  font-size: clamp(30px, 5vw, 58px);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.practice-response {
+  margin: 12px auto;
+  max-width: 560px;
+}
+
+.practice-round-alert {
+  min-height: 30px;
+  margin: 8px 0;
+  color: var(--red);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.practice-round-alert.correct {
+  color: var(--green);
+}
+
+.practice-round-heading h2 {
+  margin: 0 0 8px;
+  color: var(--ink);
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.practice-round-status,
+.practice-morse-help {
+  margin: 6px 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.practice-correct-answer {
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--green);
+  background: var(--soft-green);
+  font-size: 20px;
+}
+
+.practice-correct-answer .morse-pattern {
+  display: block;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  font-size: 16px;
+  letter-spacing: 2px;
+}
+
+.practice-round-panel :is(#show-correct-answer, #replay-practice-round, #check-practice-round) {
+  min-height: 42px;
+  margin: 4px;
+}
+
+#practice-morse-entry {
+  width: 100%;
+  min-height: 64px;
+  max-height: 150px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: 'Courier New', monospace;
+  font-size: 20px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  resize: none;
+}
+
+.practice-morse-paddles {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 22px;
+  margin: 16px 0;
+}
+
+.practice-morse-paddle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  touch-action: manipulation;
+}
+
+.practice-morse-paddle strong { font-size: 25px; line-height: 1; }
+.practice-morse-paddle span { font-size: 12px; }
+.practice-morse-space {
+  min-width: 70px;
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.practice-morse-paddles [data-practice-morse='.' ],
+.practice-morse-paddles [data-practice-morse='-'] {
+  width: 64px;
+  height: 64px;
+  padding: 0;
+  border: 1px solid var(--green);
+  border-radius: 50%;
+  background: var(--soft-green);
+  color: var(--ink);
+  font-size: 16px;
+}
+
+.mobile-keyboard.qwerty-keyboard {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  max-width: 560px;
+  margin: 12px auto;
+}
+
+.qwerty-row {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+}
+
+.qwerty-row:nth-child(3) { padding: 0 14px; }
+.qwerty-row:nth-child(4) { padding: 0 35px; }
+
+.qwerty-row .mobile-key {
+  flex: 1;
+  min-width: 0;
+  max-width: 48px;
+  min-height: 44px;
+  padding: 5px 0;
+  font-size: 16px;
+}
+
+.characters-page {
+  max-width: 780px;
+  margin: 0 auto;
+}
+
+.characters-page .character-reference-grid {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+@media (min-width: 761px) {
+  .practice-round-panel .qwerty-keyboard,
+  .practice-round-panel .practice-morse-paddles {
+    display: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .mode-nav {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 3px;
+  }
+
+  .mobile-characters-tab {
+    display: flex;
+  }
+
+  .mode-button {
+    padding: 8px 3px;
+    font-size: 11px;
+    gap: 4px;
+  }
+
+  .mode-button svg {
+    width: 15px;
+    height: 15px;
+  }
+
+  body[data-mode='learn'] .mobile-audio-access,
+  body[data-mode='practice'] .mobile-audio-access {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    min-height: 40px;
+    margin-bottom: 8px;
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  .mobile-audio-access .button {
+    min-height: 36px;
+    padding: 6px 10px;
+    border-color: var(--line);
+    font-size: 12px;
+  }
+
+  .bottom-note {
+    display: none !important;
+  }
+
+  .receiver-actions .action-help {
+    display: none;
+  }
+
+  .receiver-actions #submit-practice:disabled {
+    display: none;
+  }
+
+  body[data-mode='practice'][data-practice-phase='idle'] #practice-round-panel,
+  body[data-mode='practice'][data-practice-phase='idle'] .writing-columns,
+  body[data-mode='practice'][data-practice-phase='idle'] #practice-audio-bar {
+    display: none;
+  }
+
+  .practice-card {
+    margin-bottom: 12px;
+  }
+
+  .practice-card-top,
+  .practice-fields {
+    padding: 12px;
+  }
+
+  .practice-card-top {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .practice-card-top .small-label {
+    display: none;
+  }
+
+  .practice-card .segmented {
+    max-width: 100%;
+  }
+
+  .practice-card .segmented button {
+    min-height: 40px;
+    padding: 7px 12px;
+    font-size: 13px;
+    white-space: normal;
+  }
+
+  .practice-fields {
+    gap: 14px;
+  }
+
+  .practice-fields .field :is(input, select) {
+    height: 42px;
+    min-height: 42px;
+    padding: 8px 10px;
+    font-family: inherit;
+    font-size: 16px;
+    line-height: 1.4;
+  }
+
+  .practice-fields .field :is(label, .field-label) {
+    font-size: 12px;
+  }
+
+  .practice-fields .field p {
+    margin-top: 5px;
+    font-size: 11px;
+    line-height: 1.5;
+  }
+
+  body[data-mode='practice'] .character-reference-panel {
+    display: none;
+  }
+
+  .practice-round-panel {
+    width: 100%;
+    padding: 14px 8px;
+  }
+
+  .practice-round-tools {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .practice-round-tools .button {
+    margin: 0;
+    min-height: 42px;
+    padding: 8px 10px;
+    font-size: 11px;
+  }
+
+  .practice-round-panel:has(.practice-morse-entry) .practice-target {
+    margin: 8px 0;
+  }
+
+  #practice-morse-entry {
+    height: 64px;
+    padding: 8px 10px;
+    font-size: 18px;
+    line-height: 1.3;
+  }
+
+  #practice-morse-entry::placeholder {
+    font-size: 14px;
+  }
+
+  .practice-morse-paddles {
+    margin: 8px 0;
+  }
+
+  .practice-round-alert {
+    font-size: 13px;
+    min-height: 22px;
+    margin: 6px 0;
+  }
+
+  .practice-round-alert:empty {
+    min-height: 0;
+    margin: 0;
+  }
+
+  .practice-correct-answer {
+    padding: 8px;
+    font-size: 16px;
+  }
+
+  .practice-correct-answer .morse-pattern {
+    font-size: 14px;
+  }
+
+  .practice-round-panel:has([data-round-key]) .practice-response {
+    display: none;
+  }
+
+  body[data-training-active='true'] .practice-round-heading h2 {
+    display: none;
+  }
+
+  body[data-practice-round='true'] .receiver,
+  body[data-practice-copy='true'] .receiver {
+    overflow: visible;
+  }
+
+  body[data-practice-round='true'] .receiver-actions,
+  body[data-practice-copy='true'] .receiver-actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 20;
+    flex-wrap: wrap;
+    min-height: 52px;
+    padding: 6px 10px;
+    border-radius: 0 0 var(--radius) var(--radius);
+    background: var(--card);
+  }
+
+  body[data-practice-round='true'] .receiver-actions .button,
+  body[data-practice-copy='true'] .receiver-actions .button {
+    min-height: 40px;
+  }
+
+  body[data-practice-copy='true']:not([data-practice-reviewed='true']) .answer-pane {
+    display: none;
+  }
+
+  body[data-practice-copy='true'] .writing-columns {
+    min-height: 0;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  body[data-practice-copy='true'] .app-shell {
+    position: fixed;
+    top: var(--app-top, 0px);
+    right: 0;
+    left: 0;
+    height: var(--app-height, 100dvh);
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  body[data-practice-copy='true'] .main-content {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  body[data-practice-copy='true'] .receiver {
+    flex: 0 0 auto;
+  }
+
+  body[data-practice-copy='true'] .writing-pane {
+    padding: 12px;
+    border-right: 0;
+  }
+
+  body[data-practice-copy='true'] .pane-heading > span {
+    display: none;
+  }
+
+  body[data-practice-copy='true'] .pane-heading {
+    margin-bottom: 8px;
+  }
+
+  body[data-practice-copy='true'] .practice-textarea {
+    min-height: 150px;
+    padding: 10px;
+    font-size: 16px;
+  }
+
+  body.keyboard-open[data-practice-copy='true'] #setup-panel,
+  body.keyboard-open[data-practice-copy='true'] .mobile-audio-access,
+  body.keyboard-open[data-practice-copy='true'] .practice-audio-bar {
+    display: none;
+  }
+
+  body.keyboard-open[data-practice-copy='true'] .practice-textarea {
+    min-height: 90px;
+    height: 110px;
+  }
+
+  #characters-panel .character-reference-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  #characters-panel .character-reference {
+    min-height: 76px;
+    padding: 10px 4px;
+  }
+
+  #characters-panel .reference-letter {
+    font-size: 24px;
+  }
+
+  #characters-panel .reference-morse {
+    font-size: 13px;
+    letter-spacing: 1px;
+  }
+
+  .mobile-keyboard.qwerty-keyboard {
+    gap: 5px;
+    margin: 10px auto;
+  }
+
+  .qwerty-row {
+    gap: 3px;
+  }
+
+  .qwerty-row .mobile-key {
+    min-height: 43px;
+    font-size: 15px;
+  }
+}
+
+@media (max-width: 350px) {
+  html[data-theme='dark'] .app-shell > .topbar .page-title {
+    font-size: 12.5px;
+    letter-spacing: -.65px;
+    white-space: nowrap;
+  }
+}

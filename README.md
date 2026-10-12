@@ -88,18 +88,18 @@ Answer feedback, scores, and level completion messages appear centered below bot
 
 Choose **Receiving** or **Sending**, then **Letters**, **Numbers**, or **Custom**.
 
-For Letters and Numbers, choose **Unlimited** or **Set number of characters**. These modes have no copy-and-answer columns.
+For Letters and Numbers, choose **Unlimited** or **Set number of characters** (**Set a limit** on a phone). Mobile setup groups the mode, practice characters, and session length into separate sections with tap controls. These modes have no copy-and-answer columns.
 
 - **Receiving:** hear one signal, then press its letter or number on a computer keyboard. On a phone, tap the built-in QWERTY keyboard with its number row. A wrong answer shows a red alert and replays the same signal. Only a correct answer moves forward. **Show correct answer** reveals the character and Morse pattern, then replays it; you still need to answer correctly.
-- **Sending:** a character appears. Enter its Morse with Left Arrow for dit and Right Arrow for dah on a computer, or the round Dit/Dah buttons on a phone. Pause between letters and use Space between words. **Check** checks your signal; a mistake keeps the same target. Undo and Show correct answer are available.
+- **Sending:** a character appears. Enter its Morse with Left Arrow for dit and Right Arrow for dah on a computer, or the round Dit/Dah buttons on a phone. Pause between letters and use Space between words. **Check** checks your signal; a mistake clears your Morse entry and keeps the same target for another attempt. Undo and Show correct answer are available.
 
-**Custom Receiving** keeps continuous copying. Select your characters, listen, and type in the copy field. Answers stay hidden until **Submit copy** after a finite session, or **Stop & check**. Pause keeps answers hidden. Case and optional spaces do not affect grading. The audio slider replays received audio without changing the session or score.
+**Custom Receiving** keeps continuous copying. Choose Custom to type your character selection, or use All letters, All numbers, or All. A preset disables the manual field; switching back to Custom restores your previous selection. Listen and type in the copy field. Answers stay hidden until **Submit copy** after a finite session, or **Stop & check**. Pause keeps answers hidden. Case and optional spaces do not affect grading. The audio slider replays received audio without changing the session or score.
 
 Custom sessions offer Unlimited, a set character count, Random word groups, and Real word groups. Random groups use the selected character pool with proper word gaps and automatic spaces as you type. **Real word groups** uses whole English words, with 2 to 50 words and exactly 2 to 10 letters per word. Real words use the word bank rather than the selected character pool. Each session shuffles a fresh selection without repeated words. **Custom Sending** shows one character or word at a time and advances after a correct Morse answer.
 
 Real-word practice includes 2,996 offline words, including 94 two-letter entries. The words are a curated subset of [Yet Another Word List (YAWL)](https://github.com/elasticdog/yawl), by Mendel Leo Cooper and Alan Beale. The selected word data is public domain; see the [author's notice](https://raw.githubusercontent.com/elasticdog/yawl/master/yawl-0.3.2.03/README). Two-letter words include dictionary terms, interjections, and musical notes. OK is included as a common addition.
 
-On a phone, **Characters** is a separate tab after Practice. It shows all 36 letters and numbers with their Morse patterns; tap any character to hear it. On a computer, the reference stays inside Practice. Mobile Learn also uses the QWERTY keyboard. Desktop shortcut hints stay off mobile screens.
+On a phone, **Codes** is a separate tab after Practice. It shows a QWERTY keyboard with a number row and Morse patterns under all 36 keys; tap a key to hear it. On a computer, the reference stays inside Practice. Press a letter or number outside a text field to hear its Morse preview. An active Receiving quiz uses those keys to answer; previews during other active practice pause the session, and Resume continues it. Mobile Learn also uses the QWERTY keyboard. Desktop shortcut hints stay off mobile screens.
 
 ## Sound and saved progress
 
@@ -134,6 +134,8 @@ Choose **Morse Chat Room** below Practice in the sidebar. Use the account icon a
 Morse display and audio include only letters A-Z and numbers 0-9. Punctuation and symbols are skipped in text messages' signals. **Show text** displays the original typed text, including case, punctuation, spacing, and new lines, or the decoded letters and numbers for a Morse message. Accented letters use their plain equivalents in Morse, while the original text stays unchanged. Each message needs at least one letter or number. An info note beside the message box explains this. Message boxes reserve room for the text so revealing it keeps the controls in place. Messages are stored with their readable text to support reveal and audio; Morse does not encrypt them.
 
 For the live site, follow [Chat setup](docs/CHAT_SETUP.md). It covers the Pages build settings, D1 migration/binding, the exact Google callback URL, and private environment settings. `npm start` keeps serving the local trainer without a chat backend. For local Pages/D1 development, use `npm install`, `npm run db:local`, and `npm run dev:chat` as described in the guide.
+
+The Pages build gives each release new JavaScript and stylesheet filenames, including every imported module. A normal browser refresh loads the current release even when older files are cached. Saved lessons, sound settings, and theme preferences remain in place.
 
 ## Keyboard
 

@@ -2,7 +2,7 @@ import { MORSE, MorsePlayer, getTiming } from './audio.js';
 import { LETTERS, DIGITS, LEVELS, createPracticeGenerator, generateLessonSequence, normalizeInput, formatGroups, gradeInput } from './trainer.js';
 import { LearnSession } from './learn-session.js';
 import { PracticeRoundSession } from './practice-round-session.js';
-import { renderQwertyKeyboard } from './qwerty-keyboard.js';
+import { QWERTY_ROWS, renderQwertyKeyboard } from './qwerty-keyboard.js';
 import { TimedMorseInput } from './timed-morse.js';
 import { decodeMorse } from './chat-codec.js';
 import { generateRealWordGroups } from './real-word-bank.js';
@@ -67,7 +67,7 @@ let replayViewing = false;
 let replayScrubbing = false;
 let replayRunId = 0;
 const learn = { level: Math.min(18, Math.max(0, ...progress.completed) + 1), phase: 'intro', sequence: '', session: null, index: 0, records: [], input: '', audible: false, playing: false, countdown: false, tutorialIndex: 0, tutorialHeard: false };
-const practice = { direction: 'receiving', category: 'letters', custom: 'QYFL', length: 'continuous', count: 50, words: 50, groupSize: 5, phase: 'idle', sequence: '', played: 0, answer: '', grading: null, session: null, mobileInput: '', round: null, roundReady: false, roundBusy: false, roundShown: false, roundFeedback: '', roundCorrect: null, morse: '' };
+const practice = { direction: 'receiving', category: 'letters', customPreset: 'manual', custom: 'QYFL', length: 'continuous', count: 50, words: 50, groupSize: 5, phase: 'idle', sequence: '', played: 0, answer: '', grading: null, session: null, mobileInput: '', round: null, roundReady: false, roundBusy: false, roundShown: false, roundFeedback: '', roundCorrect: null, morse: '' };
 const mobileTrainingPanel = document.createElement('div');
 mobileTrainingPanel.className = 'mobile-training';
 mobileTrainingPanel.hidden = true;
@@ -303,8 +303,10 @@ function renderSetup() {
 
 function practiceLocked() { return ['countdown', 'playing', 'paused', 'ready', 'interrupted'].includes(practice.phase); }
 
-function characterReferenceMarkup() {
-  return `<div class="character-reference-grid">${[...LETTERS + DIGITS].map((character) => `<button type="button" class="character-reference" data-reference="${character}" aria-label="Listen to ${character}: ${morseWords(character)}"><span class="reference-letter">${character}</span><span class="reference-morse" aria-hidden="true">${morseDisplay(character)}</span></button>`).join('')}</div>`;
+function characterReferenceMarkup({ keyboard = false } = {}) {
+  const key = (character) => `<button type="button" class="character-reference" data-reference="${character}" aria-label="Listen to ${character}: ${morseWords(character)}"><span class="reference-letter">${character}</span><span class="reference-morse" aria-hidden="true">${morseDisplay(character)}</span></button>`;
+  if (keyboard) return `<div class="reference-keyboard" role="group" aria-label="Morse code keyboard">${QWERTY_ROWS.map((row) => `<div class="reference-keyboard-row">${[...row].map(key).join('')}</div>`).join('')}</div>`;
+  return `<div class="character-reference-grid">${[...LETTERS + DIGITS].map(key).join('')}</div>`;
 }
 
 function bindCharacterReferences(container) {
@@ -314,8 +316,12 @@ function bindCharacterReferences(container) {
 function renderCharacterPanel() {
   const panel = $('#characters-panel');
   if (!panel) return;
-  panel.innerHTML = `<section class="character-reference-panel"><div class="reference-heading"><h2>Letters and numbers</h2><p>Tap a character to hear its Morse code.</p></div>${characterReferenceMarkup()}</section>`;
+  panel.innerHTML = `<section class="character-reference-panel"><div class="reference-heading"><h2>Letters and numbers</h2><p>Tap a key to hear its Morse code.</p></div>${characterReferenceMarkup({ keyboard: true })}</section>`;
   bindCharacterReferences(panel);
+}
+
+function customPracticePool() {
+  return ({ letters: LETTERS, numbers: DIGITS, all: LETTERS + DIGITS })[practice.customPreset] ?? practice.custom;
 }
 
 function renderPracticeSetup() {
@@ -324,16 +330,23 @@ function renderPracticeSetup() {
   const custom = practice.category === 'custom';
   const grouped = ['words', 'real-words'].includes(practice.length);
   const real = practice.length === 'real-words';
-  $('#setup-panel').innerHTML = `<div class="practice-card"><div class="practice-card-top"><div class="segmented practice-direction" aria-label="Practice direction">${[['receiving', 'Receiving'], ['sending', 'Sending']].map(([value, label]) => `<button type="button" data-direction="${value}" aria-pressed="${practice.direction === value}" class="${practice.direction === value ? 'active' : ''}" ${disabled}>${label}</button>`).join('')}</div><div class="segmented practice-category" aria-label="Practice characters">${[['letters', 'Letters'], ['numbers', 'Numbers'], ['custom', 'Custom']].map(([value, label]) => `<button type="button" data-category="${value}" aria-pressed="${practice.category === value}" class="${practice.category === value ? 'active' : ''}" ${disabled}>${label}</button>`).join('')}</div></div>
-    <div class="practice-fields">${custom && !real ? `<div class="field"><label for="custom-characters">Your character selection</label><input id="custom-characters" type="text" value="${escapeHTML(practice.custom)}" maxlength="100" autocomplete="off" spellcheck="false" ${disabled}><p>Practice only these letters and numbers.</p></div>` : ''}
-    <div class="field"><label for="session-length">Session length</label><select id="session-length" ${disabled}><option value="continuous" ${practice.length === 'continuous' ? 'selected' : ''}>Unlimited</option><option value="characters" ${practice.length === 'characters' ? 'selected' : ''}>Set number of characters</option>${custom ? `<option value="words" ${practice.length === 'words' ? 'selected' : ''}>Random word groups</option><option value="real-words" ${real ? 'selected' : ''}>Real word groups</option>` : ''}</select></div>
-    ${grouped ? `<div class="field"><div class="double-fields"><div><label for="word-count">Words</label><input id="word-count" type="number" min="${real ? 2 : 1}" max="${real ? 50 : 2000}" step="1" value="${practice.words}" ${disabled}></div><div><label for="group-size">Letters per word</label><input id="group-size" type="number" min="${real ? 2 : 1}" max="${real ? 10 : 50}" step="1" value="${practice.groupSize}" ${disabled}></div></div><p>${real ? 'English words, including dictionary words. Character selection does not limit real words.' : `${practice.words * practice.groupSize} characters, with a gap between words.`}</p></div>` : practice.length === 'characters' ? `<div class="field"><label for="character-count">Characters</label><input id="character-count" type="number" min="1" max="10000" step="1" value="${practice.count}" ${disabled}></div>` : ''}</div>
-    <section class="character-reference-panel practice-character-reference" aria-labelledby="characters-heading"><div class="reference-heading"><h2 id="characters-heading">Characters</h2><p>Click a character to hear it.</p></div>${characterReferenceMarkup()}</section></div>`;
+  $('#setup-panel').innerHTML = `<div class="practice-card"><div class="practice-card-top"><section class="practice-setup-section"><h2 class="setup-section-heading">Mode</h2><div class="segmented practice-direction" role="group" aria-label="Practice direction">${[['receiving', 'Receiving', 'headphones', 'Listen & identify'], ['sending', 'Sending', 'keyboard', 'Write the signal']].map(([value, label, symbol, note]) => `<button type="button" data-direction="${value}" aria-pressed="${practice.direction === value}" class="${practice.direction === value ? 'active' : ''}" ${disabled}><span class="setup-choice-icon" aria-hidden="true">${icon(symbol)}</span><span class="setup-choice-copy"><span class="setup-choice-label">${label}</span><span class="setup-choice-note">${note}</span></span></button>`).join('')}</div></section><section class="practice-setup-section"><h2 class="setup-section-heading">Practice</h2><div class="segmented practice-category" role="group" aria-label="Practice characters">${[['letters', 'Letters', 'Aa'], ['numbers', 'Numbers', '09'], ['custom', 'Custom', icon('shuffle')]].map(([value, label, symbol]) => `<button type="button" data-category="${value}" aria-pressed="${practice.category === value}" class="${practice.category === value ? 'active' : ''}" ${disabled}><span class="setup-choice-icon" aria-hidden="true">${symbol}</span><span class="setup-choice-label">${label}</span></button>`).join('')}</div></section></div>
+    <div class="practice-fields">${custom && !real ? `<div class="field"><label for="custom-characters">Your character selection</label><div class="custom-pool-presets segmented" role="group" aria-label="Character selection">${[['manual', 'Custom'], ['letters', 'All letters'], ['numbers', 'All numbers'], ['all', 'All']].map(([value, label]) => `<button type="button" data-custom-preset="${value}" class="${practice.customPreset === value ? 'active' : ''}" aria-pressed="${practice.customPreset === value}" ${disabled}>${label}</button>`).join('')}</div><input id="custom-characters" type="text" value="${escapeHTML(customPracticePool())}" maxlength="100" autocomplete="off" spellcheck="false" ${locked || practice.customPreset !== 'manual' ? 'disabled' : ''}><p>Practice only these letters and numbers.</p></div>` : ''}
+    <div class="field session-length-field"><label for="session-length">Session length</label><select id="session-length" ${disabled}><option value="continuous" ${practice.length === 'continuous' ? 'selected' : ''}>Unlimited</option><option value="characters" ${practice.length === 'characters' ? 'selected' : ''}>Set number of characters</option>${custom ? `<option value="words" ${practice.length === 'words' ? 'selected' : ''}>Random word groups</option><option value="real-words" ${real ? 'selected' : ''}>Real word groups</option>` : ''}</select><div class="mobile-session-options ${custom ? 'custom-session-options' : ''}" role="group" aria-label="Session length">${[['continuous', 'Unlimited'], ['characters', custom ? 'Characters' : 'Set a limit'], ...(custom ? [['words', 'Random words'], ['real-words', 'Real words']] : [])].map(([value, label]) => `<button type="button" data-length="${value}" aria-pressed="${practice.length === value}" class="${practice.length === value ? 'active' : ''}" ${disabled}>${label}</button>`).join('')}</div></div>
+    ${grouped ? `<div class="field practice-word-fields"><div class="double-fields"><div><label for="word-count">Words</label><input id="word-count" type="number" min="${real ? 2 : 1}" max="${real ? 50 : 2000}" step="1" value="${practice.words}" ${disabled}></div><div><label for="group-size">Letters per word</label><input id="group-size" type="number" min="${real ? 2 : 1}" max="${real ? 10 : 50}" step="1" value="${practice.groupSize}" ${disabled}></div></div><p>${real ? 'English words, including dictionary words. Character selection does not limit real words.' : `${practice.words * practice.groupSize} characters, with a gap between words.`}</p></div>` : practice.length === 'characters' ? `<div class="field practice-count-field"><label for="character-count">Characters</label><input id="character-count" type="number" min="1" max="10000" step="1" value="${practice.count}" ${disabled}></div>` : ''}</div>
+    <section class="character-reference-panel practice-character-reference" aria-labelledby="characters-heading"><div class="reference-heading"><h2 id="characters-heading">Characters</h2><p>Click a character or press its key outside a text field to hear it.</p></div>${characterReferenceMarkup()}</section></div>`;
   const choose = () => { cancelAudio(); practice.session = null; practice.round = null; practice.phase = 'idle'; notify(); render(); };
   document.querySelectorAll('[data-direction]').forEach((element) => element.addEventListener('click', () => { practice.direction = element.dataset.direction; choose(); }));
   document.querySelectorAll('[data-category]').forEach((element) => element.addEventListener('click', () => { practice.category = element.dataset.category; if (practice.category !== 'custom' && grouped) practice.length = 'continuous'; choose(); }));
-  $('#session-length').addEventListener('change', (event) => { practice.length = event.target.value; if (practice.length === 'real-words') { practice.words = clamp(practice.words, 2, 50, 10); practice.groupSize = clamp(practice.groupSize, 2, 10, 5); } renderPracticeSetup(); });
-  $('#custom-characters')?.addEventListener('input', (event) => { practice.custom = event.target.value.toUpperCase(); });
+  const selectLength = (value) => { practice.length = value; if (practice.length === 'real-words') { practice.words = clamp(practice.words, 2, 50, 10); practice.groupSize = clamp(practice.groupSize, 2, 10, 5); } renderPracticeSetup(); };
+  $('#session-length').addEventListener('change', (event) => selectLength(event.target.value));
+  document.querySelectorAll('[data-length]').forEach((element) => element.addEventListener('click', () => selectLength(element.dataset.length)));
+  document.querySelectorAll('[data-custom-preset]').forEach((element) => element.addEventListener('click', () => {
+    practice.customPreset = element.dataset.customPreset === practice.customPreset ? 'manual' : element.dataset.customPreset;
+    choose();
+    if (practice.customPreset === 'manual') $('#custom-characters')?.focus({ preventScroll: true });
+  }));
+  $('#custom-characters')?.addEventListener('input', (event) => { practice.customPreset = 'manual'; practice.custom = event.target.value.toUpperCase(); });
   bindCharacterReferences($('#setup-panel'));
   for (const [id, key] of [['character-count', 'count'], ['word-count', 'words'], ['group-size', 'groupSize']]) {
     $(`#${id}`)?.addEventListener('input', (event) => { practice[key] = Number(event.target.value); });
@@ -497,18 +510,21 @@ async function startAudioReplay(offset = 0) {
 }
 
 function previewPracticeKey(event) {
-  if (mode !== 'practice' || roundPractice() || event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey || event.repeat || event.isComposing) return;
+  if (mode !== 'practice' || event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey || event.repeat || event.isComposing) return;
   const character = event.key.toUpperCase();
   if (!/^[A-Z0-9]$/.test(character)) return;
   const target = event.target instanceof Element ? event.target : document.activeElement;
   if (target?.isContentEditable || target?.closest('input,textarea,select,[role="textbox"]')) return;
-  const cell = $(`[data-reference="${character}"]`);
+  const cell = $('#setup-panel').querySelector(`[data-reference="${character}"]`);
   if (!cell) return;
   if (['countdown', 'playing'].includes(practice.phase)) {
-    if (!player.pause() && practice.phase !== 'countdown') return;
-    practice.resumePhase = practice.phase;
-    practice.phase = 'paused';
-    renderActions();
+    if (roundPractice()) pauseRoundPractice();
+    else {
+      if (!player.pause() && practice.phase !== 'countdown') return;
+      practice.resumePhase = practice.phase;
+      practice.phase = 'paused';
+      renderActions();
+    }
   }
   if (toneBusy) cancelAudio();
   if (replayPlayer.isPlaying) stopReplay();
@@ -955,10 +971,16 @@ function submitRoundAnswer(answer) {
     practice.answer += attempt.actual;
     beginPracticeRound();
   } else {
+    if (practice.session.direction === 'sending') clearSendingEntry();
     renderPracticeRound();
     updateTransport();
     if (practice.session.direction === 'receiving') playPracticeRound();
   }
+}
+
+function clearSendingEntry() {
+  sendingPlayer.stop();
+  sendingInput.replace('');
 }
 
 function enterPracticeMorse(mark) {
@@ -981,6 +1003,7 @@ function checkSendingRound() {
   catch {
     practice.roundCorrect = false;
     practice.roundFeedback = 'That Morse code does not form a letter or number. Try again.';
+    clearSendingEntry();
     renderPracticeRound();
     return;
   }
@@ -996,6 +1019,7 @@ function pauseRoundPractice() {
     practice.resumePhase = practice.phase;
     practice.phase = 'paused';
   } else if (practice.phase === 'paused') {
+    stopAnswerAudio();
     if (practice.roundAudioPaused && !player.resume()) return;
     practice.phase = practice.resumePhase || 'playing';
   } else return;
@@ -1018,7 +1042,7 @@ function finishRoundPractice() {
 function getPracticeConfig() {
   const custom = practice.category === 'custom';
   const real = custom && practice.length === 'real-words';
-  const pool = custom ? [...new Set(practice.custom.toUpperCase().replace(/[^A-Z0-9]/g, ''))].join('') : practice.category === 'numbers' ? DIGITS : LETTERS;
+  const pool = custom ? [...new Set(customPracticePool().toUpperCase().replace(/[^A-Z0-9]/g, ''))].join('') : practice.category === 'numbers' ? DIGITS : LETTERS;
   if (!pool && !real) throw new Error('Choose at least one letter or number for your custom practice.');
   let total = null;
   const groupSize = custom && ['words', 'real-words'].includes(practice.length) ? practice.groupSize : 0;

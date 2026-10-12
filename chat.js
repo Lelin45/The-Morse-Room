@@ -181,7 +181,7 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
     const room = state.conversation;
     const view = panel.querySelector('.chat-conversation');
     if (!view || !room) return;
-    view.innerHTML = `<header class="chat-conversation-header">${action('back', 'Back', 'back', 'quiet chat-mobile-back')}<div class="chat-item-copy"><h2 title="${escape(room.name)}">${escape(room.type === 'direct' ? `@${room.name}` : room.name)}</h2><small class="chat-member-summary">${room.type === 'group' ? `${state.members.length} members` : 'Morse messages between friends'}</small></div>${room.type === 'group' ? action('invite', 'Invite', 'link') : ''}</header>
+    view.innerHTML = `<header class="chat-conversation-header">${action('back', 'Back', 'back', 'quiet chat-mobile-back')}<div class="chat-room-identity">${avatar(room.name, 'chat-room-avatar')}<div class="chat-item-copy"><h2 title="${escape(room.name)}">${escape(room.type === 'direct' ? `@${room.name}` : room.name)}</h2><small class="chat-member-summary">${room.type === 'group' ? `${state.members.length} members` : 'Morse messages between friends'}</small></div></div>${room.type === 'group' ? action('invite', 'Invite', 'link') : ''}</header>
       ${room.type === 'group' ? '<div class="chat-invite-details" hidden></div>' : ''}
       <div class="chat-history-actions" ${state.hasMore ? '' : 'hidden'}>${action('earlier', 'Load earlier signals', 'replay')}</div>
       <div class="chat-message-list" aria-label="Messages"></div>

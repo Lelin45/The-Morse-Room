@@ -2295,10 +2295,51 @@ html[data-theme='dark'] .chat-message-actions .button[aria-pressed='true'] {
   font-size: 11px;
 }
 
+.chat-room-avatar {
+  display: none;
+}
+
 @media (max-width: 760px) {
+  body[data-mode='chat'] .app-shell > .main-content:has(.chat-shell),
+  body[data-mode='chat'].keyboard-open .app-shell > .main-content:has(.chat-shell) {
+    padding: 0;
+  }
+
+  body[data-mode='chat'] #chat-panel:has(.chat-shell) {
+    overflow: hidden;
+  }
+
+  .chat-shell {
+    border: 0;
+    border-radius: 0;
+  }
+
   .chat-conversation-header {
-    min-height: 48px;
-    padding: 5px 8px;
+    min-height: 54px;
+    padding: 6px 10px;
+    background: var(--card);
+  }
+
+  .chat-room-identity {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .chat-room-identity .chat-item-copy {
+    gap: 1px;
+    min-width: 0;
+  }
+
+  .chat-room-avatar {
+    display: flex;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    font-size: 12px;
+    font-weight: 600;
   }
 
   .chat-conversation-header h2 {
@@ -2314,7 +2355,8 @@ html[data-theme='dark'] .chat-message-actions .button[aria-pressed='true'] {
 
   .chat-message-list {
     gap: 8px;
-    padding: 10px 8px;
+    padding: 12px 10px;
+    background: var(--paper);
   }
 
   .chat-message-row {
@@ -2322,7 +2364,12 @@ html[data-theme='dark'] .chat-message-actions .button[aria-pressed='true'] {
   }
 
   .chat-message-row .chat-message {
-    padding: 9px 11px;
+    padding: 8px 10px;
+    background: var(--card);
+  }
+
+  .chat-message-row.mine .chat-message {
+    background: var(--soft-green);
   }
 
   .chat-message-meta {
@@ -2336,27 +2383,29 @@ html[data-theme='dark'] .chat-message-actions .button[aria-pressed='true'] {
   }
 
   .chat-message-morse {
-    font-size: 15px;
-    letter-spacing: 1px;
+    font-size: 14px;
+    letter-spacing: .8px;
     line-height: 1.6;
   }
 
   .chat-message-text {
-    margin-top: 7px;
-    padding-top: 7px;
-    font-size: 14px;
+    margin-top: 6px;
+    padding-top: 6px;
+    font-size: 13px;
     line-height: 1.5;
   }
 
   .chat-message-actions {
     gap: 2px;
     margin-top: 0;
+    padding: 0 2px;
   }
 
   .chat-message-actions .button {
+    min-width: 82px;
     min-height: 36px;
-    padding: 5px 7px;
-    font-size: 11px;
+    padding: 5px 6px;
+    font-size: 12px;
   }
 
   .chat-message-actions .button svg {
@@ -2367,7 +2416,8 @@ html[data-theme='dark'] .chat-message-actions .button[aria-pressed='true'] {
   .chat-compose,
   .chat-compose:has(textarea.is-morse) {
     gap: 4px;
-    padding: 5px 8px max(6px, env(safe-area-inset-bottom));
+    padding: 4px 10px max(8px, env(safe-area-inset-bottom));
+    background: var(--card);
   }
 
   .chat-compose-heading {

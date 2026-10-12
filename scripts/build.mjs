@@ -13,6 +13,7 @@ const publicFiles = [
   'privacy.html', 'terms.html',
   'google-signin-light.png', 'google-signin-dark.png',
 ];
+const textFile = (name) => /\.(?:html|js|css)$/.test(name);
 
 // Read the entire allowlist before replacing an existing successful build.
 const files = await Promise.all(publicFiles.map(async (name) => {
@@ -21,8 +22,57 @@ const files = await Promise.all(publicFiles.map(async (name) => {
   if (!info.isFile() || info.isSymbolicLink()) {
     throw new Error(`Expected a regular public source file: ${name}`);
   }
-  return { name, body: await readFile(path) };
+  const source = await readFile(path);
+  const body = textFile(name)
+    ? Buffer.from(source.toString('utf8').replace(/\r\n?/g, '\n'))
+    : source;
+  return { name, body };
 }));
+
+// A release gets new entry URLs and a new complete module graph. An older
+// browser cache therefore cannot combine newly deployed HTML with old code.
+const releaseHash = createHash('sha256');
+releaseHash.update('morse-public-release-v1\0');
+for (const { name, body } of files) {
+  releaseHash.update(name).update('\0').update(String(body.length)).update('\0').update(body);
+}
+const release = releaseHash.digest('hex').slice(0, 20);
+const versioned = Object.fromEntries(files
+  .filter(({ name }) => /\.(?:js|css)$/.test(name))
+  .map(({ name }) => [name, name.replace(/\.(js|css)$/, `.${release}.$1`)]));
+const publicNames = new Set(publicFiles);
+
+function rewriteModule(body) {
+  return body.toString('utf8').replace(
+    /(\bfrom\s*|\bimport\s*\(\s*|\bimport\s*)(['"])(\.\/[^'"]+)\2/g,
+    (match, prefix, quote, specifier) => {
+      const name = specifier.slice(2);
+      if (!publicNames.has(name) || !name.endsWith('.js') || !versioned[name]) {
+        throw new Error(`Module import is not a public JavaScript asset: ${specifier}`);
+      }
+      return `${prefix}${quote}./${versioned[name]}${quote}`;
+    },
+  );
+}
+
+function rewriteHtml(body) {
+  return body.toString('utf8').replace(
+    /(\b(?:src|href)\s*=\s*)(['"])([^'"]+)\2/g,
+    (match, prefix, quote, url) => {
+      const name = url.replace(/^\.\//, '');
+      return versioned[name] ? `${prefix}${quote}${versioned[name]}${quote}` : match;
+    },
+  );
+}
+
+// Finish all transformations before replacing an existing successful build.
+const builtFiles = files.flatMap(({ name, body }) => {
+  const transformed = name.endsWith('.js') ? rewriteModule(body)
+    : name.endsWith('.html') ? rewriteHtml(body) : body;
+  return versioned[name]
+    ? [{ name, body: transformed }, { name: versioned[name], body: transformed }]
+    : [{ name, body: transformed }];
+});
 
 // Refuse a redirected output directory before removing stale public assets.
 if (relative(root, output) !== 'public') throw new Error('Unexpected public output path.');
@@ -40,9 +90,9 @@ if (existing) {
   await rm(output, { recursive: true });
 }
 await mkdir(output);
-await Promise.all(files.map(({ name, body }) => writeFile(resolve(output, name), body)));
+await Promise.all(builtFiles.map(({ name, body }) => writeFile(resolve(output, name), body)));
 
-const inlineScripts = [...new Set(files.filter(({ name }) => name.endsWith('.html'))
+const inlineScripts = [...new Set(builtFiles.filter(({ name }) => name.endsWith('.html'))
   .flatMap(({ body }) => [...body.toString('utf8')
     .matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi)])
   .filter((match) => !/\bsrc\s*=/i.test(match[1]))
@@ -71,6 +121,10 @@ await writeFile(resolve(output, '_headers'), `/*
   X-Frame-Options: DENY
   Permissions-Policy: camera=(), microphone=(), geolocation=()
   Content-Security-Policy: ${policy}
+${['/', '/index.html', '/privacy.html', '/terms.html', '/asset-manifest.json', ...Object.keys(versioned).map((name) => `/${name}`)]
+  .map((url) => `${url}\n  Cache-Control: no-cache, max-age=0, must-revalidate`).join('\n')}
+${Object.values(versioned).map((name) => `/${name}\n  Cache-Control: public, max-age=31536000, immutable`).join('\n')}
 `);
+await writeFile(resolve(output, 'asset-manifest.json'), JSON.stringify({ release, assets: versioned }, null, 2) + '\n');
 
-console.log(`Built ${publicFiles.length} public assets and Pages routing/security headers in public/.`);
+console.log(`Built ${publicFiles.length} public sources with release ${release} and Pages routing/security headers in public/.`);

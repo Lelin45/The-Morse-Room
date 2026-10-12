@@ -84,8 +84,8 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
     accountToggle.innerHTML = state.user ? `${state.user.username ? avatar(state.user.username) : icon('user')}<span class="account-name">${escape(state.user.username ? `@${state.user.username}` : 'Account')}</span>` : icon('user');
     accountToggle.setAttribute('aria-label', state.user ? `Account: ${state.user.username || 'choose a username'}` : 'Account: sign in');
     accountMenu.innerHTML = state.user
-      ? `<div class="account-menu-heading"><strong>${escape(state.user.username ? `@${state.user.username}` : 'Your account')}</strong><small class="account-menu-meta">Signed in with Google</small></div>${state.user.username ? action('profile', 'Edit username', 'user', 'quiet') : action('open-chat', 'Choose username', 'user', 'quiet')}${action('open-chat', 'Morse Chat Room', 'chat', 'quiet')}${action('logout', 'Sign out', '', 'quiet')}<p class="account-status chat-error" role="status" hidden></p>`
-      : `<div class="account-menu-heading"><strong>Sign in to chat</strong><small class="account-menu-meta">Learn and Practice need no account.</small></div>${googleButton(available)}${!state.ready ? '<p>Checking sign-in...</p>' : !available ? '<p>Chat sign-in is being connected.</p>' : ''}<p class="chat-legal">By signing in, you agree to the <a href="terms.html">chat terms</a> and <a href="privacy.html">privacy notice</a>.</p>`;
+      ? `<div class="account-menu-heading"><strong>${escape(state.user.username ? `@${state.user.username}` : 'Your account')}</strong><small class="account-menu-meta">${state.user.isReviewer ? 'Review account · Test data' : 'Signed in with Google'}</small></div>${state.user.username ? action('profile', 'Edit username', 'user', 'quiet') : action('open-chat', 'Choose username', 'user', 'quiet')}${action('open-chat', 'Morse Chat Room', 'chat', 'quiet')}${state.user.username ? action('blocked', 'Blocked people', '', 'quiet') : ''}${action('logout', 'Sign out', '', 'quiet')}${action('delete-account', 'Delete account', '', 'quiet chat-danger-action')}<p class="account-status chat-error" role="status" hidden></p><p class="chat-legal"><a href="privacy.html">Privacy Policy</a> · <a href="terms.html">Terms and Conditions</a></p>`
+      : `<div class="account-menu-heading"><strong>Sign in to chat</strong><small class="account-menu-meta">Learn and Practice need no account.</small></div>${googleButton(available)}${!state.ready ? '<p>Checking sign-in...</p>' : !available ? '<p>Chat sign-in is being connected.</p>' : ''}${action('review-access', 'Review access', '', 'quiet chat-review-access')}<p class="chat-legal">By signing in, you agree to the <a href="terms.html">chat terms</a> and <a href="privacy.html">privacy notice</a>.</p>`;
   }
 
   function closeAccount() { accountMenu.hidden = true; accountToggle.setAttribute('aria-expanded', 'false'); }
@@ -98,6 +98,7 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
       state.selected = null; state.conversation = null; state.messages = []; state.revealed.clear();
       state.draft = ''; state.draftByMode = { text: '', morse: '' }; state.drafts.clear(); state.pendingSends.clear();
       status(); closeAccount(); render(); updateBell();
+      window.dispatchEvent(new CustomEvent('morse-native-auth-cleared'));
     } catch (error) {
       status(error.message, true);
       const node = accountMenu.querySelector('.account-status');
@@ -117,7 +118,7 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
       <div class="chat-shell" data-view="${state.view}">
         <aside class="chat-sidebar" aria-label="Your conversations">
           <div class="chat-toolbar">${action('friend', 'Add friend', 'user-plus')}${action('new-group', 'New group', 'users')}${action('join-group', 'Join group', 'link')}</div>
-          <div class="chat-list-heading"><strong>Conversations</strong><span id="chat-conversation-count">${state.inbox.conversations.length}</span></div>
+          <div class="chat-list-heading"><strong>${state.user.isReviewer ? 'Test conversations' : 'Conversations'}</strong><span id="chat-conversation-count">${state.inbox.conversations.length}</span></div>
           <div class="chat-conversation-list"></div>
           <p class="chat-sidebar-note">Friends accept your request before you can chat. Groups are invite only.</p>
         </aside>
@@ -134,6 +135,7 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
       <div class="chat-intro-copy"><h2>Chat in Morse with friends</h2><p>Write a message or send your own dits and dahs.</p>
       <ul class="chat-feature-list"><li>${icon('user-plus')}Find friends by username or email.</li><li>${icon('users')}Make a private group. Invite by code or link.</li><li>${icon('volume')}Read the Morse, listen, or reveal the words.</li></ul>
       <div class="chat-auth-actions">${googleButton(available)}</div>
+      ${action('review-access', 'Review access', '', 'quiet chat-review-access')}
       <p class="chat-form-help">${available ? 'Pick a username after signing in. Learn and Practice stay free, with no account needed.' : 'Chat is being connected. Every lesson and practice session is available now.'}</p>
       ${available ? '' : action('retry', 'Check again', 'replay', 'quiet')}
       <p class="chat-status ${state.statusError ? 'chat-error' : ''}" role="status" ${state.status ? '' : 'hidden'}>${escape(state.status)}</p>
@@ -181,7 +183,7 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
     const room = state.conversation;
     const view = panel.querySelector('.chat-conversation');
     if (!view || !room) return;
-    view.innerHTML = `<header class="chat-conversation-header">${action('back', 'Back', 'back', 'quiet chat-mobile-back')}<div class="chat-room-identity">${avatar(room.name, 'chat-room-avatar')}<div class="chat-item-copy"><h2 title="${escape(room.name)}">${escape(room.type === 'direct' ? `@${room.name}` : room.name)}</h2><small class="chat-member-summary">${room.type === 'group' ? `${state.members.length} members` : 'Morse messages between friends'}</small></div></div>${room.type === 'group' ? action('invite', 'Invite', 'link') : ''}</header>
+    view.innerHTML = `<header class="chat-conversation-header">${action('back', 'Back', 'back', 'quiet chat-mobile-back')}<div class="chat-room-identity">${avatar(room.name, 'chat-room-avatar')}<div class="chat-item-copy"><h2 title="${escape(room.name)}">${escape(room.type === 'direct' ? `@${room.name}` : room.name)}</h2><small class="chat-member-summary">${room.type === 'group' ? `${state.members.length} members` : 'Morse messages between friends'}</small></div></div>${room.type === 'group' ? action('invite', 'Invite', 'link') : room.peer?.id ? action('block', 'Block', '', 'quiet chat-block-button') : ''}</header>
       ${room.type === 'group' ? '<div class="chat-invite-details" hidden></div>' : ''}
       <div class="chat-history-actions" ${state.hasMore ? '' : 'hidden'}>${action('earlier', 'Load earlier signals', 'replay')}</div>
       <div class="chat-message-list" aria-label="Messages"></div>
@@ -311,7 +313,7 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
       const mine = String(item.senderId) === String(state.user.id);
       const listening = state.listening === String(item.id);
       const shown = state.revealed.has(String(item.id));
-      return `<div class="chat-message-row ${mine ? 'mine' : ''}" data-message="${escape(item.id)}"><article class="chat-message ${mine ? 'mine' : ''} ${listening ? 'listening' : ''}"><div class="chat-message-meta"><strong>@${escape(item.username)}</strong><time>${escape(dateLabel(item.createdAt))}</time></div><p class="chat-message-morse" aria-label="Morse code message">${escape(item.morse)}</p><p class="chat-message-text ${shown ? '' : 'is-concealed'}" aria-hidden="${!shown}">${escape(item.text)}</p></article><div class="chat-message-actions"><button type="button" class="button quiet" data-reveal="${escape(item.id)}" aria-expanded="${shown}">${icon('eye')}${shown ? 'Hide text' : 'Show text'}</button><button type="button" class="button quiet" data-listen="${escape(item.id)}" aria-pressed="${listening}">${icon(listening ? 'stop' : 'volume')}${listening ? 'Stop audio' : 'Listen'}</button></div></div>`;
+      return `<div class="chat-message-row ${mine ? 'mine' : ''}" data-message="${escape(item.id)}"><article class="chat-message ${mine ? 'mine' : ''} ${listening ? 'listening' : ''}"><div class="chat-message-meta"><strong>@${escape(item.username)}</strong><time>${escape(dateLabel(item.createdAt))}</time></div><p class="chat-message-morse" aria-label="Morse code message">${escape(item.morse)}</p><p class="chat-message-text ${shown ? '' : 'is-concealed'}" aria-hidden="${!shown}">${escape(item.text)}</p></article><div class="chat-message-actions"><button type="button" class="button quiet" data-reveal="${escape(item.id)}" aria-expanded="${shown}">${icon('eye')}${shown ? 'Hide text' : 'Show text'}</button><button type="button" class="button quiet" data-listen="${escape(item.id)}" aria-pressed="${listening}">${icon(listening ? 'stop' : 'volume')}${listening ? 'Stop audio' : 'Listen'}</button>${mine ? '' : `<button type="button" class="button quiet chat-report-button" data-report="${escape(item.id)}" aria-label="Report message from ${escape(item.username)}">Report</button>`}</div></div>`;
     }).join('') : '<div class="chat-empty"><h3>You found each other.</h3><p>Send a hello in Morse. The words stay hidden until revealed.</p></div>';
     if (scrollToEnd || nearBottom) list.scrollTop = list.scrollHeight;
     else list.scrollTop = previousTop;
@@ -463,6 +465,114 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
     finally { if (token === state.audioToken) stopAudio(); }
   }
 
+  function safetyDialog(title, body, submitLabel, onSubmit) {
+    document.querySelector('.chat-dialog')?.close();
+    const previousFocus = document.activeElement;
+    const dialog = document.createElement('dialog');
+    dialog.className = 'chat-dialog chat-safety-dialog';
+    dialog.setAttribute('aria-labelledby', 'chat-safety-title');
+    dialog.innerHTML = `<form><div class="chat-dialog-header"><h2 id="chat-safety-title">${escape(title)}</h2><button type="button" class="button quiet" data-dialog-close aria-label="Close">${icon('close')}</button></div><div class="chat-dialog-body">${body}<p class="chat-form-help chat-dialog-status" role="status" hidden></p></div><div class="chat-dialog-actions"><button type="button" class="button" data-dialog-close>${submitLabel ? 'Cancel' : 'Close'}</button>${submitLabel ? `<button type="submit" class="button primary">${escape(submitLabel)}</button>` : ''}</div></form>`;
+    document.body.append(dialog);
+    dialog.querySelectorAll('[data-dialog-close]').forEach((button) => button.addEventListener('click', () => dialog.close()));
+    dialog.addEventListener('close', () => { dialog.remove(); if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true }); });
+    dialog.querySelector('form').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const submit = dialog.querySelector('[type=submit]');
+      if (!submit || submit.disabled || !onSubmit) return;
+      submit.disabled = true;
+      try { await onSubmit(new FormData(event.target), dialog); }
+      catch (error) {
+        const feedback = dialog.querySelector('.chat-dialog-status');
+        feedback.hidden = false; feedback.textContent = error.message; feedback.classList.add('chat-error');
+      } finally { if (dialog.isConnected) submit.disabled = false; }
+    });
+    dialog.showModal();
+    return dialog;
+  }
+
+  function showDeleteAccount() {
+    if (!state.user) return;
+    const dialog = safetyDialog('Delete your account', `<p class="chat-form-help" id="chat-delete-impact">This permanently removes your chat account, your messages, friendships, and direct conversations. Groups with other members remain. You cannot undo this.</p><p class="chat-form-help">Your Google account and saved training progress on this device stay as they are. <a href="privacy.html#deletion">Read the deletion details</a>.</p><label class="chat-field">Type DELETE to confirm<input name="confirmation" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="6" pattern="DELETE" aria-describedby="chat-delete-impact" required></label>`, 'Delete account', async (data, currentDialog) => {
+      if (data.get('confirmation') !== 'DELETE') throw new Error('Type DELETE to confirm.');
+      await api('/account/delete', { confirmation: 'DELETE' });
+      stopAudio(); state.fetchId += 1; state.user = null;
+      state.inbox = { friends: [], requests: [], conversations: [], unread: 0 };
+      state.selected = null; state.conversation = null; state.messages = []; state.members = []; state.revealed.clear();
+      state.draft = ''; state.draftByMode = { text: '', morse: '' }; state.drafts.clear(); state.pendingSends.clear();
+      currentDialog.close(); closeAccount();
+      status('Your chat account was deleted. Your saved training progress is still on this device.');
+      render(); updateBell();
+      window.dispatchEvent(new CustomEvent('morse-native-auth-cleared'));
+    });
+    const input = dialog.querySelector('[name=confirmation]');
+    const submit = dialog.querySelector('[type=submit]');
+    submit.classList.add('chat-danger-action'); submit.disabled = true;
+    input.addEventListener('input', () => { submit.disabled = input.value !== 'DELETE'; });
+    input.focus();
+  }
+
+  function showReviewAccess() {
+    if (state.user) return;
+    safetyDialog('Review access', `<p class="chat-form-help">For app review only. This account uses test conversations and cannot contact ordinary chat accounts.</p><label class="chat-field">Email<input name="email" type="email" autocomplete="username" autocapitalize="none" spellcheck="false" required></label><label class="chat-field">Password<input name="password" type="password" autocomplete="current-password" required></label>`, 'Sign in', async (data, dialog) => {
+      await api('/auth/reviewer', { email: String(data.get('email')).trim(), password: String(data.get('password')) });
+      dialog.close(); closeAccount(); state.ready = false;
+      await boot(); status('Review account: conversations use test data.');
+    });
+  }
+
+  function showBlockPerson(person) {
+    if (!state.user?.username || !person?.id || String(person.id) === String(state.user.id)) return;
+    const username = person.username || 'this person';
+    safetyDialog(`Block @${username}?`, `<p class="chat-form-help">They will not be able to send you direct messages or friend requests. Their messages in shared groups will be hidden from you.</p><p class="chat-form-help">You can unblock them later from your account menu. Unblocking does not restore a friendship automatically.</p>`, 'Block person', async (_data, dialog) => {
+      const selected = state.selected;
+      const isDirect = state.conversation?.type === 'direct';
+      await api('/blocks', { userId: String(person.id) });
+      saveDraft(); stopAudio(); state.fetchId += 1;
+      state.messages = state.messages.filter((message) => String(message.senderId) !== String(person.id));
+      if (isDirect) {
+        state.drafts.delete(String(selected)); state.pendingSends.delete(String(selected));
+        state.selected = null; state.conversation = null; state.messages = []; state.members = []; state.view = 'list';
+        state.draft = ''; state.draftByMode = { text: '', morse: '' }; render();
+      }
+      dialog.close(); await refreshInbox();
+      if (!isDirect && selected && state.active) await selectConversation(selected);
+      status(`@${username} is blocked.`);
+    });
+  }
+
+  async function showBlockedPeople() {
+    if (!state.user?.username) return;
+    const dialog = safetyDialog('Blocked people', '<p class="chat-form-help">Unblocking lets someone send you a new friend request.</p><div class="chat-blocked-list" role="status">Loading...</div>', '', null);
+    const list = dialog.querySelector('.chat-blocked-list');
+    async function refresh() {
+      const data = await api('/blocks');
+      if (!dialog.isConnected) return;
+      list.innerHTML = data.blocks?.length ? data.blocks.map((person) => `<div class="chat-blocked-person"><strong>@${escape(person.username)}</strong><button type="button" class="button" data-unblock="${escape(person.id)}">Unblock</button></div>`).join('') : '<p class="chat-form-help">You have not blocked anyone.</p>';
+    }
+    list.addEventListener('click', async (event) => {
+      const button = event.target.closest('[data-unblock]');
+      if (!button || button.disabled) return;
+      button.disabled = true;
+      try { await api('/blocks/remove', { userId: button.dataset.unblock }); await refresh(); await refreshInbox(); }
+      catch (error) {
+        const feedback = dialog.querySelector('.chat-dialog-status');
+        feedback.hidden = false; feedback.textContent = error.message; feedback.classList.add('chat-error');
+        button.disabled = false;
+      }
+    });
+    try { await refresh(); }
+    catch (error) { if (dialog.isConnected) { list.textContent = error.message; list.classList.add('chat-error'); } }
+  }
+
+  function showReport(message) {
+    if (!message || String(message.senderId) === String(state.user?.id)) return;
+    const dialog = safetyDialog('Report a message', `<p class="chat-form-help">The message and your reason will be sent to the developer for review. The other person will not see your report.</p><label class="chat-field">Reason<select name="reason" required><option value="spam">Spam</option><option value="harassment">Harassment or bullying</option><option value="hate">Hate or discrimination</option><option value="sexual_content">Sexual content</option><option value="threats">Threats or danger</option><option value="other">Something else</option></select></label><label class="chat-field">Details (optional)<textarea name="details" rows="3" maxlength="1000" placeholder="What happened?"></textarea></label><button type="button" class="button quiet" data-report-block>Block @${escape(message.username)}</button>`, 'Send report', async (data, currentDialog) => {
+      await api('/reports', { messageId: Number(message.id), reason: String(data.get('reason')), details: String(data.get('details') || '').trim() });
+      currentDialog.close(); status('Report received. The developer will review it.');
+    });
+    dialog.querySelector('[data-report-block]').addEventListener('click', () => { dialog.close(); showBlockPerson({ id: message.senderId, username: message.username }); });
+  }
+
   function showDialog(kind, initialCode = '') {
     document.querySelector('.chat-dialog')?.remove();
     const settings = {
@@ -606,12 +716,16 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
     }
     const audio = event.target.closest('[data-listen]');
     if (audio) { const item = state.messages.find((item) => String(item.id) === audio.dataset.listen); if (item) await listen(item.text, String(item.id)); return; }
+    const report = event.target.closest('[data-report]');
+    if (report) { showReport(state.messages.find((item) => String(item.id) === report.dataset.report)); return; }
     const button = event.target.closest('[data-chat-action]');
     if (!button) return;
     switch (button.dataset.chatAction) {
       case 'retry':
         state.ready = false; render(); await boot(); break;
       case 'friend': case 'new-group': case 'join-group': showDialog(button.dataset.chatAction); break;
+      case 'block': showBlockPerson(state.conversation?.peer); break;
+      case 'review-access': showReviewAccess(); break;
       case 'earlier': {
         if (!state.selected || button.disabled) break;
         const id = state.selected;
@@ -677,6 +791,12 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
       closeAccount(); onEnter();
     } else if (button.dataset.chatAction === 'profile') {
       closeAccount(); showDialog('profile', state.user.username);
+    } else if (button.dataset.chatAction === 'delete-account') {
+      closeAccount(); showDeleteAccount();
+    } else if (button.dataset.chatAction === 'blocked') {
+      closeAccount(); await showBlockedPeople();
+    } else if (button.dataset.chatAction === 'review-access') {
+      closeAccount(); showReviewAccess();
     }
   });
   document.addEventListener('click', (event) => { if (!event.target.closest('.account-control')) closeAccount(); });
@@ -701,7 +821,7 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
   async function boot() {
     try {
       state.config = await api('/config');
-      if (state.config.available) state.user = (await api('/me')).user;
+      state.user = state.config.available ? (await api('/me')).user : null;
       if (state.user?.username) await refreshInbox();
     } catch { state.config = { available: false, providers: {} }; }
     finally { state.ready = true; render(); updateBell(); await offerPendingJoin(); }
@@ -714,6 +834,18 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
       saveDraft(); morseInput.flush(); updateComposer();
       if (state.composeMode === 'morse' && mobile.matches) panel.querySelector('#chat-draft').blur();
     }
+  });
+  let nativeAuthRefreshing = false;
+  window.addEventListener('morse-native-auth-complete', () => {
+    if (nativeAuthRefreshing) return;
+    nativeAuthRefreshing = true;
+    saveDraft(); stopAudio(); state.fetchId += 1;
+    state.ready = false; state.user = null;
+    state.selected = null; state.conversation = null; state.messages = []; state.members = []; state.revealed.clear();
+    state.draft = ''; state.draftByMode = { text: '', morse: '' }; state.drafts.clear(); state.pendingSends.clear();
+    state.inbox = { friends: [], requests: [], conversations: [], unread: 0 };
+    render();
+    void boot().finally(() => { nativeAuthRefreshing = false; });
   });
   window.addEventListener('resize', () => {
     const input = panel.querySelector('#chat-draft');

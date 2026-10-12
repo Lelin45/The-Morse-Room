@@ -170,7 +170,7 @@ test('expired session, OAuth, and rate-limit rows are removed on a new sign-in s
   try {
     env.DB.sqlite.exec(`INSERT INTO chat_users VALUES ('old',NULL,NULL,1);
       INSERT INTO chat_sessions VALUES ('expired','old',1,1);
-      INSERT INTO chat_oauth_states VALUES ('expired','expired','google','old','old',1);
+      INSERT INTO chat_oauth_states(state_hash,binding_hash,provider,nonce,verifier,expires_at) VALUES ('expired','expired','google','old','old',1);
       INSERT INTO chat_rate_limits VALUES ('expired',1,1,1);`);
     await startOAuth('google', new Request(`${env.SITE_URL}/api/auth/google`), env);
     assert.equal(env.DB.sqlite.prepare("SELECT COUNT(*) n FROM chat_sessions WHERE token_hash = 'expired'").get().n, 0);

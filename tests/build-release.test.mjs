@@ -15,7 +15,7 @@ const sources = [
   'replay.js', 'styles.css', 'chat.js', 'chat-codec.js', 'chat.css',
   'mobile-shell.js', 'mobile-practice-session.js', 'timed-morse.js',
   'practice.css', 'practice-round-session.js', 'qwerty-keyboard.js', 'real-word-bank.js',
-  'privacy.html', 'terms.html', 'google-signin-light.png', 'google-signin-dark.png',
+  'privacy.html', 'terms.html', 'delete-account.html', 'delete-account.js', 'google-signin-light.png', 'google-signin-dark.png',
 ];
 
 async function fixture(t) {

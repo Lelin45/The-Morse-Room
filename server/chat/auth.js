@@ -95,6 +95,16 @@ export async function verifyIDToken(token, provider, audience, nonce, fetcher = 
 export async function startOAuth(provider, request, env) {
   requireSite(env);
   requireProvider(provider, env);
+  const params = new URL(request.url).searchParams;
+  const mobileChallenge = params.get('mobile_challenge');
+  const mobileState = params.get('mobile_state');
+  const mobile = mobileChallenge !== null || mobileState !== null;
+  if (mobile && (!/^[A-Za-z0-9_-]{43}$/.test(mobileChallenge || '')
+      || !/^[A-Za-z0-9_-]{32,128}$/.test(mobileState || ''))) {
+    throw new ApiError(400, 'invalid_mobile_request', 'Start sign-in again from the app.');
+  }
+  // Return paths are a fixed allowlist, never an arbitrary redirect URL.
+  const returnPath = params.get('return') === 'delete-account' ? '/delete-account.html' : null;
   const ip = request.headers.get('CF-Connecting-IP') || 'local';
   await rateLimit(env, `oauth:${await hashToken(ip)}`, 30, 900);
   const state = randomToken();
@@ -106,8 +116,10 @@ export async function startOAuth(provider, request, env) {
     ['DELETE FROM chat_oauth_states WHERE expires_at <= ?', now],
     ['DELETE FROM chat_sessions WHERE expires_at <= ?', now],
     ['DELETE FROM chat_rate_limits WHERE expires_at <= ?', now],
-    ['INSERT INTO chat_oauth_states(state_hash, binding_hash, provider, nonce, verifier, expires_at) VALUES (?, ?, ?, ?, ?, ?)',
-      await hashToken(state), await hashToken(binding), provider, nonce, verifier, now + STATE_SECONDS * 1000],
+    ['DELETE FROM chat_mobile_codes WHERE expires_at <= ?', now],
+    ['INSERT INTO chat_oauth_states(state_hash, binding_hash, provider, nonce, verifier, expires_at, mobile_challenge, mobile_state, return_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      await hashToken(state), await hashToken(binding), provider, nonce, verifier, now + STATE_SECONDS * 1000,
+      mobile ? mobileChallenge : null, mobile ? mobileState : null, returnPath],
   ]);
   const url = new URL(PROVIDERS[provider].authorization);
   const callback = new URL(`/api/auth/${provider}/callback`, requireSite(env)).href;
@@ -140,25 +152,32 @@ export async function finishOAuth(provider, request, env) {
     throw new ApiError(400, 'invalid_oauth_state', 'Sign-in expired or was started in another browser. Please try again.');
   }
   const pending = await one(env, `DELETE FROM chat_oauth_states
-    WHERE state_hash = ? AND binding_hash = ? AND provider = ? AND expires_at > ? RETURNING nonce, verifier`,
+    WHERE state_hash = ? AND binding_hash = ? AND provider = ? AND expires_at > ? RETURNING nonce, verifier, mobile_challenge, mobile_state, return_path`,
     await hashToken(state), await hashToken(binding), provider, Date.now());
   if (!pending) throw new ApiError(400, 'invalid_oauth_state', 'Sign-in expired or has already been used. Please try again.');
-  const code = params.get('code');
-  if (params.has('error') || !code || code.length > 4096) throw new ApiError(400, 'oauth_cancelled', 'Sign-in was not completed.');
-  const clientId = env.GOOGLE_CLIENT_ID;
-  const exchange = new URLSearchParams({
-    grant_type: 'authorization_code', code, client_id: clientId,
-    redirect_uri: new URL(`/api/auth/${provider}/callback`, requireSite(env)).href,
-    client_secret: env.GOOGLE_CLIENT_SECRET, code_verifier: pending.verifier,
-  });
-  const tokens = await externalJSON(PROVIDERS[provider].token, {
-    method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: exchange,
-  });
-  const claims = await verifyIDToken(tokens.id_token, provider, clientId, pending.nonce);
-  const emailVerified = claims.email_verified === true || claims.email_verified === 'true';
-  const email = emailVerified && typeof claims.email === 'string' && claims.email.length <= 254
-    && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(claims.email) ? claims.email.trim().toLowerCase() : null;
-  return { provider, subject: claims.sub, email };
+  const mobile = pending.mobile_challenge ? { challenge: pending.mobile_challenge, state: pending.mobile_state } : undefined;
+  try {
+    const code = params.get('code');
+    if (params.has('error') || !code || code.length > 4096) throw new ApiError(400, 'oauth_cancelled', 'Sign-in was not completed.');
+    const clientId = env.GOOGLE_CLIENT_ID;
+    const exchange = new URLSearchParams({
+      grant_type: 'authorization_code', code, client_id: clientId,
+      redirect_uri: new URL(`/api/auth/${provider}/callback`, requireSite(env)).href,
+      client_secret: env.GOOGLE_CLIENT_SECRET, code_verifier: pending.verifier,
+    });
+    const tokens = await externalJSON(PROVIDERS[provider].token, {
+      method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: exchange,
+    });
+    const claims = await verifyIDToken(tokens.id_token, provider, clientId, pending.nonce);
+    const emailVerified = claims.email_verified === true || claims.email_verified === 'true';
+    const email = emailVerified && typeof claims.email === 'string' && claims.email.length <= 254
+      && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(claims.email) ? claims.email.trim().toLowerCase() : null;
+    return { provider, subject: claims.sub, email, ...(mobile ? { mobile } : {}),
+      ...(pending.return_path === '/delete-account.html' ? { returnTo: pending.return_path } : {}) };
+  } catch (error) {
+    if (mobile && error instanceof ApiError) error.mobile = mobile;
+    throw error;
+  }
 }
 
 /** Provider subject, never email, determines which account signs in. */
@@ -197,8 +216,10 @@ export async function sessionUser(request, env) {
   if (!env.DB || !siteURL(env)) return null;
   const token = readCookie(request, cookieName(env, 'session'));
   if (!/^[A-Za-z0-9_-]{43}$/.test(token || '')) return null;
-  return one(env, `SELECT u.id, u.username FROM chat_sessions s
+  const user = await one(env, `SELECT u.id, u.username FROM chat_sessions s
     JOIN chat_users u ON u.id = s.user_id WHERE s.token_hash = ? AND s.expires_at > ?`, await hashToken(token), Date.now());
+  if (user && await one(env, 'SELECT 1 AS review FROM chat_review_users WHERE user_id = ?', user.id)) user.isReviewer = true;
+  return user;
 }
 
 export async function endSession(request, env) {

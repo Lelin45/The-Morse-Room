@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Delete your Morse Code Nepal account and its chat data, or contact the developer if you cannot sign in.">
+  <title>Delete Account | Morse Code Nepal</title>
+  <script>try{document.documentElement.dataset.theme=localStorage.getItem('morse-room-theme')==='dark'?'dark':'light'}catch{}</script>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="chat.css">
+  <script type="module" src="delete-account.js"></script>
+</head>
+<body>
+<main class="chat-policy chat-delete-page">
+  <a class="button" href="./">Return to Morse Room</a>
+  <h1>Delete your account</h1>
+  <p><strong>Morse Code Nepal</strong> (com.morsenepal) and The Morse Room are provided by Lelin Adhikari.</p>
+  <p>Deleting your account permanently removes your chat profile, sign-in records, friendships, requests, memberships, blocked-person records, and messages you sent. Your direct conversations are also removed. Related safety reports are removed.</p>
+  <p>Groups with other members remain under another member's ownership. An empty group is removed. Your Google account and locally saved training progress are separate and are not deleted. Clear browser site data or app storage to remove local progress and settings.</p>
+  <p>Removal from the live database happens when deletion completes. Cloudflare's automatic database recovery history can contain earlier records for up to seven days. Copies saved by people who received your messages cannot be removed by this service.</p>
+  <section class="chat-delete-card" aria-labelledby="delete-action-heading">
+    <h2 id="delete-action-heading">Confirm account deletion</h2>
+    <p id="delete-status" role="status" aria-live="polite">Checking your sign-in...</p>
+    <div id="delete-signin" hidden>
+      <p>Sign in with the Google account you use for Morse Chat Room to confirm which account you want to delete. You do not need to choose a username first.</p>
+      <a class="button chat-provider-button" href="/api/auth/google?return=delete-account"><span class="sr-only">Sign in with Google</span><img class="chat-google-light" src="google-signin-light.png" width="180" height="40" alt="" aria-hidden="true"><img class="chat-google-dark" src="google-signin-dark.png" width="180" height="40" alt="" aria-hidden="true"></a>
+    </div>
+    <form id="delete-form" hidden>
+      <p>Deleting <strong id="delete-account-name">your account</strong>. This cannot be undone.</p>
+      <label class="chat-field" for="delete-confirmation">Type DELETE to confirm
+        <input id="delete-confirmation" name="confirmation" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="6" pattern="DELETE" required>
+      </label>
+      <button type="submit" class="button primary chat-danger-action" disabled>Delete account permanently</button>
+    </form>
+    <button id="delete-retry" type="button" class="button" hidden>Try again</button>
+    <noscript><p>JavaScript is required for online account deletion. You can request deletion by email using the contact below.</p></noscript>
+  </section>
+  <h2>Cannot sign in?</h2>
+  <p>Email <a href="mailto:lelin.adhikari45@gmail.com?subject=Morse%20Code%20Nepal%20account%20deletion">lelin.adhikari45@gmail.com</a> with the subject “Morse Code Nepal account deletion” and your username and registered email. We will verify account ownership before removing data. Do not include a password.</p>
+  <p>To request removal of particular data or ask a question without deleting the entire account, use the same contact. <a href="privacy.html#deletion">Read the retention and deletion policy</a>.</p>
+  <p><a href="privacy.html">Privacy Policy</a> · <a href="terms.html">Terms and Conditions</a></p>
+</main>
+</body>
+</html>

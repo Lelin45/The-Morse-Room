@@ -1188,3 +1188,28 @@ const chatParameters = new URL(location.href).searchParams;
 if (chatParameters.has('chat') || chatParameters.has('join')) mode = 'chat';
 syncSound();
 render();
+
+function notifyNativeReady() {
+  window.ReactNativeWebView?.postMessage(JSON.stringify({
+    type: 'morse-native-ready', theme: document.documentElement.dataset.theme, volume: sound.volume / 100,
+  }));
+}
+
+window.addEventListener('morse-native-background', () => {
+  if (mode === 'practice' && ['countdown', 'playing'].includes(practice.phase)) pausePractice();
+  else {
+    cancelAudio();
+    if (mode === 'learn' && learn.phase === 'practice') {
+      learn.audible = false;
+      renderWorkspace();
+    } else if (mode === 'learn') renderSetup();
+    updateTransport();
+  }
+  chatRoom.stopAudio();
+  stopAnswerAudio();
+  stopReplay();
+});
+window.addEventListener('morse-native-auth-cleared', () => {
+  window.ReactNativeWebView?.postMessage(JSON.stringify({ type: 'morse-native-auth-cleared' }));
+});
+notifyNativeReady();

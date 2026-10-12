@@ -10,7 +10,7 @@ const publicFiles = [
   'replay.js', 'styles.css', 'chat.js', 'chat-codec.js', 'chat.css',
   'mobile-shell.js', 'mobile-practice-session.js', 'timed-morse.js',
   'practice.css', 'practice-round-session.js', 'qwerty-keyboard.js', 'real-word-bank.js',
-  'privacy.html', 'terms.html',
+  'privacy.html', 'terms.html', 'delete-account.html', 'delete-account.js',
   'google-signin-light.png', 'google-signin-dark.png',
 ];
 const textFile = (name) => /\.(?:html|js|css)$/.test(name);
@@ -121,7 +121,7 @@ await writeFile(resolve(output, '_headers'), `/*
   X-Frame-Options: DENY
   Permissions-Policy: camera=(), microphone=(), geolocation=()
   Content-Security-Policy: ${policy}
-${['/', '/index.html', '/privacy.html', '/terms.html', '/asset-manifest.json', ...Object.keys(versioned).map((name) => `/${name}`)]
+${['/', '/index.html', '/privacy.html', '/privacy', '/terms.html', '/terms', '/delete-account.html', '/delete-account', '/asset-manifest.json', ...Object.keys(versioned).map((name) => `/${name}`)]
   .map((url) => `${url}\n  Cache-Control: no-cache, max-age=0, must-revalidate`).join('\n')}
 ${Object.values(versioned).map((name) => `/${name}\n  Cache-Control: public, max-age=31536000, immutable`).join('\n')}
 `);

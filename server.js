@@ -11,7 +11,7 @@ const publicFiles = new Set([
   '/learn-session.js', '/replay.js', '/chat.js', '/chat-codec.js', '/chat.css',
   '/mobile-shell.js', '/mobile-practice-session.js', '/timed-morse.js',
   '/practice.css', '/practice-round-session.js', '/qwerty-keyboard.js', '/real-word-bank.js',
-  '/privacy.html', '/terms.html',
+  '/privacy.html', '/terms.html', '/delete-account.html', '/delete-account.js',
   '/google-signin-light.png', '/google-signin-dark.png',
 ]);
 

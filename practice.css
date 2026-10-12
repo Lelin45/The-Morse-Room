@@ -216,6 +216,17 @@ body[data-practice-round='true'] .writing-columns {
     font-size: 12px;
   }
 
+  body.keyboard-open.audio-settings-open .app-shell > .sidebar {
+    display: block;
+    min-height: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  body.keyboard-open.audio-settings-open .mode-nav {
+    display: none;
+  }
+
   .bottom-note {
     display: none !important;
   }

@@ -11,6 +11,7 @@ import { createChatRoom } from './chat.js';
 
 const $ = (selector) => document.querySelector(selector);
 const mobileViewport = matchMedia('(max-width: 760px)');
+const touchInput = matchMedia('(max-width: 760px), (pointer: coarse), (hover: none)');
 const escapeHTML = (value) => String(value).replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
 const icon = (name) => `<svg aria-hidden="true"><use href="#i-${name}"/></svg>`;
 const button = (id, label, symbol, classes = '', disabled = false) => `<button id="${id}" class="button ${classes}" ${disabled ? 'disabled' : ''}>${symbol ? icon(symbol) : ''}${label}</button>`;
@@ -84,7 +85,7 @@ const sendingInput = new TimedMorseInput({
 });
 
 function mobileTrainingActive() {
-  return mode === 'learn' && mobileViewport.matches && learn.phase === 'practice';
+  return mode === 'learn' && touchInput.matches && learn.phase === 'practice';
 }
 
 function roundPractice() { return mode === 'practice' && (practice.session?.roundMode ?? (practice.direction === 'sending' || practice.category !== 'custom')); }
@@ -590,7 +591,7 @@ function submitMobileCharacter(character) {
 
 function renderLearnWorkspace() {
   const level = LEVELS[learn.level - 1];
-  $('#keyboard-note').innerHTML = mobileViewport.matches ? '' : `Your shortcuts <kbd>Enter</kbd> check and continue <kbd>Alt + R</kbd> replay`;
+  $('#keyboard-note').innerHTML = touchInput.matches ? '' : `Your shortcuts <kbd>Enter</kbd> check and continue <kbd>Alt + R</kbd> replay`;
   renderMobileTraining();
   if (!['practice', 'finished'].includes(learn.phase)) {
     $('#copy-panel').innerHTML = '';
@@ -632,7 +633,7 @@ function renderPracticeWorkspace() {
   roundPanel.innerHTML = '';
   const reviewed = practice.phase === 'reviewed';
   const groupSize = practice.session?.groupSize || 0;
-  $('#keyboard-note').innerHTML = mobileViewport.matches ? '' : `Your shortcuts <kbd>Alt + P</kbd> pause / resume <kbd>Ctrl + Enter</kbd> submit`;
+  $('#keyboard-note').innerHTML = touchInput.matches ? '' : `Your shortcuts <kbd>Alt + P</kbd> pause / resume <kbd>Ctrl + Enter</kbd> submit`;
   renderMobileTraining();
   if (reviewed) {
     const grade = practice.grading;
@@ -879,7 +880,7 @@ function renderPracticeRound() {
     return;
   }
   const target = practice.round?.current || '';
-  roundPanel.innerHTML = `<div class="practice-round-heading"><h2>${sending ? target.length > 1 ? 'Send the word' : 'Send the character' : 'Listen and choose'}</h2><p class="practice-round-status" role="status"></p></div>${sending ? `<div class="practice-target" aria-label="Character or word to send">${target || '?'}</div><textarea id="practice-morse-entry" class="practice-response practice-morse-entry" rows="2" readonly inputmode="none" autocomplete="off" aria-label="Your Morse answer" placeholder="Morse code">${escapeHTML(practice.morse)}</textarea><p class="practice-morse-help">${mobileViewport.matches ? 'Pause for letters. Space for words.' : '← Dit · → Dah · Space between words. Pause between letters.'}</p><div class="practice-morse-paddles"><button type="button" class="practice-morse-paddle dit" data-practice-morse="." aria-label="Dit"><strong>·</strong><span>Dit</span></button><button type="button" class="practice-morse-space" data-practice-morse="word" aria-label="Space between words">Space</button><button type="button" class="practice-morse-paddle dah" data-practice-morse="-" aria-label="Dah"><strong>−</strong><span>Dah</span></button></div><div class="practice-round-tools"><button id="undo-practice-morse" type="button" class="button quiet">Undo</button>${button('show-correct-answer', mobileViewport.matches ? 'Show answer' : 'Show correct answer', 'eye')}${button('check-practice-round', 'Check', 'check', 'primary')}</div>` : `<div class="practice-response" aria-label="Latest answer">${escapeHTML(practice.mobileInput || '?')}</div><div class="practice-round-tools">${button('replay-practice-round', 'Replay', 'replay')}${button('show-correct-answer', mobileViewport.matches ? 'Show answer' : 'Show correct answer', 'eye')}</div>${renderQwertyKeyboard({ attribute: 'data-round-key' })}`}<p class="practice-round-alert ${practice.roundCorrect === false ? 'incorrect' : practice.roundCorrect === true ? 'correct' : ''}" role="alert">${escapeHTML(practice.roundFeedback)}</p><div class="practice-correct-answer" ${practice.roundShown ? '' : 'hidden'}>${escapeHTML(target)} <span class="morse-pattern">${[...target].map(morseDisplay).join(' / ')}</span></div>`;
+  roundPanel.innerHTML = `<div class="practice-round-heading"><h2>${sending ? target.length > 1 ? 'Send the word' : 'Send the character' : 'Listen and choose'}</h2><p class="practice-round-status" role="status"></p></div>${sending ? `<div class="practice-target" aria-label="Character or word to send">${target || '?'}</div><textarea id="practice-morse-entry" class="practice-response practice-morse-entry" rows="2" readonly inputmode="none" autocomplete="off" aria-label="Your Morse answer" placeholder="Morse code">${escapeHTML(practice.morse)}</textarea><p class="practice-morse-help">${touchInput.matches ? 'Pause for letters. Space for words.' : '← Dit · → Dah · Space between words. Pause between letters.'}</p><div class="practice-morse-paddles"><button type="button" class="practice-morse-paddle dit" data-practice-morse="." aria-label="Dit"><strong>·</strong><span>Dit</span></button><button type="button" class="practice-morse-space" data-practice-morse="word" aria-label="Space between words">Space</button><button type="button" class="practice-morse-paddle dah" data-practice-morse="-" aria-label="Dah"><strong>−</strong><span>Dah</span></button></div><div class="practice-round-tools"><button id="undo-practice-morse" type="button" class="button quiet">Undo</button>${button('show-correct-answer', mobileViewport.matches ? 'Show answer' : 'Show correct answer', 'eye')}${button('check-practice-round', 'Check', 'check', 'primary')}</div>` : `<div class="practice-response" aria-label="Latest answer">${escapeHTML(practice.mobileInput || '?')}</div><div class="practice-round-tools">${button('replay-practice-round', 'Replay', 'replay')}${button('show-correct-answer', mobileViewport.matches ? 'Show answer' : 'Show correct answer', 'eye')}</div>${renderQwertyKeyboard({ attribute: 'data-round-key' })}`}<p class="practice-round-alert ${practice.roundCorrect === false ? 'incorrect' : practice.roundCorrect === true ? 'correct' : ''}" role="alert">${escapeHTML(practice.roundFeedback)}</p><div class="practice-correct-answer" ${practice.roundShown ? '' : 'hidden'}>${escapeHTML(target)} <span class="morse-pattern">${[...target].map(morseDisplay).join(' / ')}</span></div>`;
   roundPanel.querySelectorAll('[data-round-key]').forEach((key) => key.addEventListener('click', () => submitRoundAnswer(key.dataset.roundKey)));
   roundPanel.querySelectorAll('[data-practice-morse]').forEach((key) => key.addEventListener('click', () => enterPracticeMorse(key.dataset.practiceMorse)));
   $('#replay-practice-round')?.addEventListener('click', () => playPracticeRound());
@@ -895,7 +896,7 @@ function syncPracticeRoundControls() {
   roundPanel.querySelectorAll('[data-round-key],[data-practice-morse],#undo-practice-morse,#show-correct-answer,#replay-practice-round').forEach((element) => { element.disabled = !waiting; });
   if ($('#check-practice-round')) $('#check-practice-round').disabled = !waiting || !practice.morse;
   const status = roundPanel.querySelector('.practice-round-status');
-  if (status) status.textContent = practice.phase === 'idle' ? 'Choose a session and press Start.' : practice.phase === 'countdown' ? 'Get ready.' : practice.phase === 'paused' ? 'Paused' : practice.roundBusy ? 'Listen to the signal.' : practice.phase === 'interrupted' ? 'Audio stopped. Start again.' : (practice.session?.direction || practice.direction) === 'sending' ? 'Enter its Morse code, then check.' : mobileViewport.matches ? 'Tap the character you heard.' : 'Press the key for the character you heard.';
+  if (status) status.textContent = practice.phase === 'idle' ? 'Choose a session and press Start.' : practice.phase === 'countdown' ? 'Get ready.' : practice.phase === 'paused' ? 'Paused' : practice.roundBusy ? 'Listen to the signal.' : practice.phase === 'interrupted' ? 'Audio stopped. Start again.' : (practice.session?.direction || practice.direction) === 'sending' ? 'Enter its Morse code, then check.' : touchInput.matches ? 'Tap the character you heard.' : 'Press the key for the character you heard.';
 }
 
 function renderRoundActions() {

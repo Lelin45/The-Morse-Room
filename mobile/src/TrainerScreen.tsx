@@ -29,9 +29,11 @@ export default function TrainerScreen() {
   const completedState = useRef<string | null>(null);
   const backWaiting = useRef(false);
   const backTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const splashHideRequested = useRef(false);
   const [dark, setDark] = useState(useColorScheme() === 'dark');
   const [volume, setVolume] = useState(50);
   const [preferencesReady, setPreferencesReady] = useState(false);
+  const [splashHidden, setSplashHidden] = useState(false);
   const [opening, setOpening] = useState(true);
   const [loading, setLoading] = useState(true);
   const [failure, setFailure] = useState(false);
@@ -189,9 +191,16 @@ export default function TrainerScreen() {
   }, []);
   const loadFailure = useCallback(() => { ready.current = false; setFailure(true); setLoading(false); }, []);
   const finishOpening = useCallback(() => setOpening(false), []);
+  const hideSplash = useCallback(() => {
+    if (splashHideRequested.current) return;
+    splashHideRequested.current = true;
+    void SplashScreen.hideAsync().then(() => {
+      requestAnimationFrame(() => setSplashHidden(true));
+    }).catch(() => { setSplashHidden(true); });
+  }, []);
 
   return <SafeAreaView style={[styles.screen, { backgroundColor: background }]} edges={['top', 'bottom', 'left', 'right']}
-    onLayout={() => { void SplashScreen.hideAsync(); }}>
+    onLayout={hideSplash}>
     <StatusBar style={dark ? 'light' : 'dark'} />
     <View style={styles.content}>
       <WebView key={generation} ref={webview} source={source} style={{ backgroundColor: background }}
@@ -220,7 +229,8 @@ export default function TrainerScreen() {
       {signingIn && !opening && !failure && <View style={[styles.authNotice, { backgroundColor: background }]} accessibilityLiveRegion="polite">
         <ActivityIndicator size="small" color={dark ? '#34f58c' : '#217044'} /><Text style={{ color: foreground, fontSize: 13 }}>Completing sign-in...</Text>
       </View>}
-      {opening && <Opening dark={dark} volume={volume} preferencesReady={preferencesReady} onFinish={finishOpening} />}
+      {opening && <Opening dark={dark} volume={volume} preferencesReady={preferencesReady}
+        visible={splashHidden} loadFailed={failure} onFinish={finishOpening} />}
     </View>
   </SafeAreaView>;
 }

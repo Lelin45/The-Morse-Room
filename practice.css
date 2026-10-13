@@ -201,7 +201,7 @@ body[data-practice-round='true'] .writing-columns {
   grid-template-columns: repeat(6, minmax(0, 1fr));
 }
 
-@media (min-width: 761px) {
+@media (min-width: 761px) and (hover: hover) and (pointer: fine) {
   .practice-round-panel .qwerty-keyboard,
   .practice-round-panel .practice-morse-paddles {
     display: none;

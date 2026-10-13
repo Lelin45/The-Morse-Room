@@ -28,3 +28,5 @@ mobile/dist/
 mobile/android/
 mobile/ios/
 mobile/.expo/
+store-listing/fallback-screenshots/
+store-listing/fallback-video/

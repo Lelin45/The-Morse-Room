@@ -3,13 +3,14 @@ import { Animated, AppState, Pressable, StyleSheet, Text, View } from 'react-nat
 import { useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from 'expo-audio';
 import timing from '../generated/welcome-timing.json';
 
-type OpeningProps = { dark: boolean; volume: number; preferencesReady: boolean; onFinish: () => void };
+type OpeningProps = { dark: boolean; volume: number; preferencesReady: boolean; visible: boolean; loadFailed: boolean; onFinish: () => void };
 
-export default function Opening({ dark, volume, preferencesReady, onFinish }: OpeningProps) {
+export default function Opening({ dark, volume, preferencesReady, visible, loadFailed, onFinish }: OpeningProps) {
   const player = useAudioPlayer(require('../assets/welcome.wav'), { updateInterval: 40, downloadFirst: true });
   const status = useAudioPlayerStatus(player);
-  const [fade] = useState(() => new Animated.Value(0));
+  const [fade] = useState(() => new Animated.Value(1));
   const [pulse] = useState(() => new Animated.Value(0.45));
+  const [playbackStarted, setPlaybackStarted] = useState(false);
   const finished = useRef(false);
   const started = useRef(false);
   const accent = dark ? '#34f58c' : '#217044';
@@ -23,16 +24,19 @@ export default function Opening({ dark, volume, preferencesReady, onFinish }: Op
   }, [fade, onFinish, player]);
 
   useEffect(() => {
-    Animated.timing(fade, { toValue: 1, duration: 300, useNativeDriver: true }).start();
+    const subscription = AppState.addEventListener('change', (state) => { if (state !== 'active') finish(); });
+    return () => subscription.remove();
+  }, [finish]);
+
+  useEffect(() => {
+    if (!visible || !preferencesReady || finished.current) return;
     const animation = Animated.loop(Animated.sequence([
       Animated.timing(pulse, { toValue: 1, duration: 300, useNativeDriver: true }),
       Animated.timing(pulse, { toValue: 0.45, duration: 350, useNativeDriver: true }),
     ]));
     animation.start();
-    const maximum = setTimeout(finish, (timing.duration + 2) * 1000);
-    const subscription = AppState.addEventListener('change', (state) => { if (state !== 'active') finish(); });
-    return () => { animation.stop(); clearTimeout(maximum); subscription.remove(); };
-  }, [fade, pulse, finish]);
+    return () => animation.stop();
+  }, [visible, preferencesReady, pulse]);
 
   useEffect(() => {
     // Expo Audio exposes native volume through this documented setter.
@@ -40,24 +44,36 @@ export default function Opening({ dark, volume, preferencesReady, onFinish }: Op
     player.volume = Math.max(0, Math.min(1, volume / 100));
   }, [player, volume]);
   useEffect(() => {
-    if (preferencesReady) return;
+    if (!visible || preferencesReady || finished.current) return;
     // A failed WebView must not emit a default sound over a saved mute setting.
-    const timeout = setTimeout(finish, 2000);
+    const timeout = setTimeout(finish, 15000);
     return () => clearTimeout(timeout);
-  }, [preferencesReady, finish]);
+  }, [visible, preferencesReady, finish]);
+  useEffect(() => { if (visible && loadFailed) finish(); }, [visible, loadFailed, finish]);
   useEffect(() => {
-    if (!preferencesReady || !status.isLoaded || started.current || finished.current) return;
+    if (!visible || !preferencesReady || loadFailed || !status.isLoaded || started.current || finished.current) return;
     let active = true;
     void setAudioModeAsync({ allowsRecording: false, playsInSilentMode: false,
       shouldPlayInBackground: false, interruptionMode: 'duckOthers' }).then(() => {
       if (active && !started.current && !finished.current && AppState.currentState === 'active') {
         started.current = true;
         player.play();
+        setPlaybackStarted(true);
       }
     }).catch(() => { /* The bounded animation continues if audio is unavailable. */ });
     return () => { active = false; };
-  }, [preferencesReady, status.isLoaded, player]);
-  useEffect(() => { if (status.didJustFinish) finish(); }, [status.didJustFinish, finish]);
+  }, [visible, preferencesReady, loadFailed, status.isLoaded, player]);
+  useEffect(() => {
+    if (!visible || !preferencesReady || playbackStarted || finished.current) return;
+    const timeout = setTimeout(finish, 2000);
+    return () => clearTimeout(timeout);
+  }, [visible, preferencesReady, playbackStarted, finish]);
+  useEffect(() => {
+    if (!playbackStarted || finished.current) return;
+    const maximum = setTimeout(finish, (timing.duration + 2) * 1000);
+    return () => clearTimeout(maximum);
+  }, [playbackStarted, finish]);
+  useEffect(() => { if (playbackStarted && status.didJustFinish) finish(); }, [playbackStarted, status.didJustFinish, finish]);
 
   const elapsed = status.currentTime;
   return <Animated.View style={[styles.overlay, { backgroundColor: dark ? '#000000' : '#f7f6f2', opacity: fade }]}>

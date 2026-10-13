@@ -23,6 +23,7 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
   const player = new MorsePlayer();
   const feedbackPlayer = new MorsePlayer();
   const mobile = matchMedia('(max-width: 760px)');
+  const touchInput = matchMedia('(max-width: 760px), (pointer: coarse), (hover: none)');
   const morseInput = new TimedMorseInput({
     getLetterGap: () => Math.max(700, Math.min(1500, getTiming(getSound()).characterGap * 1000)),
     onChange(value) {
@@ -214,7 +215,7 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
       if (state.composeMode === 'morse' && event.key === 'Backspace' && draft.selectionStart === draft.value.length && draft.selectionEnd === draft.value.length) {
         event.preventDefault(); insertMorse('undo'); return;
       }
-      if (event.key === 'Enter' && !mobile.matches && !event.shiftKey && !event.repeat) {
+      if (event.key === 'Enter' && !touchInput.matches && !event.shiftKey && !event.repeat) {
         event.preventDefault(); view.querySelector('.chat-compose').requestSubmit();
       }
     });
@@ -248,8 +249,8 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
     input.maxLength = morse ? MAX_MORSE_LENGTH : MAX_MESSAGE_LENGTH;
     input.placeholder = morse ? 'Morse code' : 'Message';
     input.classList.toggle('is-morse', morse);
-    input.readOnly = state.busy || (morse && mobile.matches);
-    input.setAttribute('inputmode', morse && mobile.matches ? 'none' : 'text');
+    input.readOnly = state.busy || (morse && touchInput.matches);
+    input.setAttribute('inputmode', morse && touchInput.matches ? 'none' : 'text');
     if (morse) morseInput.replace(input.value);
     else morseInput.stop();
     input.spellcheck = !morse;
@@ -275,7 +276,7 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
 
   function focusComposer() {
     const input = panel.querySelector('#chat-draft');
-    if (!state.active || !input || mobile.matches) return;
+    if (!state.active || !input || touchInput.matches) return;
     input.focus({ preventScroll: true });
   }
 
@@ -428,7 +429,7 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
     finally {
       state.busy = false; submit.disabled = false;
       const currentInput = panel.querySelector('#chat-draft');
-      if (currentInput) currentInput.readOnly = state.composeMode === 'morse' && mobile.matches;
+      if (currentInput) currentInput.readOnly = state.composeMode === 'morse' && touchInput.matches;
       panel.querySelectorAll('.chat-compose [data-morse-key], .chat-compose [type=submit], [data-send-mode]').forEach((button) => { button.disabled = false; });
     }
   }
@@ -696,7 +697,7 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
     if (sendMode) {
       if (!state.busy && ['text', 'morse'].includes(sendMode.dataset.sendMode)) {
         saveDraft(); stopAudio(); state.composeMode = sendMode.dataset.sendMode;
-        if (mobile.matches) panel.querySelector('#chat-draft')?.blur();
+        if (touchInput.matches) panel.querySelector('#chat-draft')?.blur();
         updateComposer(); focusComposer();
       }
       return;
@@ -832,12 +833,14 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
       const url = new URL(location.href); url.searchParams.delete('chat_error'); history.replaceState(null, '', url);
     }
   }
-  mobile.addEventListener('change', () => {
+  function updateInputMode() {
     if (state.active && panel.querySelector('#chat-draft')) {
       saveDraft(); morseInput.flush(); updateComposer();
-      if (state.composeMode === 'morse' && mobile.matches) panel.querySelector('#chat-draft').blur();
+      if (state.composeMode === 'morse' && touchInput.matches) panel.querySelector('#chat-draft').blur();
     }
-  });
+  }
+  mobile.addEventListener('change', updateInputMode);
+  touchInput.addEventListener('change', updateInputMode);
   let nativeAuthRefreshing = false;
   window.addEventListener('morse-native-auth-complete', () => {
     if (nativeAuthRefreshing) return;

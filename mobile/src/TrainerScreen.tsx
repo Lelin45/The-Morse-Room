@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, AppState, BackHandler, Linking, Pressable, StyleSheet, Text, useColorScheme, View } from 'react-native';
+import { ActivityIndicator, Alert, AppState, BackHandler, KeyboardAvoidingView, Linking, Platform, Pressable, StyleSheet, Text, useColorScheme, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
@@ -202,7 +202,7 @@ export default function TrainerScreen() {
   return <SafeAreaView style={[styles.screen, { backgroundColor: background }]} edges={['top', 'bottom', 'left', 'right']}
     onLayout={hideSplash}>
     <StatusBar style={dark ? 'light' : 'dark'} />
-    <View style={styles.content}>
+    <KeyboardAvoidingView style={styles.content} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <WebView key={generation} ref={webview} source={source} style={{ backgroundColor: background }}
         originWhitelist={['*']} onShouldStartLoadWithRequest={navigate} onMessage={message}
         onOpenWindow={({ nativeEvent }) => {
@@ -231,7 +231,7 @@ export default function TrainerScreen() {
       </View>}
       {opening && <Opening dark={dark} volume={volume} preferencesReady={preferencesReady}
         visible={splashHidden} loadFailed={failure} onFinish={finishOpening} />}
-    </View>
+    </KeyboardAvoidingView>
   </SafeAreaView>;
 }
 

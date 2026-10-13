@@ -31,6 +31,7 @@ function createShell(initialProof = null) {
     'react/jsx-runtime': { jsx: element, jsxs: element },
     'react-native': {
       useColorScheme: () => 'light', View: 'view', Text: 'text', Pressable: 'button', ActivityIndicator: 'activity',
+      KeyboardAvoidingView: 'keyboard-avoiding-view', Platform: { OS: 'android' },
       Alert: { alert() {} }, StyleSheet: { create: (value) => value, absoluteFill: {} },
       Linking: { addEventListener: () => ({ remove() {} }), getInitialURL: async () => null },
     },

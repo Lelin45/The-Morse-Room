@@ -1,0 +1,48 @@
+{
+  "name": "morse-code-nepal",
+  "version": "1.0.0",
+  "main": "expo-router/entry",
+  "dependencies": {
+    "expo": "~57.0.27",
+    "expo-asset": "~57.0.19",
+    "expo-audio": "~57.0.5",
+    "expo-constants": "~57.0.21",
+    "expo-crypto": "~57.0.3",
+    "expo-linking": "~57.0.12",
+    "expo-router": "~57.0.25",
+    "expo-secure-store": "~57.0.4",
+    "expo-splash-screen": "~57.0.9",
+    "expo-status-bar": "~57.0.1",
+    "expo-system-ui": "~57.0.4",
+    "expo-web-browser": "~57.0.3",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-native": "0.86.3",
+    "react-native-reanimated": "4.5.1",
+    "react-native-safe-area-context": "~5.7.0",
+    "react-native-screens": "~4.26.0",
+    "react-native-webview": "13.16.1",
+    "react-native-worklets": "0.10.1"
+  },
+  "scripts": {
+    "start": "npm run prepare:trainer && expo start",
+    "android": "npm run prepare:trainer && expo start --android",
+    "ios": "npm run prepare:trainer && expo start --ios",
+    "prepare:trainer": "node scripts/prepare-trainer.mjs",
+    "eas-build-post-install": "npm run prepare:trainer",
+    "test": "node --test tests/*.test.mjs",
+    "lint": "expo lint",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run prepare:trainer && npm test && npm run lint && npm run typecheck"
+  },
+  "private": true,
+  "devDependencies": {
+    "@types/react": "~19.2.4",
+    "eslint-config-expo": "~57.0.2",
+    "typescript": "~6.0.3",
+    "esbuild": "^0.27.4",
+    "sharp": "^0.34.5",
+    "eslint": "^9.39.3"
+  },
+  "type": "module"
+}

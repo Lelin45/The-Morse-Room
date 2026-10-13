@@ -1,0 +1,9 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "allowJs": true,
+    "checkJs": false
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx", "src/auth-utils.js", "generated/*.d.ts", "generated/*.json", ".expo/types/**/*.ts", "expo-env.d.ts"]
+}

@@ -119,6 +119,12 @@ Use the **sun/moon switch** at the top right to change between the light theme a
 
 Completed levels, sound settings, and your theme choice are stored in this browser's `localStorage`. They stay on your computer. Use the same browser and address to keep your progress when you update the app. Clearing site data or using another browser gives you a separate saved history.
 
+## Android app
+
+The Expo Android project in [mobile](mobile/) is named **Morse Code Nepal**, with application ID **com.morsenepal**. It bundles Learn, Practice, Codes, and the sound generator for offline use. Only Chat needs sign-in and an internet connection. The opening animation plays WELCOME in Morse at 24 WPM and can be skipped.
+
+See [Android setup and builds](docs/ANDROID_APP.md) for the APK testing build, Play Store AAB, signing credentials, and developer commands. [Play Console setup](docs/PLAY_CONSOLE.md) includes the public policy links, review access instructions, and data disclosures.
+
 ## Morse Chat Room
 
 Choose **Morse Chat Room** below Practice in the sidebar. Use the account icon at the top right to sign in with Google, then choose a unique username. Your username, profile settings, and Sign out stay in that account menu across all tabs. Sign-in applies only to Chat.

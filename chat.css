@@ -1286,6 +1286,16 @@ body[data-mode='chat'][data-chat-audio='default'] .setting:not(:has(#volume-numb
   resize: vertical;
 }
 
+.chat-safety-dialog .chat-field select {
+  min-height: 44px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--text);
+  font-family: inherit;
+}
+
 .chat-blocked-list {
   display: grid;
   gap: 9px;

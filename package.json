@@ -14,7 +14,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "test": "node --test",
+    "test": "node scripts/test.mjs",
     "build": "node scripts/build.mjs",
     "dev:chat": "npm run build && wrangler pages dev public --d1 DB=morse-room-chat-local --binding SITE_URL=http://localhost:8788 --port 8788 --persist-to .wrangler/state --compatibility-date 2026-10-11",
     "db:local": "wrangler d1 migrations apply DB --local --config wrangler.local.jsonc --persist-to .wrangler/state",

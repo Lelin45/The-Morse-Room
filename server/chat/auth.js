@@ -216,9 +216,13 @@ export async function sessionUser(request, env) {
   if (!env.DB || !siteURL(env)) return null;
   const token = readCookie(request, cookieName(env, 'session'));
   if (!/^[A-Za-z0-9_-]{43}$/.test(token || '')) return null;
-  const user = await one(env, `SELECT u.id, u.username FROM chat_sessions s
+  const user = await one(env, `SELECT u.id, u.username,
+    EXISTS (SELECT 1 FROM chat_review_users r WHERE r.user_id = u.id) AS reviewFlag FROM chat_sessions s
     JOIN chat_users u ON u.id = s.user_id WHERE s.token_hash = ? AND s.expires_at > ?`, await hashToken(token), Date.now());
-  if (user && await one(env, 'SELECT 1 AS review FROM chat_review_users WHERE user_id = ?', user.id)) user.isReviewer = true;
+  if (user) {
+    if (user.reviewFlag) user.isReviewer = true;
+    delete user.reviewFlag;
+  }
   return user;
 }
 

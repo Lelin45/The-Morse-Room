@@ -273,14 +273,17 @@ async function oauthCallback(provider, request, env) {
   headers.append('Set-Cookie', clearOAuthCookie(provider, env));
   let errorCode = null;
   let returnPath = '/?chat=1';
+  let trustedMobile = null;
   try {
     const profile = await finishOAuth(provider, request, env);
+    trustedMobile = profile.mobile || null;
     if (profile.returnTo === '/delete-account.html') returnPath = profile.returnTo;
     const user = await identityUser(profile, env);
     if (profile.mobile) return await makeMobileRedirect(user, profile.mobile, env);
     headers.append('Set-Cookie', await createSession(user.id, env));
   } catch (error) {
-    if (error instanceof ApiError && error.mobile) return mobileErrorRedirect(error.mobile, env);
+    const mobile = trustedMobile || (error instanceof ApiError ? error.mobile : null);
+    if (mobile) return mobileErrorRedirect(mobile, env);
     errorCode = error instanceof ApiError ? error.code : 'oauth_failed';
   }
   headers.set('Location', errorCode ? `/?chat=1&chat_error=${encodeURIComponent(errorCode)}` : returnPath);
@@ -323,6 +326,7 @@ export async function handleChatRequest(request, env) {
     if (path === '/api/blocks/remove' && method === 'POST') return json(await removeBlock(user, await readJSON(request), env));
     if (path === '/api/reports' && method === 'POST') return json(await reportMessage(user, await readJSON(request), env, conversationRequired));
     if (path === '/api/profile' && method === 'POST') {
+      if (user.isReviewer) throw new ApiError(403, 'review_profile_fixed', 'The review account keeps its fixed test username.');
       const body = await readJSON(request);
       let username;
       try { username = validateUsername(body.username); }

@@ -15,7 +15,11 @@ async function request(path, body) {
   let result;
   try { result = await response.json(); }
   catch { throw new Error('The account service could not be reached. Try again or use the email contact below.'); }
-  if (!response.ok) throw new Error(result.error?.message || 'That did not work. Try again or use the email contact below.');
+  if (!response.ok) {
+    const error = new Error(result.error?.message || 'That did not work. Try again or use the email contact below.');
+    error.status = response.status;
+    throw error;
+  }
   return result;
 }
 
@@ -53,7 +57,10 @@ form.addEventListener('submit', async (event) => {
     form.hidden = true; signin.hidden = true;
     showStatus('Your chat account and its associated live data have been deleted. Your Google account and saved training progress remain unchanged.');
     window.dispatchEvent(new CustomEvent('morse-native-auth-cleared'));
-  } catch (error) { showStatus(error.message, true); }
+  } catch (error) {
+    showStatus(error.message, true);
+    if (error.status === 401) { form.hidden = true; signin.hidden = false; }
+  }
   finally { busy = false; input.disabled = false; submit.disabled = input.value !== 'DELETE'; }
 });
 

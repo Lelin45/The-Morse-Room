@@ -84,7 +84,7 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
     accountToggle.innerHTML = state.user ? `${state.user.username ? avatar(state.user.username) : icon('user')}<span class="account-name">${escape(state.user.username ? `@${state.user.username}` : 'Account')}</span>` : icon('user');
     accountToggle.setAttribute('aria-label', state.user ? `Account: ${state.user.username || 'choose a username'}` : 'Account: sign in');
     accountMenu.innerHTML = state.user
-      ? `<div class="account-menu-heading"><strong>${escape(state.user.username ? `@${state.user.username}` : 'Your account')}</strong><small class="account-menu-meta">${state.user.isReviewer ? 'Review account · Test data' : 'Signed in with Google'}</small></div>${state.user.username ? action('profile', 'Edit username', 'user', 'quiet') : action('open-chat', 'Choose username', 'user', 'quiet')}${action('open-chat', 'Morse Chat Room', 'chat', 'quiet')}${state.user.username ? action('blocked', 'Blocked people', '', 'quiet') : ''}${action('logout', 'Sign out', '', 'quiet')}${action('delete-account', 'Delete account', '', 'quiet chat-danger-action')}<p class="account-status chat-error" role="status" hidden></p><p class="chat-legal"><a href="privacy.html">Privacy Policy</a> · <a href="terms.html">Terms and Conditions</a></p>`
+      ? `<div class="account-menu-heading"><strong>${escape(state.user.username ? `@${state.user.username}` : 'Your account')}</strong><small class="account-menu-meta">${state.user.isReviewer ? 'Review account · Test data' : 'Signed in with Google'}</small></div>${state.user.isReviewer ? '' : state.user.username ? action('profile', 'Edit username', 'user', 'quiet') : action('open-chat', 'Choose username', 'user', 'quiet')}${action('open-chat', 'Morse Chat Room', 'chat', 'quiet')}${state.user.username ? action('blocked', 'Blocked people', '', 'quiet') : ''}${action('logout', 'Sign out', '', 'quiet')}${action('delete-account', 'Delete account', '', 'quiet chat-danger-action')}<p class="account-status chat-error" role="status" hidden></p><p class="chat-legal"><a href="privacy.html">Privacy Policy</a> · <a href="terms.html">Terms and Conditions</a></p>`
       : `<div class="account-menu-heading"><strong>Sign in to chat</strong><small class="account-menu-meta">Learn and Practice need no account.</small></div>${googleButton(available)}${!state.ready ? '<p>Checking sign-in...</p>' : !available ? '<p>Chat sign-in is being connected.</p>' : ''}${action('review-access', 'Review access', '', 'quiet chat-review-access')}<p class="chat-legal">By signing in, you agree to the <a href="terms.html">chat terms</a> and <a href="privacy.html">privacy notice</a>.</p>`;
   }
 
@@ -466,25 +466,28 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
   }
 
   function safetyDialog(title, body, submitLabel, onSubmit) {
-    document.querySelector('.chat-dialog')?.close();
+    const previousDialog = document.querySelector('.chat-dialog');
+    previousDialog?.close(); previousDialog?.remove();
     const previousFocus = document.activeElement;
     const dialog = document.createElement('dialog');
+    let submitting = false;
     dialog.className = 'chat-dialog chat-safety-dialog';
     dialog.setAttribute('aria-labelledby', 'chat-safety-title');
     dialog.innerHTML = `<form><div class="chat-dialog-header"><h2 id="chat-safety-title">${escape(title)}</h2><button type="button" class="button quiet" data-dialog-close aria-label="Close">${icon('close')}</button></div><div class="chat-dialog-body">${body}<p class="chat-form-help chat-dialog-status" role="status" hidden></p></div><div class="chat-dialog-actions"><button type="button" class="button" data-dialog-close>${submitLabel ? 'Cancel' : 'Close'}</button>${submitLabel ? `<button type="submit" class="button primary">${escape(submitLabel)}</button>` : ''}</div></form>`;
     document.body.append(dialog);
     dialog.querySelectorAll('[data-dialog-close]').forEach((button) => button.addEventListener('click', () => dialog.close()));
-    dialog.addEventListener('close', () => { dialog.remove(); if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true }); });
+    dialog.addEventListener('close', () => { dialog.remove(); if (!document.querySelector('.chat-dialog[open]') && previousFocus?.isConnected) previousFocus.focus({ preventScroll: true }); });
     dialog.querySelector('form').addEventListener('submit', async (event) => {
       event.preventDefault();
       const submit = dialog.querySelector('[type=submit]');
-      if (!submit || submit.disabled || !onSubmit) return;
+      if (!submit || submit.disabled || submitting || !onSubmit) return;
+      submitting = true;
       submit.disabled = true;
       try { await onSubmit(new FormData(event.target), dialog); }
       catch (error) {
         const feedback = dialog.querySelector('.chat-dialog-status');
         feedback.hidden = false; feedback.textContent = error.message; feedback.classList.add('chat-error');
-      } finally { if (dialog.isConnected) submit.disabled = false; }
+      } finally { submitting = false; if (dialog.isConnected) submit.disabled = false; }
     });
     dialog.showModal();
     return dialog;

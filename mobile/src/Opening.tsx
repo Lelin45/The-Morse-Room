@@ -1,0 +1,94 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Animated, AppState, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from 'expo-audio';
+import timing from '../generated/welcome-timing.json';
+
+type OpeningProps = { dark: boolean; volume: number; preferencesReady: boolean; onFinish: () => void };
+
+export default function Opening({ dark, volume, preferencesReady, onFinish }: OpeningProps) {
+  const player = useAudioPlayer(require('../assets/welcome.wav'), { updateInterval: 40, downloadFirst: true });
+  const status = useAudioPlayerStatus(player);
+  const [fade] = useState(() => new Animated.Value(0));
+  const [pulse] = useState(() => new Animated.Value(0.45));
+  const finished = useRef(false);
+  const started = useRef(false);
+  const accent = dark ? '#34f58c' : '#217044';
+  const color = dark ? '#e2f7e8' : '#123226';
+
+  const finish = useCallback(() => {
+    if (finished.current) return;
+    finished.current = true;
+    try { player.pause(); } catch { /* Unavailable audio still allows entry. */ }
+    Animated.timing(fade, { toValue: 0, duration: 220, useNativeDriver: true }).start(onFinish);
+  }, [fade, onFinish, player]);
+
+  useEffect(() => {
+    Animated.timing(fade, { toValue: 1, duration: 300, useNativeDriver: true }).start();
+    const animation = Animated.loop(Animated.sequence([
+      Animated.timing(pulse, { toValue: 1, duration: 300, useNativeDriver: true }),
+      Animated.timing(pulse, { toValue: 0.45, duration: 350, useNativeDriver: true }),
+    ]));
+    animation.start();
+    const maximum = setTimeout(finish, (timing.duration + 2) * 1000);
+    const subscription = AppState.addEventListener('change', (state) => { if (state !== 'active') finish(); });
+    return () => { animation.stop(); clearTimeout(maximum); subscription.remove(); };
+  }, [fade, pulse, finish]);
+
+  useEffect(() => {
+    // Expo Audio exposes native volume through this documented setter.
+    // eslint-disable-next-line react-hooks/immutability
+    player.volume = Math.max(0, Math.min(1, volume / 100));
+  }, [player, volume]);
+  useEffect(() => {
+    if (preferencesReady) return;
+    // A failed WebView must not emit a default sound over a saved mute setting.
+    const timeout = setTimeout(finish, 2000);
+    return () => clearTimeout(timeout);
+  }, [preferencesReady, finish]);
+  useEffect(() => {
+    if (!preferencesReady || !status.isLoaded || started.current || finished.current) return;
+    let active = true;
+    void setAudioModeAsync({ allowsRecording: false, playsInSilentMode: false,
+      shouldPlayInBackground: false, interruptionMode: 'duckOthers' }).then(() => {
+      if (active && !started.current && !finished.current && AppState.currentState === 'active') {
+        started.current = true;
+        player.play();
+      }
+    }).catch(() => { /* The bounded animation continues if audio is unavailable. */ });
+    return () => { active = false; };
+  }, [preferencesReady, status.isLoaded, player]);
+  useEffect(() => { if (status.didJustFinish) finish(); }, [status.didJustFinish, finish]);
+
+  const elapsed = status.currentTime;
+  return <Animated.View style={[styles.overlay, { backgroundColor: dark ? '#000000' : '#f7f6f2', opacity: fade }]}>
+    <Animated.View style={[styles.mark, { opacity: pulse, transform: [{ scale: pulse.interpolate({ inputRange: [0.45, 1], outputRange: [0.96, 1.02] }) }] }]}>
+      <View style={[styles.dit, { backgroundColor: accent }]} />
+      <View style={[styles.dah, { backgroundColor: accent }]} />
+    </Animated.View>
+    <Text style={[styles.title, { color }]}>Morse Code Nepal</Text>
+    <View style={styles.letters} accessibilityLabel="Welcome in Morse code">
+      {timing.letters.map((entry, index) => <View key={index} style={styles.letter}>
+        <Text style={[styles.character, { color: accent, opacity: elapsed >= entry.start ? 1 : 0.2 }]}>{entry.letter}</Text>
+        <Text style={[styles.morse, { color, opacity: elapsed >= entry.start ? 0.7 : 0.14 }]}>{['.--', '.', '.-..', '-.-.', '---', '--', '.'][index]}</Text>
+      </View>)}
+    </View>
+    <Pressable accessibilityRole="button" accessibilityLabel="Skip welcome and open trainer" onPress={finish}
+      style={({ pressed }) => [styles.skip, { opacity: pressed ? 0.65 : 1 }]}>
+      <Text style={[styles.skipText, { color }]}>Skip</Text>
+    </Pressable>
+  </Animated.View>;
+}
+
+const styles = StyleSheet.create({
+  overlay: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center', zIndex: 10 },
+  mark: { flexDirection: 'row', alignItems: 'center', gap: 19, marginBottom: 32 },
+  dit: { width: 25, height: 25, borderRadius: 14 },
+  dah: { width: 76, height: 25, borderRadius: 14 },
+  title: { fontSize: 24, fontWeight: '600', marginBottom: 38 },
+  letters: { flexDirection: 'row', gap: 7 },
+  letter: { alignItems: 'center', width: 33 },
+  character: { fontSize: 26, fontWeight: '600' },
+  morse: { fontSize: 11, marginTop: 7, letterSpacing: 0.2 },
+  skip: { position: 'absolute', right: 18, bottom: 28, minHeight: 48, minWidth: 64, justifyContent: 'center', alignItems: 'center' },
+  skipText: { fontSize: 14 },
+});

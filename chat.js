@@ -1,6 +1,6 @@
 import { MorsePlayer, getTiming } from './audio.js';
 import { TimedMorseInput } from './timed-morse.js';
-import { morseText, validateMessage, validateMorseMessage, validateUsername, MAX_MESSAGE_LENGTH, MAX_MORSE_LENGTH } from './chat-codec.js';
+import { morseText, decodeMorse, validateMessage, validateMorseMessage, validateUsername, MAX_MESSAGE_LENGTH, MAX_MORSE_LENGTH } from './chat-codec.js';
 
 const escape = (value) => String(value ?? '').replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
 const icon = (name) => `<svg aria-hidden="true"><use href="#i-${name}"/></svg>`;
@@ -695,8 +695,15 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
   panel.addEventListener('click', async (event) => {
     const sendMode = event.target.closest('[data-send-mode]');
     if (sendMode) {
-      if (!state.busy && ['text', 'morse'].includes(sendMode.dataset.sendMode)) {
-        saveDraft(); stopAudio(); state.composeMode = sendMode.dataset.sendMode;
+      const nextMode = sendMode.dataset.sendMode;
+      if (!state.busy && ['text', 'morse'].includes(nextMode) && nextMode !== state.composeMode) {
+        if (state.composeMode === 'morse') morseInput.flush();
+        saveDraft();
+        if (state.composeMode === 'morse' && nextMode === 'text' && state.draft.trim()) {
+          try { state.draftByMode.text = decodeMorse(state.draft); }
+          catch (error) { status(error.message, true); return; }
+        }
+        stopAudio(); state.composeMode = nextMode; status();
         if (touchInput.matches) panel.querySelector('#chat-draft')?.blur();
         updateComposer(); focusComposer();
       }

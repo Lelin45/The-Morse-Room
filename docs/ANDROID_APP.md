@@ -61,9 +61,9 @@ The app opens with a short animation and the word WELCOME in Morse at 24 WPM and
 
 The offline document uses the website's HTTPS origin in WebView. Its same-origin API calls use the existing HttpOnly session cookie. Google pages are never loaded inside WebView. A system browser completes website sign-in, then hands the app a short-lived, single-use code. The app proves ownership using its original PKCE verifier before the backend installs a session cookie in WebView. Codes and verifiers are kept temporarily in encrypted SecureStore and are cleared when used, expired or signed out.
 
-Progress and sound settings stay in the WebView's local storage on the device. Installing an app update preserves that storage. Uninstalling the Android app removes its local data. Chat accounts and messages remain server-side until the user deletes their account or data.
+Guest progress and sound settings stay on the device. Signing in syncs completed lessons and best scores with the account in Cloudflare D1, across the Android app and website. Reinstalling removes local settings, but account lessons return after sign-in. Offline account progress syncs after reconnection. Installing an update preserves local storage. Account deletion removes server-side lesson progress along with the chat account.
 
-Firebase is not used. Cloudflare Pages and D1 continue to serve Chat. A future Android push-notification feature would require FCM configuration; the current notification bell works inside the app while it is open.
+Firebase Cloud Messaging delivers optional Android chat notifications. Cloudflare Pages and D1 continue to serve account, lesson and chat data. A separate free Cloudflare Worker sends message identifiers to Firebase; the Android module retrieves authorized content and supports Show text, Listen, Text replies and Morse replies. See [notification setup](NOTIFICATIONS_SETUP.md). Firebase Authentication, Firestore and Analytics are not used.
 
 ## Google Play links
 

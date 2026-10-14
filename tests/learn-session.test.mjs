@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { LearnSession } from '../learn-session.js';
+import { LEVELS, generateLessonSequence } from '../trainer.js';
 
 test('a wrong seventh answer retains that character until a correct retry', () => {
   const lesson = new LearnSession('ABCDEFGH');
@@ -39,6 +40,25 @@ test('a thirty-character lesson requires thirty correct answers despite mistakes
   for (const [index, attempt] of lesson.attempts.entries()) {
     assert.equal(attempt.attempt, index + 1);
     assert.equal(attempt.position, Math.floor(index / 2) + 1);
+  }
+});
+
+test('shortened weighted lessons still require every target to be received correctly', () => {
+  for (const number of [1, 2, 18]) {
+    const level = LEVELS[number - 1];
+    const lesson = new LearnSession(generateLessonSequence(number, { random: () => 0 }));
+    for (let target = 0; target < level.practiceCount; target += 1) {
+      const character = lesson.currentCharacter;
+      lesson.submit('!');
+      assert.equal(lesson.index, target);
+      assert.equal(lesson.currentCharacter, character);
+      assert.equal(lesson.completed, false);
+      lesson.submit(character);
+      assert.equal(lesson.completed, target === level.practiceCount - 1);
+    }
+    assert.equal(lesson.index, number * 5);
+    assert.equal(lesson.attempts.length, number * 10);
+    assert.equal(lesson.currentCharacter, '');
   }
 });
 

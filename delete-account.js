@@ -55,7 +55,7 @@ form.addEventListener('submit', async (event) => {
   try {
     await request('/account/delete', { confirmation: 'DELETE' });
     form.hidden = true; signin.hidden = true;
-    showStatus('Your chat account and its associated live data have been deleted. Your Google account and saved training progress remain unchanged.');
+    showStatus('Your account, synced lessons and associated live data have been deleted. Your Google account and lessons saved on this device remain unchanged.');
     window.dispatchEvent(new CustomEvent('morse-native-auth-cleared'));
   } catch (error) {
     showStatus(error.message, true);

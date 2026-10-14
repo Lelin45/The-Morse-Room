@@ -1,4 +1,5 @@
-// Only UI state leaves the trainer. Account credentials stay in HttpOnly cookies.
+// Session cookies stay in WebView. A revocable notification credential is
+// passed to the native module for encrypted Android Keystore storage.
 const post = (message) => window.ReactNativeWebView?.postMessage(JSON.stringify(message));
 const theme = () => post({ type: 'theme', dark: document.documentElement.dataset.theme === 'dark' });
 theme();
@@ -38,6 +39,22 @@ window.addEventListener('morse-native-back', () => {
 window.addEventListener('morse-native-initial-state', (event) => {
   const detail = event.detail || {};
   post({ type: 'preferences', dark: detail.theme === 'dark', volume: Number(detail.volume) });
+});
+
+window.addEventListener('morse-native-chat-account', ({ detail = {} }) => {
+  post({ type: 'chat-account', userId: detail.userId, notificationsAvailable: detail.notificationsAvailable === true });
+});
+window.addEventListener('morse-native-notification-settings', () => post({ type: 'notifications-settings' }));
+window.addEventListener('morse-native-register-notifications', async ({ detail = {} }) => {
+  try {
+    const response = await fetch('/api/notifications/devices', {
+      method: 'POST', credentials: 'same-origin', cache: 'no-store',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ installationId: detail.installationId, fcmToken: detail.fcmToken }),
+    });
+    const data = await response.json();
+    post({ type: 'notifications-registered', requestId: detail.requestId, ok: response.ok && data.userId === detail.userId, data: response.ok ? data : null });
+  } catch { post({ type: 'notifications-registered', requestId: detail.requestId, ok: false }); }
 });
 
 post({ type: 'ready' });

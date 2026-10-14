@@ -184,7 +184,7 @@ test('transactional batches roll back conversation inserts when membership fails
   try {
     env.DB.sqlite.prepare('INSERT INTO chat_users VALUES (?,NULL,NULL,1)').run('owner');
     await assert.rejects(env.DB.batch([
-      env.DB.prepare("INSERT INTO chat_conversations VALUES ('rollback','group','Group',NULL,'test-code','owner',1)"),
+      env.DB.prepare("INSERT INTO chat_conversations(id,type,name,dm_pair,code,owner_id,created_at) VALUES ('rollback','group','Group',NULL,'test-code','owner',1)"),
       env.DB.prepare("INSERT INTO chat_members VALUES ('rollback','missing-user',1,0)"),
     ]));
     assert.equal(env.DB.sqlite.prepare('SELECT COUNT(*) n FROM chat_conversations').get().n, 0);

@@ -21,6 +21,7 @@ function createShell(initialProof = null) {
   const resolveReads = [];
   let randomByte = 0;
   const element = (type, props) => ({ type, props });
+  const notificationBridge = { handleMessage: () => false, clear() {} };
   const modules = {
     react: {
       useRef: (value) => ({ current: value }),
@@ -55,6 +56,7 @@ function createShell(initialProof = null) {
     'expo-splash-screen': { preventAutoHideAsync: async () => {}, hideAsync: async () => {} },
     '../generated/trainer-html': { default: 'bundled trainer' },
     './Opening': { default: 'opening' },
+    './use-chat-notifications': { useChatNotifications: () => notificationBridge },
     './auth-utils': auth,
   };
   const context = {

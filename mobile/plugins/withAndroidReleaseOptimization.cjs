@@ -1,8 +1,18 @@
-const { withAppBuildGradle, withGradleProperties } = require('expo/config-plugins');
+const { withAppBuildGradle, withProjectBuildGradle, withGradleProperties } = require('expo/config-plugins');
 
 // Expo's template uses a default rules file that disables code optimization.
 // Apply this during prebuild so the same settings reach every EAS release.
 module.exports = function withAndroidReleaseOptimization(config) {
+  config = withProjectBuildGradle(config, (result) => {
+    // This patch release fixes optimization-statistics reporting in AGP 8.12's R8.
+    const dependency = 'classpath("com.android.tools:r8:8.12.22")';
+    if (!result.modResults.contents.includes(dependency)) {
+      const anchor = /classpath\(\s*(["'])com\.android\.tools\.build:gradle\1\s*\)/;
+      if (!anchor.test(result.modResults.contents)) throw new Error('Check the Android build classpath before updating R8.');
+      result.modResults.contents = result.modResults.contents.replace(anchor, (match) => `${match}\n        ${dependency}`);
+    }
+    return result;
+  });
   config = withAppBuildGradle(config, (result) => {
     const original = /getDefaultProguardFile\(\s*(["'])proguard-android\.txt\1\s*\)/g;
     result.modResults.contents = result.modResults.contents.replace(

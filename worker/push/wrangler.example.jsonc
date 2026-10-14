@@ -1,0 +1,15 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "morse-room-push",
+  "main": "index.js",
+  "compatibility_date": "2026-10-14",
+  "compatibility_flags": ["global_fetch_strictly_public"],
+  "workers_dev": true,
+  "triggers": { "crons": ["* * * * *"] },
+  "d1_databases": [
+    { "binding": "DB", "database_name": "morse-room-chat", "database_id": "YOUR_EXISTING_D1_DATABASE_ID" }
+  ],
+  "vars": { "PUSH_DISPATCH_URL": "https://morse-room-push.YOUR_SUBDOMAIN.workers.dev/dispatch" }
+  // Add FIREBASE_SERVICE_ACCOUNT_JSON and PUSH_DISPATCH_KEY as Worker secrets.
+  // Set the same dispatch URL/key and service-account JSON in Cloudflare Pages.
+}

@@ -37,10 +37,34 @@ Complete the form against the submitted build and the published privacy policy. 
 | Message text, Morse, group names and read positions | Messaging and Morse practice |
 | Reports, reasons and supporting message evidence | Abuse review and account safety |
 | Hashed network IP for temporary rate limits | Preventing repeated sign-in and review-code guesses |
+| Optional push token, app installation identifier and account association | Delivering Android chat notifications to the selected installation |
+| Completed lessons, best scores, lesson sequence and completion times | Restoring and syncing lessons for signed-in accounts |
 
-Google's form includes Personal information, User IDs, Messages, Contacts including social connections, and Other user-generated content. Map each stored field to the applicable types in the current Console form. Treat Chat-related collection as optional for the overall app, since all trainer features work without Chat. Cloudflare and Google process data as described in the privacy policy. Provider processing and user-directed message delivery have specific sharing exceptions; apply the form's definitions to this implementation. [Data safety definitions](https://support.google.com/googleplay/android-developer/answer/10787469).
+Google's form includes Personal information, User IDs, Messages, Contacts including social connections, Other user-generated content, App activity, and Device or other IDs. Map each stored field to the applicable types in the current Console form. Completed lessons and scores serve App functionality and can fall under App interactions. Account-related collection is optional for the overall app, since all trainer features work without sign-in. Notification identifiers are optional and serve App functionality. Stored records are not processed only ephemerally. Cloudflare and Google process data as described in the privacy policy. Provider processing and user-directed message delivery have specific sharing exceptions; apply the form's definitions to this implementation. [Data safety definitions](https://support.google.com/googleplay/android-developer/answer/10787469).
 
-Account deletion removes the user's live account, sessions, provider identity, friendships, requests, memberships, authored messages, direct conversations and related reports. Groups with other people transfer ownership and keep those people's messages. D1 recovery history may contain earlier records for up to seven days. Device progress is removed by clearing app storage or uninstalling the app.
+Firebase Messaging and its Installations dependency handle installation identifiers and technical app information for push delivery. Analytics collection and automatic messaging initialization are disabled; the app obtains a push token after the person enables notifications and signs in to Chat. Message content is fetched from the authenticated app API and is absent from the Firebase push payload. Account-specific native credentials, previews and reply drafts are encrypted on the device. Local-only records are separate from server collection. Verify the SDK disclosures against the final submitted binary. [Firebase Android data disclosure](https://firebase.google.com/docs/android/play-data-disclosure).
+
+Account deletion removes the user's live account, sessions, provider identity, friendships, requests, memberships, authored messages, direct conversations, related reports, notification device registrations, queued delivery jobs and synced lesson progress. Groups with other people transfer ownership and keep those people's messages. D1 recovery history may contain earlier records for up to seven days. Local progress is removed by clearing app storage or uninstalling the app; account lessons can be restored after sign-in until the account is deleted. Sign-out also revokes the current session's notification credentials. A local push token and installation identifier may remain for reuse without an active account association.
+
+## Android notification review
+
+Notifications need the new native build, Android permission, Firebase configuration and a Google Play services device. They are optional; declining them leaves Learn, Practice, Codes and Chat usable. See [notification setup](NOTIFICATIONS_SETUP.md).
+
+The first prompt explains message delivery and offers **Not now** or **Enable**. Enable opens Android's app notification settings. The account menu also provides Notifications to reopen those settings. Receive a message in a test conversation, expand its notification, then test **Show text**, **Listen**, and **Reply**. Reply offers Android text input or an expanded Morse editor. Locked devices require unlocking before content actions or sending a reply.
+
+## Foreground service declaration
+
+In Play Console's App content section, declare **Media playback** for `FOREGROUND_SERVICE_MEDIA_PLAYBACK`. The person starts it by tapping **Listen** on a message notification or a dit/dah paddle in its Morse reply editor. Choose audio playback as the use case. Receiving a message or sending a text reply does not start this service.
+
+Suggested functionality description:
+
+> When the user taps Listen on a chat notification, the app plays the message as Morse tones while the chat screen stays closed. Tapping the notification's Morse reply paddles also plays the selected tone. Playback has a visible notification with Stop and ends when the tones finish or the user stops it.
+
+Suggested impact description:
+
+> Delaying playback makes the Listen action appear unresponsive. Interrupting playback cuts the Morse sequence and makes it harder to decode. The user can stop playback at any time.
+
+Provide a short demonstration video showing receipt of a test message, the Listen action, audible playback, and Stop. Google requires a video link for this declaration. No full-screen intent permission is used. [Foreground service declaration guidance](https://support.google.com/googleplay/android-developer/answer/13392821).
 
 ## Reviewing reports
 

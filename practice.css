@@ -988,10 +988,92 @@ body[data-practice-round='true'] .writing-columns {
   }
 }
 
-@media (max-width: 350px) {
-  html[data-theme='dark'] .app-shell > .topbar .page-title {
-    font-size: 12.5px;
-    letter-spacing: -.65px;
-    white-space: nowrap;
+/* Readable mobile controls keep the same metrics in light and dark themes. */
+@media (max-width: 760px), (pointer: coarse), (hover: none) {
+  :is(.practice-round-status, .practice-morse-help, .practice-round-alert) {
+    font-size: .875rem;
+    line-height: 1.5;
+  }
+
+  .qwerty-row .mobile-key {
+    font-family: var(--ui-font);
+    font-size: 1.0625rem;
+    min-height: 46px;
+  }
+}
+
+@media (max-width: 760px) {
+  .sidebar .mode-button,
+  html[data-theme='dark'] .sidebar .mode-button {
+    font-size: .8125rem;
+  }
+
+  .practice-card :is(.setup-section-heading, .setup-choice-label),
+  .practice-fields .session-length-field > label,
+  .practice-card .practice-category .setup-choice-label,
+  .practice-card .segmented button,
+  .mobile-session-options button,
+  .practice-round-tools .button,
+  .mobile-audio-access .button {
+    font-size: .875rem;
+  }
+
+  .practice-card .setup-choice-note,
+  .practice-fields .field p {
+    font-size: .75rem;
+    line-height: 1.5;
+  }
+
+  .practice-fields .field :is(label, .field-label),
+  .practice-card .custom-pool-presets button {
+    font-size: .8125rem;
+  }
+
+  .practice-card .practice-direction button {
+    min-height: 72px;
+  }
+
+  .practice-card .custom-pool-presets {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .mobile-session-options button {
+    min-height: 44px;
+  }
+
+  #characters-panel .reference-keyboard {
+    gap: 8px;
+  }
+
+  #characters-panel .reference-keyboard .character-reference {
+    min-height: 70px;
+    gap: 9px;
+  }
+
+  #characters-panel .reference-keyboard .reference-letter {
+    font-family: var(--ui-font);
+    font-size: 18px;
+  }
+
+  #characters-panel .reference-keyboard .reference-morse {
+    font-family: var(--signal-font);
+    font-size: clamp(9px, 2.6vw, 10px);
+    font-weight: 700;
+  }
+
+  #characters-panel .reference-heading h2 {
+    font-size: .875rem;
+  }
+
+  #characters-panel .reference-heading p {
+    font-size: .75rem;
+    line-height: 1.5;
+  }
+}
+
+@media (max-width: 760px) and (max-height: 500px) {
+  body[data-training-active='true'] .qwerty-row .mobile-key {
+    min-height: 34px;
+    font-size: 1rem;
   }
 }

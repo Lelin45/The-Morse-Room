@@ -8,6 +8,7 @@ import { decodeMorse } from './chat-codec.js';
 import { generateRealWordGroups } from './real-word-bank.js';
 import { PracticeRecording, ReplayPlayer } from './replay.js';
 import { createChatRoom } from './chat.js';
+import { LearningProgressSync } from './learning-progress.js';
 
 const $ = (selector) => document.querySelector(selector);
 const mobileViewport = matchMedia('(max-width: 760px)');
@@ -50,12 +51,20 @@ const chatSound = {
   frequency: clamp(savedChatSound.frequency, 200, 1200, 600),
 };
 chatSound.farnsworth = Math.min(chatSound.farnsworth, chatSound.wpm);
-const progressKey = `morse-room-progress:${LEVELS.map((level) => level.newCharacters).join('')}`;
-const savedProgress = readStorage(progressKey, {});
-const progress = {
-  completed: Array.isArray(savedProgress.completed) ? savedProgress.completed.filter((level) => Number.isInteger(level) && level >= 1 && level <= 18) : [],
-  best: savedProgress.best && typeof savedProgress.best === 'object' ? savedProgress.best : {},
-};
+const progressSync = new LearningProgressSync({
+  curriculum: LEVELS.map(level => level.newCharacters).join(''),
+  storage: { getItem: key => localStorage.getItem(key), setItem: (key, value) => localStorage.setItem(key, value) },
+  onChange: (_, switched) => {
+    if (switched && mode === 'learn') { cancelAudio(); learn.phase = 'intro'; }
+    if (learn.phase === 'intro') learn.level = Math.min(18, Math.max(0, ...progressSync.progress.completed) + 1);
+    if (mode === 'learn') renderSetup();
+  },
+  onStatus: value => {
+    const node = $('#learning-sync-status');
+    if (node) node.textContent = value === 'saved' ? 'Lessons synced' : value === 'syncing' ? 'Syncing lessons…' : 'Lessons saved on this device';
+  },
+});
+const progress = progressSync.progress;
 let mode = 'learn';
 let runId = 0;
 let tutorialBusy = false;
@@ -856,7 +865,7 @@ function checkLearn() {
     if (!progress.completed.includes(learn.level)) progress.completed.push(learn.level);
     const score = Math.round(learn.records.filter((record) => record.correct).length / learn.records.length * 100);
     progress.best[learn.level] = Math.max(Number(progress.best[learn.level]) || 0, score);
-    writeStorage(progressKey, progress);
+    void progressSync.save();
     render();
     return;
   }
@@ -1179,6 +1188,11 @@ mobileViewport.addEventListener('change', () => {
   renderWorkspace();
   updateTransport();
 });
+
+window.addEventListener('morse-account-changed', event => { void progressSync.setAccount(event.detail?.userId); });
+window.addEventListener('online', () => { void progressSync.sync(); });
+document.addEventListener('visibilitychange', () => { if (!document.hidden) void progressSync.sync(); });
+setInterval(() => { if (!document.hidden && progressSync.userId) void progressSync.sync(); }, 60000);
 
 const chatRoom = createChatRoom({
   panel: $('#chat-panel'), bell: $('#chat-bell'), notifications: $('#chat-notifications'),

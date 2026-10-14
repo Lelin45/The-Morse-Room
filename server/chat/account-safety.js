@@ -32,6 +32,8 @@ export async function blockUser(user, body, env) {
   await batch(env, [
     ['INSERT INTO chat_blocks(blocker_id, blocked_id, created_at) VALUES (?, ?, ?) ON CONFLICT(blocker_id, blocked_id) DO NOTHING', user.id, target, Date.now()],
     ['DELETE FROM chat_friend_requests WHERE (sender_id = ? AND recipient_id = ?) OR (sender_id = ? AND recipient_id = ?)', user.id, target, target, user.id],
+    [`DELETE FROM chat_group_requests WHERE (user_id = ? AND conversation_id IN (SELECT id FROM chat_conversations WHERE owner_id = ?))
+      OR (user_id = ? AND conversation_id IN (SELECT id FROM chat_conversations WHERE owner_id = ?))`, user.id, target, target, user.id],
   ]);
   return { ok: true };
 }
@@ -90,8 +92,8 @@ export async function deleteAccount(user, body, env) {
     ["DELETE FROM chat_conversations WHERE type = 'group' AND owner_id = ?", user.id],
     ['DELETE FROM chat_messages WHERE sender_id = ?', user.id],
     ['DELETE FROM chat_users WHERE id = ?', user.id],
-    [`DELETE FROM chat_rate_limits WHERE actor IN (?, ?, ?, ?, ?, ?, ?, ?)`,
-      ...['friends', 'messages', 'groups', 'joins', 'profile', 'reports', 'blocks', 'account'].map((prefix) => `${prefix}:${user.id}`)],
+    [`DELETE FROM chat_rate_limits WHERE actor IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ...['friends', 'messages', 'groups', 'joins', 'profile', 'reports', 'blocks', 'account', 'notifications', 'notification-token', 'progress'].map((prefix) => `${prefix}:${user.id}`)],
   ]);
   return { data: { ok: true, deleted: true }, sessionCookie: cookie(env, 'session', '', 0) };
 }

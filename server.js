@@ -8,7 +8,7 @@ const port = Number(process.env.PORT || 4173);
 const types = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png' };
 const publicFiles = new Set([
   '/index.html', '/styles.css', '/app.js', '/audio.js', '/trainer.js',
-  '/learn-session.js', '/replay.js', '/chat.js', '/chat-codec.js', '/chat.css',
+  '/learn-session.js', '/learning-progress.js', '/replay.js', '/chat.js', '/chat-codec.js', '/chat.css',
   '/mobile-shell.js', '/mobile-practice-session.js', '/timed-morse.js',
   '/practice.css', '/practice-round-session.js', '/qwerty-keyboard.js', '/real-word-bank.js',
   '/privacy.html', '/terms.html', '/delete-account.html', '/delete-account.js',

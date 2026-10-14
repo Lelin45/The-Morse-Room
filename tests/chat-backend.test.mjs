@@ -7,7 +7,7 @@ import { encodeMorse } from '../chat-codec.js';
 
 test('configuration is unavailable without DB or its migrated schema', async () => {
   const absent = await handleChatRequest(new Request('https://morse.test/api/config'), {});
-  assert.deepEqual(await absent.json(), { available: false, providers: { google: false } });
+  assert.deepEqual(await absent.json(), { available: false, providers: { google: false }, notifications: { available: false } });
   const env = testEnv(false);
   try {
     assert.equal((await api(env, '/api/config')).data.available, false);
@@ -75,7 +75,7 @@ test('direct reads and writes require accepted friendship even if a membership r
   try {
     const alice = await person(env, 'alice');
     await person(env, 'bob');
-    env.DB.sqlite.exec(`INSERT INTO chat_conversations VALUES ('fake-dm','direct',NULL,'alice:bob',NULL,'alice',1);
+    env.DB.sqlite.exec(`INSERT INTO chat_conversations(id,type,name,dm_pair,code,owner_id,created_at) VALUES ('fake-dm','direct',NULL,'alice:bob',NULL,'alice',1);
       INSERT INTO chat_members VALUES ('fake-dm','alice',1,0); INSERT INTO chat_members VALUES ('fake-dm','bob',1,0);`);
     assert.equal((await api(env, '/api/conversations/fake-dm', { cookie: alice })).response.status, 403);
     assert.equal((await api(env, '/api/conversations/fake-dm/messages', { method: 'POST', cookie: alice, body: { text: 'HI', clientId: 'one' } })).response.status, 403);

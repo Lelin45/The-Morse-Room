@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, AppState, BackHandler, KeyboardAvoidingView, Linking, Platform, Pressable, StyleSheet, Text, useColorScheme, View } from 'react-native';
+import { ActivityIndicator, Alert, AppState, BackHandler, KeyboardAvoidingView, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
@@ -10,6 +10,7 @@ import * as WebBrowser from 'expo-web-browser';
 import * as SplashScreen from 'expo-splash-screen';
 import html from '../generated/trainer-html';
 import Opening from './Opening';
+import { useChatNotifications } from './use-chat-notifications';
 import { AUTH_RETURN_URL, SITE_URL, PENDING_AUTH_KEY, base64URL, finishAuthScript, navigationAction, parseAuthCallback, readPendingAuth } from './auth-utils';
 
 void SplashScreen.preventAutoHideAsync().catch(() => { /* A development shell may already be visible. */ });
@@ -30,7 +31,7 @@ export default function TrainerScreen() {
   const backWaiting = useRef(false);
   const backTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const splashHideRequested = useRef(false);
-  const [dark, setDark] = useState(useColorScheme() === 'dark');
+  const [dark, setDark] = useState(true);
   const [volume, setVolume] = useState(50);
   const [preferencesReady, setPreferencesReady] = useState(false);
   const [splashHidden, setSplashHidden] = useState(false);
@@ -39,6 +40,7 @@ export default function TrainerScreen() {
   const [failure, setFailure] = useState(false);
   const [signingIn, setSigningIn] = useState(false);
   const [generation, setGeneration] = useState(0);
+  const { handleMessage: handleNotificationMessage, clear: clearNotificationAccount } = useChatNotifications({ webview, visible: !opening, ready: !loading && !failure });
   const background = dark ? '#000000' : '#f7f6f2';
   const foreground = dark ? '#d5f8df' : '#123226';
 
@@ -143,6 +145,7 @@ export default function TrainerScreen() {
     if (event.nativeEvent.data.length > 2048) return;
     try {
       const value = JSON.parse(event.nativeEvent.data);
+      if (handleNotificationMessage(value)) return;
       if (value.type === 'ready' || value.type === 'morse-native-ready') {
         ready.current = true; setLoading(false); setFailure(false); flushExchange();
         if (value.type === 'morse-native-ready') {
@@ -155,6 +158,7 @@ export default function TrainerScreen() {
         if (value.type === 'preferences' && Number.isFinite(value.volume)) setVolume(Math.max(0, Math.min(100, value.volume)));
       } else if (value.type === 'sign-in') void signIn();
       else if (value.type === 'morse-native-auth-cleared') {
+        clearNotificationAccount();
         pending.current = null; exchangeRunning.current = false; setSigningIn(false);
         void SecureStore.deleteItemAsync(PENDING_AUTH_KEY);
       }
@@ -169,7 +173,7 @@ export default function TrainerScreen() {
         if (value.handled !== true) BackHandler.exitApp();
       }
     } catch { /* Discard unrecognized bridge messages. */ }
-  }, [flushExchange, signIn]);
+  }, [flushExchange, signIn, handleNotificationMessage, clearNotificationAccount]);
 
   const openBrowser = useCallback((url: string) => {
     void (url.startsWith('mailto:') ? Linking.openURL(url) : WebBrowser.openBrowserAsync(url))

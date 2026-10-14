@@ -20,28 +20,90 @@ test('18 lessons teach the requested letter pairs, then all ten digits, two at a
   assert.equal([...letterPairs.join('')].sort().join(''), LETTERS);
   assert.deepEqual(LEVELS.slice(13).map((level) => level.newCharacters), ['01', '23', '45', '67', '89']);
   assert.equal(LEVELS[3].cumulativeCharacters, 'ETANIMSO');
-  assert.equal(LEVELS[3].practiceCount, 40);
-  assert.equal(LEVELS[17].practiceCount, 180);
+  assert.equal(LEVELS[0].practiceCount, 5);
+  assert.equal(LEVELS[3].practiceCount, 20);
+  assert.equal(LEVELS[17].practiceCount, 90);
   for (const level of LEVELS) {
     assert.equal(level.newCharacters.length, 2);
     assert.equal(level.cumulativeCharacters.length, level.number * 2);
-    assert.equal(level.practiceCount, level.cumulativeCharacters.length * 5);
+    assert.equal(level.practiceCount, level.number * 5);
   }
 });
 
-test('each lesson practices every learned character exactly five times', () => {
+test('lesson practice has five targets per level and gives the newest pair 60% of targets', () => {
   for (const level of LEVELS) {
     const expectedPool = EXPECTED_LESSON_ORDER.slice(0, level.number * 2);
     const sequence = generateLessonSequence(level, { random: seededRandom(level.number) });
     assert.equal(level.cumulativeCharacters, expectedPool);
-    assert.equal(sequence.length, expectedPool.length * 5);
-    for (const character of expectedPool) {
-      assert.equal([...sequence].filter((item) => item === character).length, 5);
-    }
+    assert.equal(sequence.length, level.number * 5);
+    const newTargets = [...sequence].filter((character) => level.newCharacters.includes(character)).length;
+    assert.equal(newTargets, level.number === 1 ? 5 : level.number * 3);
+    assert.equal(sequence.length - newTargets, level.number === 1 ? 0 : level.number * 2);
     assert.ok([...sequence].every((character) => expectedPool.includes(character)));
   }
   assert.throws(() => generateLessonSequence(0), /1 to 18/);
   assert.throws(() => generateLessonSequence(19), /1 to 18/);
+});
+
+test('weighted lessons cover all learned characters and balance each pool across random runs', () => {
+  for (const level of LEVELS) {
+    for (const seed of [3, 41, 107, 206]) {
+      const sequence = generateLessonSequence(level.number, { random: seededRandom(seed) });
+      assert.deepEqual([...new Set(sequence)].sort(), [...level.cumulativeCharacters].sort());
+      const previousCharacters = level.cumulativeCharacters.slice(0, -2);
+      for (const pool of [level.newCharacters, previousCharacters].filter(Boolean)) {
+        const counts = [...pool].map((character) => [...sequence].filter((item) => item === character).length);
+        assert.ok(Math.max(...counts) - Math.min(...counts) <= 1);
+      }
+      assert.ok([...sequence].every((character, index) => index === 0 || character !== sequence[index - 1]));
+    }
+  }
+});
+
+test('new and review targets are mixed together rather than presented in separate blocks', () => {
+  const level = LEVELS[17];
+  const sequences = Array.from({ length: 8 }, (_, index) => generateLessonSequence(level, { random: seededRandom(index + 1) }));
+  assert.equal(new Set(sequences).size, sequences.length);
+  for (const sequence of sequences) {
+    const categories = [...sequence].map((character) => level.newCharacters.includes(character) ? 'new' : 'review');
+    const transitions = categories.filter((category, index) => index > 0 && category !== categories[index - 1]).length;
+    assert.ok(transitions > 10, `${transitions} transitions should mix the newest pair with review targets`);
+    assert.ok(sequence.indexOf('8') > 0 || sequence.indexOf('9') > 0);
+    assert.ok(categories.slice(0, 20).includes('new'));
+    assert.ok(categories.slice(0, 20).includes('review'));
+    assert.ok(categories.slice(-20).includes('new'));
+    assert.ok(categories.slice(-20).includes('review'));
+  }
+});
+
+test('constant random sources finish weighted lessons without repeated targets or retry loops', () => {
+  for (const level of LEVELS) {
+    for (const value of [0, 0.999999]) {
+      let calls = 0;
+      const sequence = generateLessonSequence(level, {
+        random: () => {
+          assert.ok(++calls <= 500, 'A lesson must finish with a bounded number of random draws.');
+          return value;
+        },
+      });
+      assert.equal(sequence.length, level.practiceCount);
+      assert.ok([...sequence].every((character, index) => index === 0 || character !== sequence[index - 1]));
+      assert.equal([...sequence].filter((character) => level.newCharacters.includes(character)).length,
+        level.number === 1 ? 5 : level.number * 3);
+    }
+  }
+});
+
+test('lesson generation rejects invalid levels and invalid random values immediately', () => {
+  for (const value of [0, 19, -1, 1.5, NaN, null, undefined, {}, { number: 19 }]) {
+    assert.throws(() => generateLessonSequence(value), /1 to 18/);
+  }
+  for (const value of [-0.1, 1, NaN, Infinity]) {
+    let calls = 0;
+    assert.throws(() => generateLessonSequence(18, { random: () => { calls += 1; return value; } }),
+      /Random values must be between/);
+    assert.equal(calls, 1);
+  }
 });
 
 test('random sequences produce 100 characters using only the chosen pool', () => {

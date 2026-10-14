@@ -84,8 +84,8 @@ export default function Opening({ dark, volume, preferencesReady, visible, loadF
     <Text style={[styles.title, { color }]}>Morse Code Nepal</Text>
     <View style={styles.letters} accessibilityLabel="Welcome in Morse code">
       {timing.letters.map((entry, index) => <View key={index} style={styles.letter}>
-        <Text style={[styles.character, { color: accent, opacity: elapsed >= entry.start ? 1 : 0.2 }]}>{entry.letter}</Text>
-        <Text style={[styles.morse, { color, opacity: elapsed >= entry.start ? 0.7 : 0.14 }]}>{['.--', '.', '.-..', '-.-.', '---', '--', '.'][index]}</Text>
+        <Text style={[styles.character, { color: accent, opacity: elapsed >= entry.start ? 1 : 0.72 }]}>{entry.letter}</Text>
+        <Text style={[styles.morse, { color, opacity: elapsed >= entry.start ? 1 : 0.82 }]}>{['.--', '.', '.-..', '-.-.', '---', '--', '.'][index]}</Text>
       </View>)}
     </View>
     <Pressable accessibilityRole="button" accessibilityLabel="Skip welcome and open trainer" onPress={finish}
@@ -101,10 +101,10 @@ const styles = StyleSheet.create({
   dit: { width: 25, height: 25, borderRadius: 14 },
   dah: { width: 76, height: 25, borderRadius: 14 },
   title: { fontSize: 24, fontWeight: '600', marginBottom: 38 },
-  letters: { flexDirection: 'row', gap: 7 },
-  letter: { alignItems: 'center', width: 33 },
-  character: { fontSize: 26, fontWeight: '600' },
-  morse: { fontSize: 11, marginTop: 7, letterSpacing: 0.2 },
+  letters: { flexDirection: 'row', gap: 3, width: '100%', maxWidth: 350, paddingHorizontal: 12 },
+  letter: { alignItems: 'center', flex: 1, minWidth: 0 },
+  character: { fontSize: 28, fontWeight: '600' },
+  morse: { fontSize: 15, fontWeight: '600', marginTop: 9, letterSpacing: 0, fontVariant: ['tabular-nums'] },
   skip: { position: 'absolute', right: 18, bottom: 28, minHeight: 48, minWidth: 64, justifyContent: 'center', alignItems: 'center' },
   skipText: { fontSize: 14 },
 });

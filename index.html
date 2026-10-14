@@ -9,9 +9,9 @@
   <script>
     (() => {
       let theme;
-      try { theme = localStorage.getItem('morse-room-theme'); } catch { /* Use the device preference when storage is unavailable. */ }
+      try { theme = localStorage.getItem('morse-room-theme'); } catch { /* Use the initial theme when storage is unavailable. */ }
       if (theme !== 'dark' && theme !== 'light') {
-        theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        theme = document.documentElement.dataset.nativeApp === 'true' || window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
       }
       document.documentElement.dataset.theme = theme;
       document.querySelector('meta[name="theme-color"]').content = theme === 'dark' ? '#000000' : '#f7f6f2';

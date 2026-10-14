@@ -27,7 +27,8 @@ const bundle = await build({
 let javascript = bundle.outputFiles[0].text;
 for (const image of images) javascript = javascript.replaceAll(image.name, image.data);
 let html = await text('index.html');
-html = html.replace(/<link\b[^>]*rel=["']stylesheet["'][^>]*>\s*/gi, '')
+html = html.replace('<html lang="en">', '<html lang="en" data-native-app="true">')
+  .replace(/<link\b[^>]*rel=["']stylesheet["'][^>]*>\s*/gi, '')
   .replace(/<script\b[^>]*type=["']module["'][^>]*>[\s\S]*?<\/script>\s*/gi, '')
   .replace(/<title>[\s\S]*?<\/title>/i, '<title>Morse Code Nepal</title>')
   .replace('</head>', `<style>${css.replaceAll('</style', '<\\/style')}</style>\n</head>`)

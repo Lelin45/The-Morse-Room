@@ -13,7 +13,7 @@ const dateLabel = (value) => {
 export function createChatRoom({ panel, bell, notifications, accountToggle, accountMenu, onEnter, onAudioStart, getSound }) {
   const state = {
     active: false, ready: false, config: { available: false, providers: {} }, user: null,
-    inbox: { friends: [], requests: [], conversations: [], unread: 0 }, conversation: null,
+    inbox: { friends: [], requests: [], groupRequests: [], conversations: [], unread: 0 }, conversation: null,
     members: [], messages: [], selected: null, view: 'list', draft: '', busy: false,
     revealed: new Set(), listening: null, audioToken: 0, loading: false, pollBusy: false,
     status: '', statusError: false, listKey: '', requestKey: '', messageKey: '', fetchId: 0,
@@ -82,14 +82,26 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
     if (key === state.accountKey) return;
     state.accountKey = key;
     const available = state.config.available && state.config.providers.google;
+    if (state.ready && state.config.available) window.dispatchEvent(new CustomEvent('morse-native-chat-account', {
+      detail: { userId: state.user?.username ? state.user.id : null, notificationsAvailable: state.config.notifications?.available === true },
+    }));
     accountToggle.innerHTML = state.user ? `${state.user.username ? avatar(state.user.username) : icon('user')}<span class="account-name">${escape(state.user.username ? `@${state.user.username}` : 'Account')}</span>` : icon('user');
     accountToggle.setAttribute('aria-label', state.user ? `Account: ${state.user.username || 'choose a username'}` : 'Account: sign in');
     accountMenu.innerHTML = state.user
-      ? `<div class="account-menu-heading"><strong>${escape(state.user.username ? `@${state.user.username}` : 'Your account')}</strong><small class="account-menu-meta">${state.user.isReviewer ? 'Review account · Test data' : 'Signed in with Google'}</small></div>${state.user.isReviewer ? '' : state.user.username ? action('profile', 'Edit username', 'user', 'quiet') : action('open-chat', 'Choose username', 'user', 'quiet')}${action('open-chat', 'Morse Chat Room', 'chat', 'quiet')}${state.user.username ? action('blocked', 'Blocked people', '', 'quiet') : ''}${action('logout', 'Sign out', '', 'quiet')}${action('delete-account', 'Delete account', '', 'quiet chat-danger-action')}<p class="account-status chat-error" role="status" hidden></p><p class="chat-legal"><a href="privacy.html">Privacy Policy</a> · <a href="terms.html">Terms and Conditions</a></p>`
-      : `<div class="account-menu-heading"><strong>Sign in to chat</strong><small class="account-menu-meta">Learn and Practice need no account.</small></div>${googleButton(available)}${!state.ready ? '<p>Checking sign-in...</p>' : !available ? '<p>Chat sign-in is being connected.</p>' : ''}${action('review-access', 'Review access', '', 'quiet chat-review-access')}<p class="chat-legal">By signing in, you agree to the <a href="terms.html">chat terms</a> and <a href="privacy.html">privacy notice</a>.</p>`;
+      ? `<div class="account-menu-heading"><strong>${escape(state.user.username ? `@${state.user.username}` : 'Your account')}</strong><small class="account-menu-meta">${state.user.isReviewer ? 'Review account · Test data' : 'Signed in with Google'}</small></div>${state.user.isReviewer ? '' : state.user.username ? action('profile', 'Edit username', 'user', 'quiet') : action('open-chat', 'Choose username', 'user', 'quiet')}${action('open-chat', 'Morse Chat Room', 'chat', 'quiet')}${document.documentElement.dataset.nativeApp === 'true' && state.config.notifications?.available ? action('notification-settings', 'Notifications', 'bell', 'quiet') : ''}${state.user.username ? action('blocked', 'Blocked people', '', 'quiet') : ''}${action('logout', 'Sign out', '', 'quiet')}${action('delete-account', 'Delete account', '', 'quiet chat-danger-action')}<p class="account-status chat-error" role="status" hidden></p><p class="chat-legal"><a href="privacy.html">Privacy Policy</a> · <a href="terms.html">Terms and Conditions</a></p>`
+      : `<div class="account-menu-heading"><strong>Save lessons and chat</strong><small class="account-menu-meta">Learn and Practice need no account.</small></div>${googleButton(available)}${!state.ready ? '<p>Checking sign-in...</p>' : !available ? '<p>Chat sign-in is being connected.</p>' : ''}${action('review-access', 'Review access', '', 'quiet chat-review-access')}<p class="chat-legal">By signing in, you agree to the <a href="terms.html">chat terms</a> and <a href="privacy.html">privacy notice</a>.</p>`;
+    if (state.user) {
+      const sync = document.createElement('small'); sync.id = 'learning-sync-status'; sync.className = 'account-menu-meta';
+      sync.textContent = 'Syncing lessons…'; accountMenu.querySelector('.account-menu-heading').append(sync);
+    }
+    if (state.ready && state.config.available) window.dispatchEvent(new CustomEvent('morse-account-changed', { detail: { userId: state.user?.id || null } }));
   }
 
   function closeAccount() { accountMenu.hidden = true; accountToggle.setAttribute('aria-expanded', 'false'); }
+
+  function updateConversationLayout() {
+    document.documentElement.classList.toggle('chat-conversation-open', Boolean(state.active && state.user && state.conversation && state.view === 'conversation'));
+  }
 
   async function logout() {
     try {
@@ -108,6 +120,7 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
   }
 
   function render() {
+    updateConversationLayout();
     if (!state.active) return;
     if (!state.ready) {
       panel.innerHTML = '<div class="chat-empty" role="status">Opening Morse Chat Room...</div>';
@@ -118,10 +131,10 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
     panel.innerHTML = `<p class="chat-status ${state.statusError ? 'chat-error' : ''}" role="status" ${state.status ? '' : 'hidden'}>${escape(state.status)}</p>
       <div class="chat-shell" data-view="${state.view}">
         <aside class="chat-sidebar" aria-label="Your conversations">
-          <div class="chat-toolbar">${action('friend', 'Add friend', 'user-plus')}${action('new-group', 'New group', 'users')}${action('join-group', 'Join group', 'link')}</div>
+          <div class="chat-toolbar">${action('friend', 'Add friend', 'user-plus')}${action('new-group', 'New group', 'users')}${action('join-group', 'Join by invite', 'link')}${action('public-groups', 'Find public groups', 'users')}</div>
           <div class="chat-list-heading"><strong>${state.user.isReviewer ? 'Test conversations' : 'Conversations'}</strong><span id="chat-conversation-count">${state.inbox.conversations.length}</span></div>
           <div class="chat-conversation-list"></div>
-          <p class="chat-sidebar-note">Friends accept your request before you can chat. Groups are invite only.</p>
+          <p class="chat-sidebar-note">Browse public groups or join a private group with an invite. Each group has room for 100 people.</p>
         </aside>
         <section class="chat-conversation" aria-label="Conversation"><div class="chat-empty"><span class="chat-empty-mark">${icon('chat')}</span><h2>Find your first signal</h2><p>Add a friend by username or email, or start a group and share its invite.</p></div></section>
       </div>`;
@@ -134,7 +147,7 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
     const available = state.config.available && state.config.providers.google;
     panel.innerHTML = `<div class="chat-intro">
       <div class="chat-intro-copy"><h2>Chat in Morse with friends</h2><p>Write a message or send your own dits and dahs.</p>
-      <ul class="chat-feature-list"><li>${icon('user-plus')}Find friends by username or email.</li><li>${icon('users')}Make a private group. Invite by code or link.</li><li>${icon('volume')}Read the Morse, listen, or reveal the words.</li></ul>
+      <ul class="chat-feature-list"><li>${icon('user-plus')}Find friends by username or email.</li><li>${icon('users')}Find a public group or invite friends to a private one.</li><li>${icon('volume')}Read the Morse, listen, or reveal the words.</li></ul>
       <div class="chat-auth-actions">${googleButton(available)}</div>
       ${action('review-access', 'Review access', '', 'quiet chat-review-access')}
       <p class="chat-form-help">${available ? 'Pick a username after signing in. Learn and Practice stay free, with no account needed.' : 'Chat is being connected. Every lesson and practice session is available now.'}</p>
@@ -176,15 +189,16 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
     state.listKey = key;
     const count = panel.querySelector('#chat-conversation-count');
     if (count) count.textContent = state.inbox.conversations.length;
-    list.innerHTML = state.inbox.conversations.length ? state.inbox.conversations.map((item) => `<button type="button" class="chat-conversation-item ${String(item.id) === String(state.selected) ? 'active' : ''}" data-conversation="${escape(item.id)}" ${String(item.id) === String(state.selected) ? 'aria-current="true"' : ''}>${item.type === 'group' ? `<span class="chat-item-avatar">${icon('users')}</span>` : avatar(item.name)}<span class="chat-item-copy"><strong>${escape(item.type === 'direct' ? `@${item.name}` : item.name)}</strong><small>${item.type === 'group' ? 'Private group' : 'Friend'}</small></span><span class="chat-item-meta">${item.unread ? `<b>${escape(item.unread)}</b><span class="sr-only">unread messages</span>` : icon('arrow')}</span></button>`).join('') : '<div class="chat-empty chat-list-empty"><p>No conversations yet.</p><small>A friend request is a good first step.</small></div>';
+    list.innerHTML = state.inbox.conversations.length ? state.inbox.conversations.map((item) => `<button type="button" class="chat-conversation-item ${String(item.id) === String(state.selected) ? 'active' : ''}" data-conversation="${escape(item.id)}" ${String(item.id) === String(state.selected) ? 'aria-current="true"' : ''}>${item.type === 'group' ? `<span class="chat-item-avatar">${icon('users')}</span>` : avatar(item.name)}<span class="chat-item-copy"><strong>${escape(item.type === 'direct' ? `@${item.name}` : item.name)}</strong><small>${item.type === 'group' ? `${item.visibility === 'public' ? 'Public' : 'Private'} group · ${item.memberCount || 0}/100` : 'Friend'}</small></span><span class="chat-item-meta">${item.unread ? `<b>${escape(item.unread)}</b><span class="sr-only">unread messages</span>` : icon('arrow')}</span></button>`).join('') : '<div class="chat-empty chat-list-empty"><p>No conversations yet.</p><small>A friend request is a good first step.</small></div>';
     if (focusedId) [...list.querySelectorAll('[data-conversation]')].find((button) => button.dataset.conversation === focusedId)?.focus({ preventScroll: true });
   }
 
   function renderConversation() {
+    updateConversationLayout();
     const room = state.conversation;
     const view = panel.querySelector('.chat-conversation');
     if (!view || !room) return;
-    view.innerHTML = `<header class="chat-conversation-header">${action('back', 'Back', 'back', 'quiet chat-mobile-back')}<div class="chat-room-identity">${avatar(room.name, 'chat-room-avatar')}<div class="chat-item-copy"><h2 title="${escape(room.name)}">${escape(room.type === 'direct' ? `@${room.name}` : room.name)}</h2><small class="chat-member-summary">${room.type === 'group' ? `${state.members.length} members` : 'Morse messages between friends'}</small></div></div>${room.type === 'group' ? action('invite', 'Invite', 'link') : room.peer?.id ? action('block', 'Block', '', 'quiet chat-block-button') : ''}</header>
+    view.innerHTML = `<header class="chat-conversation-header">${action('back', 'Back', 'back', 'quiet chat-mobile-back')}<div class="chat-room-identity">${avatar(room.name, 'chat-room-avatar')}<div class="chat-item-copy"><h2 title="${escape(room.name)}">${escape(room.type === 'direct' ? `@${room.name}` : room.name)}</h2><small class="chat-member-summary">${room.type === 'group' ? `${room.visibility === 'public' ? 'Public' : 'Private'} · ${state.members.length}/100 members` : 'Morse messages between friends'}</small></div></div>${room.type === 'group' ? `<div class="chat-room-actions">${action('members', 'Members', 'users', 'quiet')}${room.code ? action('invite', 'Invite', 'link', 'quiet') : ''}</div>` : room.peer?.id ? action('block', 'Block', '', 'quiet chat-block-button') : ''}</header>
       ${room.type === 'group' ? '<div class="chat-invite-details" hidden></div>' : ''}
       <div class="chat-history-actions" ${state.hasMore ? '' : 'hidden'}>${action('earlier', 'Load earlier signals', 'replay')}</div>
       <div class="chat-message-list" aria-label="Messages"></div>
@@ -193,8 +207,7 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
         <div class="chat-compose-heading"><div class="chat-compose-label"><span>Message</span><details class="chat-code-info"><summary aria-label="About Morse messages">${icon('info')}</summary><p id="chat-code-note">Morse code includes only letters and numbers. Show text displays your original message, including punctuation, or decodes your Morse.</p></details></div><div class="chat-send-mode segmented" aria-label="Message input mode"><button type="button" data-send-mode="text" aria-label="Send text">Text</button><button type="button" data-send-mode="morse" aria-label="Send Morse code">Morse</button></div></div>
         <label for="chat-draft" class="sr-only">Message to send as Morse code</label><div class="chat-compose-input-row"><textarea id="chat-draft" name="text" rows="1" aria-describedby="chat-code-note chat-morse-help" required></textarea><button type="submit" class="button primary chat-send-button" aria-label="Send signal"><span>Send signal</span>${icon('send')}</button></div>
         <div class="chat-compose-meta"><span id="chat-draft-count"></span></div>
-        <div class="chat-morse-help" id="chat-morse-help" hidden><p><span class="chat-desktop-morse-help"><kbd>←</kbd> dit <span>·</span> <kbd>→</kbd> dah <span>·</span> </span>Pause between letters. Space between words. <span id="chat-morse-boundary" aria-live="off"></span></p><div class="morse-paddles"><button type="button" class="morse-paddle dit" data-morse-key="." aria-label="Dit"><strong>.</strong><span>Dit</span></button><button type="button" class="morse-space" data-morse-key="word" aria-label="Space between words">Space</button><button type="button" class="morse-paddle dah" data-morse-key="-" aria-label="Dah"><strong>-</strong><span>Dah</span></button></div></div>
-        <div class="chat-compose-footer"><button type="button" class="button quiet chat-morse-undo" data-morse-key="undo" hidden>Undo</button></div>
+        <div class="chat-morse-help" id="chat-morse-help" hidden><p><span class="chat-desktop-morse-help"><kbd>←</kbd> dit <span>·</span> <kbd>→</kbd> dah <span>·</span> </span>Pause between letters. Space between words. <span id="chat-morse-boundary" aria-live="off"></span></p><div class="morse-paddles"><button type="button" class="morse-paddle dit" data-morse-key="." aria-label="Dit"><strong>.</strong><span>Dit</span></button><button type="button" class="morse-space" data-morse-key="word" aria-label="Space between words">Space</button><button type="button" class="morse-paddle dah" data-morse-key="-" aria-label="Dah"><strong>-</strong><span>Dah</span></button></div><button type="button" class="button quiet chat-morse-undo" data-morse-key="undo" aria-label="Backspace" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M9 5h11v14H9L3 12z"/><path d="m12 9 6 6m0-6-6 6"/></svg></button></div>
       </form>`;
     state.messageKey = '';
     renderMessages(true);
@@ -257,7 +270,6 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
     input.setAttribute('autocapitalize', morse ? 'off' : 'sentences');
     panel.querySelector('#chat-morse-help').hidden = !morse;
     panel.querySelector('.chat-morse-undo').hidden = !morse;
-    panel.querySelector('.chat-compose-footer').hidden = !morse;
     panel.querySelectorAll('[data-send-mode]').forEach((button) => {
       const selected = button.dataset.sendMode === state.composeMode;
       button.classList.toggle('active', selected); button.setAttribute('aria-pressed', String(selected));
@@ -324,7 +336,7 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
 
   function updateBell() {
     renderAccount();
-    const count = state.user?.username ? state.inbox.requests.length + state.inbox.unread : 0;
+    const count = state.user?.username ? state.inbox.requests.length + (state.inbox.groupRequests || []).length + state.inbox.unread : 0;
     const badge = bell.querySelector('.chat-notification-count');
     badge.textContent = count > 99 ? '99+' : String(count);
     badge.hidden = !count;
@@ -333,17 +345,20 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
   }
 
   function renderNotifications() {
-    const key = JSON.stringify([state.user, state.inbox.requests, state.inbox.unread]);
+    const key = JSON.stringify([state.user, state.inbox.requests, state.inbox.groupRequests, state.inbox.unread]);
     if (key === state.requestKey && notifications.childElementCount) return;
     state.requestKey = key;
-    notifications.innerHTML = `<div class="chat-notification-heading"><strong>Notifications</strong><button type="button" class="button quiet" data-notify-close aria-label="Close notifications">${icon('close')}</button></div>${!state.user?.username ? '<p>Sign in to chat for friend requests and messages.</p><button type="button" class="button primary" data-notify-chat>Open chat</button>' : `${state.inbox.requests.map((item) => `<div class="chat-request"><p><strong>@${escape(item.username)}</strong> wants to be your friend.</p><div class="chat-request-actions"><button type="button" class="button primary" data-request="${escape(item.id)}" data-accept="true">Accept</button><button type="button" class="button" data-request="${escape(item.id)}" data-accept="false">Decline</button></div></div>`).join('')}${state.inbox.unread ? `<p>${escape(state.inbox.unread)} unread ${state.inbox.unread === 1 ? 'signal' : 'signals'} waiting.</p><button type="button" class="button" data-notify-chat>Open conversations</button>` : ''}${!state.inbox.requests.length && !state.inbox.unread ? '<p>You are all caught up.</p>' : ''}`}`;
+    const groupItems = state.inbox.groupRequests || [];
+    const friendItems = state.inbox.requests.map((item) => `<div class="chat-request"><p><strong>@${escape(item.username)}</strong> wants to be your friend.</p><div class="chat-request-actions"><button type="button" class="button primary" data-request="${escape(item.id)}" data-accept="true">Accept</button><button type="button" class="button" data-request="${escape(item.id)}" data-accept="false">Decline</button></div></div>`).join('');
+    const joinItems = groupItems.map((item) => `<div class="chat-request"><p><strong>@${escape(item.username)}</strong> wants to join <strong>${escape(item.groupName)}</strong>.</p><div class="chat-request-actions"><button type="button" class="button primary" data-group-request="${escape(item.id)}" data-accept="true">Accept</button><button type="button" class="button" data-group-request="${escape(item.id)}" data-accept="false">Decline</button></div></div>`).join('');
+    notifications.innerHTML = `<div class="chat-notification-heading"><strong>Notifications</strong><button type="button" class="button quiet" data-notify-close aria-label="Close notifications">${icon('close')}</button></div>${!state.user?.username ? '<p>Sign in to chat for friend requests and messages.</p><button type="button" class="button primary" data-notify-chat>Open chat</button>' : `${friendItems}${joinItems}${state.inbox.unread ? `<p>${escape(state.inbox.unread)} unread ${state.inbox.unread === 1 ? 'signal' : 'signals'} waiting.</p><button type="button" class="button" data-notify-chat>Open conversations</button>` : ''}${!state.inbox.requests.length && !groupItems.length && !state.inbox.unread ? '<p>You are all caught up.</p>' : ''}`}`;
   }
 
   async function refreshInbox() {
     if (!state.user?.username) return;
     state.inbox = await api('/inbox');
     state.nextInboxAt = Date.now() + (state.active ? 30000 : 60000);
-    state.inbox.friends ||= []; state.inbox.requests ||= []; state.inbox.conversations ||= []; state.inbox.unread ||= 0;
+    state.inbox.friends ||= []; state.inbox.requests ||= []; state.inbox.groupRequests ||= []; state.inbox.conversations ||= []; state.inbox.unread ||= 0;
     renderList(); updateBell();
   }
 
@@ -351,7 +366,7 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
     saveDraft();
     stopAudio();
     const fetchId = ++state.fetchId;
-    state.selected = String(id); state.draft = ''; state.view = 'conversation';
+    state.selected = String(id); state.conversation = null; state.draft = ''; state.view = 'conversation'; updateConversationLayout();
     panel.querySelector('.chat-shell')?.setAttribute('data-view', 'conversation');
     renderList();
     const view = panel.querySelector('.chat-conversation');
@@ -582,13 +597,13 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
     const settings = {
       friend: { title: 'Add a friend', label: 'Username or email', name: 'target', placeholder: 'user123 or friend@example.com', help: 'Your friend needs a chat account. They accept your request before you can message each other.', submit: 'Send request' },
       profile: { title: 'Edit username', label: 'Username', name: 'username', placeholder: 'user123', help: 'Use 3 to 24 letters, numbers, or underscores. Your friends will see your new username.', submit: 'Save username' },
-      'new-group': { title: 'Start a private group', label: 'Group name', name: 'name', placeholder: 'The evening signals', help: 'Only people with your invite code or link can join.', submit: 'Create group' },
+      'new-group': { title: 'Create a group', label: 'Group name', name: 'name', placeholder: 'The evening signals', help: 'Up to 100 members. As creator, you approve public join requests and can remove members.', submit: 'Create group' },
       'join-group': { title: 'Join a group', label: 'Invite code or link', name: 'code', placeholder: 'Paste a code or invite link', help: 'Ask a group member for their code or invite link.', submit: 'Join group' },
     }[kind];
     if (!settings || !state.user?.username) return;
     const dialog = document.createElement('dialog');
     dialog.className = 'chat-dialog';
-    dialog.innerHTML = `<form><div class="chat-dialog-header"><h2>${settings.title}</h2><button type="button" class="button quiet" data-dialog-close aria-label="Close">${icon('close')}</button></div><div class="chat-dialog-body"><label class="chat-field">${settings.label}<input name="${settings.name}" placeholder="${settings.placeholder}" value="${escape(initialCode)}" maxlength="${kind === 'new-group' ? 60 : 254}" required ${kind === 'new-group' ? 'minlength="2"' : ''}></label><p class="chat-form-help">${settings.help}</p><p class="chat-form-help chat-dialog-status" role="status" hidden></p></div><div class="chat-dialog-actions"><button type="button" class="button" data-dialog-close>Cancel</button><button type="submit" class="button primary">${settings.submit}</button></div></form>`;
+    dialog.innerHTML = `<form><div class="chat-dialog-header"><h2>${settings.title}</h2><button type="button" class="button quiet" data-dialog-close aria-label="Close">${icon('close')}</button></div><div class="chat-dialog-body"><label class="chat-field">${settings.label}<input name="${settings.name}" placeholder="${settings.placeholder}" value="${escape(initialCode)}" maxlength="${kind === 'new-group' ? 60 : 254}" required ${kind === 'new-group' ? 'minlength="2"' : ''}></label>${kind === 'new-group' ? '<label class="chat-field">Who can find this group?<select name="visibility"><option value="private">Private: join with a code or link</option><option value="public">Public: discover and request to join</option></select></label>' : ''}<p class="chat-form-help">${settings.help}</p><p class="chat-form-help chat-dialog-status" role="status" hidden></p></div><div class="chat-dialog-actions"><button type="button" class="button" data-dialog-close>Cancel</button><button type="submit" class="button primary">${settings.submit}</button></div></form>`;
     document.body.append(dialog); dialog.showModal();
     dialog.querySelectorAll('[data-dialog-close]').forEach((button) => button.addEventListener('click', () => dialog.close()));
     dialog.addEventListener('close', () => {
@@ -616,15 +631,70 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
           dialog.close(); status('Request sent. Your friend can accept it from the notification bell.');
         } else {
           if (kind === 'join-group' && /^https?:\/\//i.test(value)) value = new URL(value).searchParams.get('join') || '';
-          const data = await api(kind === 'new-group' ? '/groups' : '/groups/join', kind === 'new-group' ? { name: value } : { code: value });
+          const data = await api(kind === 'new-group' ? '/groups' : '/groups/join', kind === 'new-group' ? { name: value, visibility: new FormData(event.target).get('visibility') } : { code: value });
           try { sessionStorage.removeItem('morse-room-join'); } catch { /* No saved invite remains. */ }
           state.joinConsumed = true;
           const url = new URL(location.href); url.searchParams.delete('join'); history.replaceState(null, '', url);
-          dialog.close(); await refreshInbox(); await selectConversation(data.conversation.id);
+          dialog.close(); await refreshInbox();
+          if (data.requested) { status('Join request sent. The group creator will accept or decline it.'); return; }
+          await selectConversation(data.conversation.id);
           if (kind === 'new-group') showInvite();
         }
       } catch (error) { feedback.hidden = false; feedback.textContent = error.message; feedback.classList.add('chat-error'); }
       finally { submit.disabled = false; }
+    });
+  }
+
+  async function showPublicGroups() {
+    const dialog = safetyDialog('Find public groups', '<label class="chat-field">Search by group name<input name="group-search" type="search" placeholder="Find a listening group" maxlength="60" autocomplete="off"></label><p class="chat-form-help">The creator approves join requests. Private groups never appear here.</p><div class="chat-public-groups" role="status">Loading groups...</div>', '', null);
+    const list = dialog.querySelector('.chat-public-groups');
+    const input = dialog.querySelector('[name=group-search]');
+    let searchToken = 0;
+    let searchTimer;
+    async function load() {
+      const token = ++searchToken;
+      try {
+        const data = await api(`/groups/public?q=${encodeURIComponent(input.value.trim())}`);
+        if (!dialog.isConnected || token !== searchToken) return;
+        list.innerHTML = data.groups.length ? data.groups.map((group) => `<div class="chat-public-group"><div class="chat-item-copy"><strong>${escape(group.name)}</strong><small>${group.memberCount}/100 members</small></div><button type="button" class="button ${group.joined ? '' : 'primary'}" data-public-group="${escape(group.id)}" data-joined="${group.joined}" ${group.requested || (!group.joined && group.memberCount >= 100) ? 'disabled' : ''}>${group.joined ? 'Open' : group.requested ? 'Requested' : group.memberCount >= 100 ? 'Full' : 'Request to join'}</button></div>`).join('') : '<p>No public groups found. Try another name or create one.</p>';
+      } catch (error) { if (dialog.isConnected && token === searchToken) list.textContent = error.message; }
+    }
+    input.addEventListener('input', () => { clearTimeout(searchTimer); searchTimer = setTimeout(() => { void load(); }, 250); });
+    dialog.addEventListener('close', () => { searchToken += 1; clearTimeout(searchTimer); });
+    list.addEventListener('click', async (event) => {
+      const button = event.target.closest('[data-public-group]');
+      if (!button || button.disabled) return;
+      button.disabled = true;
+      try {
+        if (button.dataset.joined === 'true') { dialog.close(); await selectConversation(button.dataset.publicGroup); return; }
+        const result = await api('/groups/request', { groupId: button.dataset.publicGroup });
+        if (result.joined) { dialog.close(); await refreshInbox(); await selectConversation(result.conversation.id); return; }
+        button.textContent = 'Requested';
+        status('Join request sent. The group creator will review it.');
+      } catch (error) {
+        const feedback = dialog.querySelector('.chat-dialog-status');
+        feedback.hidden = false; feedback.textContent = error.message; feedback.classList.add('chat-error'); button.disabled = false;
+      }
+    });
+    await load();
+  }
+
+  function showGroupMembers() {
+    const room = state.conversation;
+    if (!room || room.type !== 'group') return;
+    const owner = room.ownerId === state.user.id;
+    const dialog = safetyDialog(`${room.name}: ${state.members.length}/100`, `<div class="chat-group-members">${state.members.map((member) => `<div class="chat-public-group"><div class="chat-item-copy"><strong>@${escape(member.username)}</strong><small>${member.id === room.ownerId ? 'Creator' : 'Member'}</small></div>${owner && member.id !== state.user.id ? `<button type="button" class="button quiet chat-danger-action" data-remove-member="${escape(member.id)}">Remove</button>` : ''}</div>`).join('')}</div>${owner ? '<p class="chat-form-help">Removed members lose access and cannot rejoin with an old invite.</p>' : ''}`, '', null);
+    dialog.addEventListener('click', (event) => {
+      const remove = event.target.closest('[data-remove-member]');
+      if (!remove || remove.disabled) return;
+      const member = state.members.find((item) => item.id === remove.dataset.removeMember);
+      if (!member) return;
+      dialog.close();
+      safetyDialog(`Remove @${member.username}?`, `<p class="chat-form-help">They will lose access to ${escape(room.name)} and will not be able to rejoin with the current invite.</p>`, 'Remove member', async (_form, confirmation) => {
+        await api('/groups/kick', { groupId: room.id, userId: member.id });
+        confirmation.close(); await refreshInbox();
+        if (state.selected === room.id && state.active) await selectConversation(room.id);
+      });
     });
   }
 
@@ -633,7 +703,7 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
     if (!node || !state.conversation?.code) return;
     const code = state.conversation.code;
     const link = `${location.origin}/?join=${encodeURIComponent(code)}`;
-    node.innerHTML = `<div><span class="small-label">PRIVATE GROUP INVITE</span><strong class="chat-invite-code">${escape(code)}</strong><small>Share this only with people you want in the group.</small></div><div class="chat-invite-actions">${action('copy-code', 'Copy code', 'copy')}${action('copy-link', 'Copy link', 'link')}</div>`;
+    node.innerHTML = `<div><span class="small-label">${state.conversation.visibility === 'public' ? 'PUBLIC GROUP INVITE' : 'PRIVATE GROUP INVITE'}</span><strong class="chat-invite-code">${escape(code)}</strong><small>${state.conversation.visibility === 'public' ? 'People can request to join. The creator approves each request.' : 'Share this only with people you want in the group.'}</small></div><div class="chat-invite-actions">${action('copy-code', 'Copy code', 'copy')}${action('copy-link', 'Copy link', 'link')}</div>`;
     node.hidden = !node.hidden;
     node.dataset.code = code; node.dataset.link = link;
   }
@@ -650,11 +720,11 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
     state.pollBusy = true;
     try {
       if (Date.now() >= state.nextInboxAt) await refreshInbox();
-      if (state.active && state.selected && state.conversation) {
+      if (state.active && state.view === 'conversation' && state.selected && state.conversation) {
         const id = state.selected;
         const after = state.cursor;
         const data = await api(`/conversations/${encodeURIComponent(id)}?after=${encodeURIComponent(after)}`);
-        if (String(id) === String(state.selected) && state.active) {
+        if (String(id) === String(state.selected) && state.active && state.view === 'conversation') {
           const newMessages = (data.messages || []).filter((item) => !state.messages.some((existing) => String(item.id) === String(existing.id)));
           if (data.messages?.length) state.cursor = data.messages.at(-1).id;
           if (newMessages.length) {
@@ -665,8 +735,9 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
             if (live) { live.hidden = false; live.textContent = `${newMessages.length} new ${newMessages.length === 1 ? 'signal' : 'signals'} received.`; }
           }
           state.members = data.members || state.members;
+          state.conversation = data.conversation || state.conversation;
           const summary = panel.querySelector('.chat-member-summary');
-          if (summary && state.conversation.type === 'group') summary.textContent = `${state.members.length} members`;
+          if (summary && state.conversation.type === 'group') summary.textContent = `${state.conversation.visibility === 'public' ? 'Public' : 'Private'} · ${state.members.length}/100 members`;
           if (state.cursor > state.readCursor) {
             const through = state.cursor;
             await api(`/conversations/${encodeURIComponent(id)}/read`, { through });
@@ -684,6 +755,10 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
       if (error.status === 401) {
         state.user = null; state.inbox = { friends: [], requests: [], conversations: [], unread: 0 };
         stopAudio(); render(); updateBell(); status('Your session ended. Sign in again to continue.', true);
+      } else if (error.status === 404 && state.selected && state.conversation?.type === 'group') {
+        saveDraft(); stopAudio(); state.fetchId += 1;
+        state.selected = null; state.conversation = null; state.messages = []; state.members = []; state.view = 'list';
+        await refreshInbox().catch(() => {}); render(); status('This group is no longer available to you.', true);
       } else {
         state.failures += 1;
         state.retryAt = Date.now() + Math.min(60000, 5000 * 2 ** Math.min(4, state.failures));
@@ -735,6 +810,8 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
       case 'retry':
         state.ready = false; render(); await boot(); break;
       case 'friend': case 'new-group': case 'join-group': showDialog(button.dataset.chatAction); break;
+      case 'public-groups': await showPublicGroups(); break;
+      case 'members': showGroupMembers(); break;
       case 'block': showBlockPerson(state.conversation?.peer); break;
       case 'review-access': showReviewAccess(); break;
       case 'earlier': {
@@ -755,7 +832,7 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
         finally { button.disabled = false; }
         break;
       }
-      case 'back': state.view = 'list'; panel.querySelector('.chat-shell').dataset.view = 'list'; break;
+      case 'back': saveDraft(); state.view = 'list'; panel.querySelector('.chat-shell').dataset.view = 'list'; updateConversationLayout(); break;
       case 'invite': showInvite(); break;
       case 'copy-code': case 'copy-link': {
         const value = panel.querySelector('.chat-invite-details')?.dataset[button.dataset.chatAction === 'copy-code' ? 'code' : 'link'];
@@ -808,6 +885,8 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
       closeAccount(); await showBlockedPeople();
     } else if (button.dataset.chatAction === 'review-access') {
       closeAccount(); showReviewAccess();
+    } else if (button.dataset.chatAction === 'notification-settings') {
+      closeAccount(); window.dispatchEvent(new CustomEvent('morse-native-notification-settings'));
     }
   });
   document.addEventListener('click', (event) => { if (!event.target.closest('.account-control')) closeAccount(); });
@@ -817,11 +896,11 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
   notifications.addEventListener('click', async (event) => {
     if (event.target.closest('[data-notify-close]')) { closeNotifications(); bell.focus(); return; }
     if (event.target.closest('[data-notify-chat]')) { closeNotifications(); onEnter(); return; }
-    const request = event.target.closest('[data-request]');
+    const request = event.target.closest('[data-request], [data-group-request]');
     if (!request) return;
     request.disabled = true;
     try {
-      await api('/friends/respond', { id: request.dataset.request, accept: request.dataset.accept === 'true' });
+      await api(request.dataset.groupRequest ? '/groups/respond' : '/friends/respond', { id: request.dataset.groupRequest || request.dataset.request, accept: request.dataset.accept === 'true' });
       await refreshInbox();
     } catch (error) {
       const node = document.createElement('p'); node.className = 'chat-error'; node.textContent = error.message; request.closest('.chat-request').append(node);
@@ -849,6 +928,13 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
   mobile.addEventListener('change', updateInputMode);
   touchInput.addEventListener('change', updateInputMode);
   let nativeAuthRefreshing = false;
+  window.addEventListener('morse-native-open-conversation', async ({ detail = {} }) => {
+    if (!/^[A-Za-z0-9_-]{1,80}$/.test(detail.conversationId || '')) return;
+    if (!state.ready) await boot();
+    closeAccount(); closeNotifications(); onEnter();
+    if (state.user?.username) await selectConversation(detail.conversationId);
+    else status('Sign in to open this conversation.');
+  });
   window.addEventListener('morse-native-auth-complete', () => {
     if (nativeAuthRefreshing) return;
     nativeAuthRefreshing = true;
@@ -879,7 +965,7 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
   });
   return {
     open() { state.active = true; render(); if (state.ready) { void poll(); void offerPendingJoin(); } },
-    close() { saveDraft(); state.active = false; stopAudio(); closeNotifications(); document.querySelector('.chat-dialog')?.close(); },
+    close() { saveDraft(); state.active = false; updateConversationLayout(); stopAudio(); closeNotifications(); document.querySelector('.chat-dialog')?.close(); },
     stopAudio,
   };
 }

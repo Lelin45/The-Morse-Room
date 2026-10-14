@@ -2186,3 +2186,121 @@ html[data-theme='dark'] .theme-icon-moon {
     font-size: 17px;
   }
 }
+
+/* Both themes use the same typeface. Theme changes only adjust the colors. */
+:root {
+  --ui-font: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --signal-font: ui-monospace, 'SFMono-Regular', Consolas, 'Courier New', monospace;
+  font-family: var(--ui-font);
+}
+
+html[data-theme='dark'] {
+  --dark-font: var(--ui-font);
+}
+
+html :is(.brand, .page-title, .view-heading h1, .pane-heading h2,
+  .lesson-stage-letter, .character-letter, .lesson-stage-compact h1,
+  .lesson-stage-compact h2, .completion-card h3, .session-result-score,
+  .session-result h3, .session-countdown strong, .results-summary strong,
+  .reference-letter, .answer-letter, .copy-cell, .answer-cell,
+  .letter-entry, .mobile-character-entry, .practice-textarea),
+html[data-theme='dark'] :is(.brand, .page-title, .view-heading h1,
+  .pane-heading h2, .lesson-stage-letter, .character-letter,
+  .lesson-stage-compact h1, .lesson-stage-compact h2, .completion-card h3,
+  .session-result-score, .session-result h3, .session-countdown strong,
+  .results-summary strong, .reference-letter, .answer-letter, .copy-cell,
+  .answer-cell, .letter-entry, .mobile-character-entry, .practice-textarea) {
+  font-family: var(--ui-font);
+}
+
+html :is(.morse-pattern, .answer-morse, .reference-morse),
+html[data-theme='dark'] :is(.morse-pattern, .answer-morse, .reference-morse) {
+  font-family: var(--signal-font);
+}
+
+.page-title,
+html[data-theme='dark'] .page-title {
+  font-size: clamp(25px, 2.2vw, 31px);
+}
+
+@media (max-width: 760px), (pointer: coarse), (hover: none) {
+  html {
+    font-size: 16px;
+  }
+
+  html:not([data-theme='dark']) {
+    --muted: #607061;
+  }
+
+  html[data-theme='dark'] {
+    --text: #cdebd6;
+    --muted: #96be9f;
+  }
+
+  :is(.button, .lesson-stage-actions .button, .setting label,
+    .lesson-stage-description, .lesson-stage-compact p,
+    .lesson-stage-compact .lesson-stage-description, .tutorial-sounds,
+    .lesson-feedback, .session-feedback .lesson-feedback,
+    .session-result p, .mobile-training-status, .mobile-training-feedback,
+    .empty-state p, .empty-state h3, .copy-placeholder, .view-heading p) {
+    font-size: .875rem;
+    line-height: 1.5;
+  }
+
+  :is(.setting-value input, .field input, .field select, .practice-textarea) {
+    font-size: 1rem;
+  }
+
+  .setting-value span,
+  .setting p,
+  .phase-badge,
+  .mobile-training-copy,
+  .session-counter,
+  .signal-status {
+    font-size: .75rem;
+  }
+
+  .practice-textarea::placeholder {
+    font-family: var(--ui-font);
+    font-size: .875rem;
+  }
+
+  .button {
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 760px) {
+  .app-shell > .topbar .page-title,
+  html[data-theme='dark'] .app-shell > .topbar .page-title {
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: -.35px;
+  }
+
+  .sidebar .mode-button,
+  html[data-theme='dark'] .sidebar .mode-button {
+    font-size: .8125rem;
+  }
+
+  .level-button {
+    font-size: .75rem;
+  }
+
+  .lesson-stage-eyebrow {
+    font-size: .75rem;
+  }
+
+  .lesson-stage {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+}
+
+@media (max-width: 350px) {
+  .app-shell > .topbar .page-title,
+  html[data-theme='dark'] .app-shell > .topbar .page-title {
+    font-size: 16px;
+    letter-spacing: -.55px;
+  }
+}

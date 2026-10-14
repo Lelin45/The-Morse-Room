@@ -6,6 +6,9 @@ import { rateLimit } from './db.js';
 import { blockBetween, listBlocks, blockUser, removeBlock, reportMessage, deleteAccount } from './account-safety.js';
 import { finishMobileSignIn, makeMobileRedirect, mobileErrorRedirect } from './mobile-auth.js';
 import { reviewerSignIn, isReviewUser } from './review-auth.js';
+import { createGroup, joinGroup, listPublicGroups, requestGroup, groupRequests, respondGroup, kickGroupMember } from './groups.js';
+import { notificationAvailable, registerDevice, removeDevice, notificationRoute, queueMessageNotifications } from './notifications.js';
+import { readLearningProgress, saveLearningProgress } from './learning-progress.js';
 
 const LIMIT = 100;
 const MESSAGE_SELECT = `SELECT m.id, m.sender_id AS senderId, u.username, m.text, m.morse, m.kind, m.created_at AS createdAt
@@ -41,7 +44,8 @@ async function userRequired(request, env, profile = true) {
 }
 
 async function conversationRequired(id, user, env) {
-  const conversation = await one(env, `SELECT c.id, c.type, c.name, c.code, c.dm_pair AS dmPair
+  const conversation = await one(env, `SELECT c.id, c.type, c.name, c.code, c.dm_pair AS dmPair,
+    c.owner_id AS ownerId, c.visibility
     FROM chat_conversations c JOIN chat_members m ON m.conversation_id = c.id
     WHERE c.id = ? AND m.user_id = ?
       AND EXISTS (SELECT 1 FROM chat_review_users r WHERE r.user_id = c.owner_id) = ?
@@ -68,7 +72,7 @@ async function conversationRequired(id, user, env) {
 }
 
 async function inbox(user, env) {
-  const [friends, requests, conversations] = await Promise.all([
+  const [friends, requests, conversations, pendingGroups] = await Promise.all([
     all(env, `SELECT u.id, u.username, c.id AS conversationId FROM chat_friends f
       JOIN chat_users u ON u.id = CASE WHEN f.user_low = ? THEN f.user_high ELSE f.user_low END
       JOIN chat_conversations c ON c.dm_pair = f.user_low || ':' || f.user_high
@@ -81,7 +85,8 @@ async function inbox(user, env) {
         WHERE (b.blocker_id = ? AND b.blocked_id = r.sender_id) OR (b.blocked_id = ? AND b.blocker_id = r.sender_id))
       AND EXISTS (SELECT 1 FROM chat_review_users x WHERE x.user_id = r.sender_id) = ?
       ORDER BY r.created_at DESC`, user.id, user.id, user.id, user.isReviewer === true ? 1 : 0),
-    all(env, `SELECT c.id, c.type,
+    all(env, `SELECT c.id, c.type, c.visibility, c.owner_id AS ownerId,
+      (SELECT COUNT(*) FROM chat_members p WHERE p.conversation_id = c.id) AS memberCount,
       CASE WHEN c.type = 'direct' THEN (
         SELECT u.username FROM chat_members p JOIN chat_users u ON u.id = p.user_id
         WHERE p.conversation_id = c.id AND p.user_id <> ? LIMIT 1) ELSE c.name END AS name,
@@ -100,8 +105,9 @@ async function inbox(user, env) {
         AND EXISTS (SELECT 1 FROM chat_review_users r WHERE r.user_id = p.user_id) <> ?)
       ORDER BY COALESCE(lastMessageAt, c.created_at) DESC`, user.id, user.id, user.id, user.id, user.id, user.id, user.id, user.id, user.id, user.id,
       user.isReviewer === true ? 1 : 0, user.isReviewer === true ? 1 : 0),
+    groupRequests(user, env),
   ]);
-  return { friends, requests, conversations, unread: conversations.reduce((total, conversation) => total + conversation.unread, 0) };
+  return { friends, requests, groupRequests: pendingGroups, conversations, unread: conversations.reduce((total, conversation) => total + conversation.unread, 0) };
 }
 
 async function friendRequest(user, body, env) {
@@ -173,43 +179,6 @@ async function respondFriend(user, body, env) {
   return { ok: true, conversation: { ...conversation, name: (await one(env, 'SELECT username FROM chat_users WHERE id = ?', request.senderId)).username } };
 }
 
-async function createGroup(user, body, env) {
-  const name = typeof body.name === 'string' ? body.name.normalize('NFKC').trim().replace(/\s+/g, ' ') : '';
-  if (name.length < 2 || name.length > 60 || /[\u0000-\u001f\u007f]/.test(name)) {
-    throw new ApiError(400, 'invalid_group_name', 'Use 2 to 60 characters for the group name.');
-  }
-  await rateLimit(env, `groups:${user.id}`, 5, 3600);
-  const id = crypto.randomUUID();
-  const code = randomToken(12);
-  const now = Date.now();
-  await batch(env, [
-    [`INSERT INTO chat_conversations(id, type, name, dm_pair, code, owner_id, created_at) VALUES (?, 'group', ?, NULL, ?, ?, ?)`, id, name, code, user.id, now],
-    ['INSERT INTO chat_members(conversation_id, user_id, joined_at) VALUES (?, ?, ?)', id, user.id, now],
-  ]);
-  const link = new URL('/', requireSite(env));
-  link.searchParams.set('chat', '1');
-  link.searchParams.set('join', code);
-  return { conversation: { id, name, type: 'group' }, code, link: link.href };
-}
-
-async function joinGroup(user, body, env) {
-  const code = typeof body.code === 'string' ? body.code.trim() : '';
-  if (!/^[A-Za-z0-9_-]{16}$/.test(code)) throw new ApiError(400, 'invalid_group_code', 'Enter a valid group invite code.');
-  await rateLimit(env, `joins:${user.id}`, 20, 3600);
-  const conversation = await one(env, `SELECT id, name, type, owner_id AS ownerId FROM chat_conversations WHERE type = 'group' AND code = ?`, code);
-  if (!conversation) throw new ApiError(404, 'group_not_found', 'This group invite was not found.');
-  if (await isReviewUser(env, conversation.ownerId) !== (user.isReviewer === true)) {
-    throw new ApiError(404, 'group_not_found', 'This group invite was not found.');
-  }
-  const result = await run(env, `INSERT INTO chat_members(conversation_id, user_id, joined_at)
-    SELECT ?, ?, ? WHERE (SELECT COUNT(*) FROM chat_members WHERE conversation_id = ?) < 100
-    ON CONFLICT(conversation_id, user_id) DO NOTHING`, conversation.id, user.id, Date.now(), conversation.id);
-  if (!result.meta.changes && !await one(env, 'SELECT 1 AS present FROM chat_members WHERE conversation_id = ? AND user_id = ?', conversation.id, user.id)) {
-    throw new ApiError(409, 'group_full', 'This group already has 100 members.');
-  }
-  return { conversation: { id: conversation.id, name: conversation.name, type: conversation.type } };
-}
-
 async function conversationDetail(id, user, url, env) {
   const authorized = await conversationRequired(id, user, env);
   const after = cursor(url.searchParams.get('after'));
@@ -228,13 +197,15 @@ async function conversationDetail(id, user, url, env) {
     WHERE m.conversation_id = ? ORDER BY m.joined_at, u.username`, id);
   return {
     conversation: { id: authorized.id, name: authorized.name, type: authorized.type,
-      ...(authorized.type === 'group' ? { code: authorized.code } : { peer: authorized.peer }) },
+      ...(authorized.type === 'group' ? { visibility: authorized.visibility, ownerId: authorized.ownerId,
+        memberCount: members.length, memberLimit: 100,
+        ...(authorized.visibility === 'private' || authorized.ownerId === user.id ? { code: authorized.code } : {}) } : { peer: authorized.peer }) },
     members, messages, hasMore,
     nextCursor: hasMore ? (after === null ? messages[0].id : messages.at(-1).id) : null,
   };
 }
 
-async function sendMessage(id, user, body, env) {
+async function sendMessage(id, user, body, env, context) {
   await conversationRequired(id, user, env);
   const kind = body.kind === undefined ? 'text' : body.kind;
   if (kind !== 'text' && kind !== 'morse') throw new ApiError(400, 'invalid_message_kind', 'Choose text or Morse code for your message.');
@@ -253,6 +224,7 @@ async function sendMessage(id, user, body, env) {
   let message = await one(env, `${MESSAGE_SELECT} WHERE m.conversation_id = ? AND m.sender_id = ? AND m.client_id = ?`, id, user.id, clientId);
   if (message) {
     if (!matches(message)) throw new ApiError(409, 'message_conflict', 'This message reference was already used for a different message.');
+    await queueMessageNotifications(message, env, context);
     return { message };
   }
   await rateLimit(env, `messages:${user.id}`, 60, 60);
@@ -265,6 +237,7 @@ async function sendMessage(id, user, body, env) {
   message = await one(env, `${MESSAGE_SELECT} WHERE m.conversation_id = ? AND m.sender_id = ? AND m.client_id = ?`, id, user.id, clientId);
   if (!message) throw new ApiError(403, 'membership_required', 'Join this conversation before sending messages.');
   if (!matches(message)) throw new ApiError(409, 'message_conflict', 'This message reference was already used for a different message.');
+  await queueMessageNotifications(message, env, context);
   return { message };
 }
 
@@ -290,18 +263,24 @@ async function oauthCallback(provider, request, env) {
   return new Response(null, { status: 303, headers });
 }
 
-export async function handleChatRequest(request, env) {
+export async function handleChatRequest(request, env, context) {
   try {
     const url = new URL(request.url);
     const path = url.pathname.replace(/\/$/, '');
     const method = request.method;
     if (path === '/api/config' && method === 'GET') {
       const configuration = authProviders(env);
+      configuration.notifications = { available: false };
       if (configuration.available) {
         try { await one(env, `SELECT 1 AS initialized FROM chat_users u
           LEFT JOIN chat_blocks b ON b.blocker_id = u.id LEFT JOIN chat_reports r ON r.reporter_id = u.id
-          LEFT JOIN chat_review_users v ON v.user_id = u.id LIMIT 1`); }
-        catch { return json({ available: false, providers: { google: false } }); }
+          LEFT JOIN chat_review_users v ON v.user_id = u.id
+          LEFT JOIN chat_conversations c ON c.owner_id = u.id
+          LEFT JOIN chat_group_requests g ON g.conversation_id = c.id
+          LEFT JOIN chat_group_removals x ON x.conversation_id = c.id
+          WHERE c.visibility IS NULL OR c.visibility IN ('private', 'public') LIMIT 1`); }
+        catch { return json({ available: false, providers: { google: false }, notifications: { available: false } }); }
+        configuration.notifications.available = await notificationAvailable(env);
       }
       return json(configuration);
     }
@@ -312,11 +291,23 @@ export async function handleChatRequest(request, env) {
     const start = path.match(/^\/api\/auth\/(google)$/);
     if (start && method === 'GET') return await startOAuth(start[1], request, env);
     if (!['GET', 'POST'].includes(method)) throw new ApiError(405, 'method_not_allowed', 'This request method is not supported.');
+    const notification = await notificationRoute(path, method, request, url, env, conversationRequired,
+      (id, user, body, bindings) => sendMessage(id, user, body, bindings, context));
+    if (notification) return json(notification, path === '/api/notifications/reply' ? 201 : 200);
     if (method === 'POST') requireOrigin(request, env);
     if (path === '/api/auth/mobile/finish' && method === 'POST') return await finishMobileSignIn(request, env);
     if (path === '/api/auth/reviewer' && method === 'POST') return await reviewerSignIn(request, env);
     if (path === '/api/logout' && method === 'POST') return json({ ok: true }, 200, { 'Set-Cookie': await endSession(request, env) });
+    if (path === '/api/learning-progress' && (method === 'GET' || method === 'POST')) {
+      const learner = await userRequired(request, env, false);
+      if (request.headers.has('X-Morse-Account') && request.headers.get('X-Morse-Account') !== learner.id) {
+        throw new ApiError(409, 'account_changed', 'Your signed-in account changed. Refresh to sync its lessons.');
+      }
+      return json(method === 'GET' ? await readLearningProgress(learner, env) : await saveLearningProgress(learner, await readJSON(request), env));
+    }
     const user = await userRequired(request, env, !['/api/profile', '/api/account/delete'].includes(path));
+    if (path === '/api/notifications/devices' && method === 'POST') return json(await registerDevice(request, user, await readJSON(request), env));
+    if (path === '/api/notifications/devices/remove' && method === 'POST') return json(await removeDevice(user, await readJSON(request), env));
     if (path === '/api/account/delete' && method === 'POST') {
       const deleted = await deleteAccount(user, await readJSON(request), env);
       return json(deleted.data, 200, { 'Set-Cookie': deleted.sessionCookie });
@@ -348,11 +339,15 @@ export async function handleChatRequest(request, env) {
     if (path === '/api/friends/respond' && method === 'POST') return json(await respondFriend(user, await readJSON(request), env));
     if (path === '/api/groups' && method === 'POST') return json(await createGroup(user, await readJSON(request), env), 201);
     if (path === '/api/groups/join' && method === 'POST') return json(await joinGroup(user, await readJSON(request), env));
+    if (path === '/api/groups/public' && method === 'GET') return json(await listPublicGroups(user, url.searchParams.get('q'), env));
+    if (path === '/api/groups/request' && method === 'POST') return json(await requestGroup(user, await readJSON(request), env));
+    if (path === '/api/groups/respond' && method === 'POST') return json(await respondGroup(user, await readJSON(request), env));
+    if (path === '/api/groups/kick' && method === 'POST') return json(await kickGroupMember(user, await readJSON(request), env));
     const conversation = path.match(/^\/api\/conversations\/([A-Za-z0-9_-]{1,80})(?:\/(messages|read))?$/);
     if (conversation) {
       const [, id, action] = conversation;
       if (method === 'GET' && (!action || action === 'messages')) return json(await conversationDetail(id, user, url, env));
-      if (method === 'POST' && action === 'messages') return json(await sendMessage(id, user, await readJSON(request), env), 201);
+      if (method === 'POST' && action === 'messages') return json(await sendMessage(id, user, await readJSON(request), env, context), 201);
       if (method === 'POST' && action === 'read') {
         await conversationRequired(id, user, env);
         const body = await readJSON(request);

@@ -15,7 +15,7 @@ export const LEVELS = Object.freeze(
       number: index + 1,
       newCharacters: ALL_CHARACTERS.slice(index * 2, learnedCount),
       cumulativeCharacters: ALL_CHARACTERS.slice(0, learnedCount),
-      practiceCount: learnedCount * 5,
+      practiceCount: (index + 1) * 5,
     });
   }),
 );
@@ -86,7 +86,33 @@ export function createPracticeGenerator(pool, { random = Math.random } = {}) {
   };
 }
 
-/** Every learned character occurs exactly five times, then the entire lesson is shuffled. */
+function mixLessonCharacters(characters, random) {
+  const counts = new Map();
+  for (const character of characters) counts.set(character, (counts.get(character) ?? 0) + 1);
+  const sequence = [];
+  let previous = '';
+  while (sequence.length < characters.length) {
+    const remaining = characters.length - sequence.length - 1;
+    // Choose randomly from characters that leave a possible finish without repeats.
+    // This avoids retrying shuffles forever when the random source is constant.
+    const choices = [...counts].filter(([character, count]) => count > 0 && character !== previous
+      && [...counts].every(([other, otherCount]) => otherCount - (other === character ? 1 : 0)
+        <= (other === character ? Math.floor(remaining / 2) : Math.ceil(remaining / 2))));
+    let draw = randomIndex(choices.reduce((total, [, count]) => total + count, 0), random);
+    for (const [character, count] of choices) {
+      if (draw < count) {
+        sequence.push(character);
+        counts.set(character, count - 1);
+        previous = character;
+        break;
+      }
+      draw -= count;
+    }
+  }
+  return sequence.join('');
+}
+
+/** Five targets per level, with 60% new characters and 40% balanced review. */
 export function generateLessonSequence(levelOrNumber, { random = Math.random } = {}) {
   const level = typeof levelOrNumber === 'number'
     ? LEVELS[levelOrNumber - 1]
@@ -95,12 +121,15 @@ export function generateLessonSequence(levelOrNumber, { random = Math.random } =
     throw new RangeError('Choose a lesson from 1 to 18.');
   }
   const canonicalLevel = LEVELS[level.number - 1];
-  const characters = [...canonicalLevel.cumulativeCharacters.repeat(5)];
-  for (let index = characters.length - 1; index > 0; index -= 1) {
-    const swapIndex = randomIndex(index + 1, random);
-    [characters[index], characters[swapIndex]] = [characters[swapIndex], characters[index]];
+  const previousCharacters = canonicalLevel.cumulativeCharacters.slice(0, -canonicalLevel.newCharacters.length);
+  const newCount = previousCharacters ? Math.round(canonicalLevel.practiceCount * 0.6) : canonicalLevel.practiceCount;
+  const newGenerator = createPracticeGenerator(canonicalLevel.newCharacters, { random });
+  const characters = Array.from({ length: newCount }, () => newGenerator.next());
+  if (previousCharacters) {
+    const reviewGenerator = createPracticeGenerator(previousCharacters, { random });
+    characters.push(...Array.from({ length: canonicalLevel.practiceCount - newCount }, () => reviewGenerator.next()));
   }
-  return characters.join('');
+  return mixLessonCharacters(characters, random);
 }
 
 /** A group size of zero leaves the received characters together. */

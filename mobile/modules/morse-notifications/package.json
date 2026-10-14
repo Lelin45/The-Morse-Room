@@ -1,0 +1,6 @@
+{
+  "name": "morse-notifications",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Native Android Morse message notification actions"
+}

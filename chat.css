@@ -2605,3 +2605,288 @@ html[data-theme='dark'] .chat-message-actions .button[aria-pressed='true'] {
     padding: 3px 8px;
   }
 }
+
+html :is(.chat-page-heading h1, .chat-intro-copy h1, .chat-intro-copy h2,
+  .chat-conversation-header h2, .chat-dialog-header h2, .chat-policy h1,
+  .chat-policy h2, .chat-room-avatar, .chat-message-text),
+html[data-theme='dark'] :is(.chat-page-heading h1, .chat-intro-copy h1,
+  .chat-intro-copy h2, .chat-conversation-header h2, .chat-dialog-header h2,
+  .chat-policy h1, .chat-policy h2, .chat-room-avatar, .chat-message-text) {
+  font-family: var(--ui-font);
+}
+
+.chat-message-morse,
+.chat-compose textarea.is-morse {
+  font-family: var(--signal-font);
+}
+
+.chat-public-groups,
+.chat-group-members {
+  display: grid;
+  gap: 8px;
+  max-height: min(420px, 48dvh);
+  overflow-y: auto;
+}
+
+.chat-public-group {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--paper);
+}
+
+.chat-public-group .chat-item-copy {
+  flex: 1;
+}
+
+.chat-public-group .chat-item-copy strong,
+.chat-public-group .chat-item-copy small {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.chat-public-group .button {
+  flex-shrink: 0;
+  max-width: 45%;
+}
+
+.chat-room-actions {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 5px;
+}
+
+@media (max-width: 760px), (pointer: coarse), (hover: none) {
+  :is(.chat-intro-copy > p, .chat-demo > p, .chat-feature-list,
+    .chat-field, .chat-field label, .chat-form-help, .chat-field small,
+    .chat-notification-panel, .chat-request-copy p, .chat-code-info p) {
+    font-size: .875rem;
+    line-height: 1.5;
+  }
+
+  :is(.chat-message-text, .chat-item-copy strong, .chat-profile strong) {
+    font-size: 1rem;
+    line-height: 1.5;
+  }
+
+  .chat-message-morse {
+    font-size: 1.0625rem;
+    line-height: 1.6;
+  }
+
+  .chat-message-meta,
+  .chat-message-meta strong,
+  .chat-item-copy small,
+  .chat-list-heading,
+  .chat-member-summary,
+  .chat-conversation-header p {
+    font-size: .75rem;
+  }
+
+  .chat-message-actions .button,
+  .chat-toolbar .button,
+  .chat-send-mode button,
+  .chat-history-actions .button,
+  .chat-dialog .button,
+  .chat-request-actions .button {
+    font-size: .875rem;
+    min-height: 44px;
+  }
+
+  .chat-compose textarea::placeholder,
+  .chat-compose textarea.is-morse::placeholder {
+    font-family: var(--ui-font);
+    font-size: .9375rem;
+  }
+
+  .chat-morse-help {
+    position: relative;
+    min-height: 236px;
+    margin: 4px 0 0;
+    padding: 24px 4px max(24px, env(safe-area-inset-bottom));
+    border-top: 1px solid var(--line);
+    background: var(--paper);
+  }
+
+  .chat-morse-help > p {
+    display: none;
+  }
+
+  .chat-morse-help .morse-paddles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: 120px 48px;
+    gap: 20px 16px;
+    width: 100%;
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 0 8px;
+  }
+
+  .morse-paddles .morse-paddle {
+    width: 100px;
+    min-width: 100px;
+    height: 100px;
+    gap: 5px;
+    box-shadow: 0 3px 0 var(--line);
+  }
+
+  .morse-paddles .morse-paddle.dit {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .morse-paddles .morse-paddle.dah {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .morse-paddles .morse-paddle strong {
+    font-size: 36px;
+  }
+
+  .morse-paddles .morse-paddle span {
+    font-size: 16px;
+  }
+
+  .morse-paddles .morse-space {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    height: 48px;
+    margin-right: 64px;
+    font-size: 16px;
+  }
+
+  .chat-morse-help > .chat-morse-undo.button,
+  html[data-theme='dark'] .chat-morse-help > .chat-morse-undo.button {
+    position: absolute;
+    right: max(12px, calc((100% - 480px) / 2 + 8px));
+    bottom: max(24px, env(safe-area-inset-bottom));
+    width: 54px;
+    min-width: 54px;
+    height: 48px;
+    min-height: 48px;
+    margin: 0;
+    padding: 0;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--card);
+    color: var(--ink);
+  }
+
+  .chat-morse-help > .chat-morse-undo svg {
+    width: 25px;
+    height: 25px;
+  }
+
+  .chat-compose:has(textarea.is-morse) {
+    padding-bottom: 0;
+  }
+}
+
+@media (max-width: 760px) {
+  html.chat-conversation-open body[data-mode='chat'] .app-shell > .topbar,
+  html.chat-conversation-open body[data-mode='chat'] .app-shell > .sidebar {
+    display: none;
+  }
+
+  html.chat-conversation-open body[data-mode='chat'] .app-shell > .main-content {
+    flex: 1;
+    padding: 0;
+    min-height: 0;
+  }
+
+  html.chat-conversation-open .chat-conversation-header {
+    min-height: 60px;
+    padding-top: max(8px, env(safe-area-inset-top));
+    padding-bottom: 8px;
+  }
+
+  html.chat-conversation-open .chat-conversation-header h2,
+  html[data-theme='dark'].chat-conversation-open .chat-conversation-header h2 {
+    font-family: var(--ui-font);
+    font-size: 17px;
+    font-weight: 600;
+  }
+
+  .chat-compose-heading {
+    min-height: 40px;
+  }
+
+  .chat-compose .chat-send-mode button {
+    min-height: 36px;
+    padding: 5px 12px;
+  }
+
+  .chat-compose-input-row textarea {
+    font-size: 1rem;
+  }
+
+  .chat-conversation-header .chat-block-button {
+    min-width: 40px;
+    padding: 8px;
+  }
+
+  .chat-conversation-header .chat-room-actions {
+    gap: 2px;
+  }
+
+  .chat-conversation-header .chat-room-actions .button {
+    width: 40px;
+    min-width: 40px;
+    min-height: 44px;
+    padding: 0;
+    gap: 0;
+    font-size: 0;
+  }
+
+  .chat-conversation-header .chat-room-actions svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .chat-dialog .chat-public-group,
+  .chat-dialog .chat-group-members {
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .chat-public-group {
+    gap: 8px;
+    padding: 10px;
+  }
+}
+
+@media (max-width: 760px) and (max-height: 500px) {
+  .chat-morse-help {
+    min-height: 138px;
+    padding-top: 6px;
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+  }
+
+  .chat-morse-help .morse-paddles {
+    grid-template-rows: 68px 44px;
+    row-gap: 8px;
+  }
+
+  .morse-paddles .morse-paddle {
+    width: 68px;
+    min-width: 68px;
+    height: 68px;
+    gap: 1px;
+  }
+
+  .morse-paddles .morse-space,
+  .chat-morse-help > .chat-morse-undo {
+    height: 44px;
+    min-height: 44px;
+  }
+
+  .chat-morse-help > .chat-morse-undo {
+    bottom: max(8px, env(safe-area-inset-bottom));
+  }
+}

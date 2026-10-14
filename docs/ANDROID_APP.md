@@ -41,6 +41,16 @@ The build helper loads only the Expo access token from the ignored root `.env`, 
 
 Building an AAB does not publish the app. Store submission, listing content and release review happen separately in Google Play Console.
 
+## Android release optimization
+
+Release builds enable R8 code shrinking, optimization and obfuscation, together with resource shrinking. `expo-build-properties` enables minification and resource shrinking. The local `withAndroidReleaseOptimization.cjs` config plugin selects `proguard-android-optimize.txt` and enables R8 full mode and integrated resource shrinking during prebuild. Keep these settings in app config so EAS regenerates them for every release.
+
+The existing Expo and React Native consumer rules preserve native registration, JNI and WebView JavaScript bridge methods. Avoid adding package-wide keep rules: they can disable optimization across large libraries. Test the signed optimized APK's startup, audio, offline trainer, Chat, browser sign-in and saved settings before uploading its AAB.
+
+Inspect `BUNDLE-METADATA/com.android.tools/r8.json` in the finished AAB for the measurements used by Play, and keep its `proguard.map` for crash deobfuscation. Play can read the mapping embedded in the AAB. A native optimization change requires a new Android build.
+
+[Google's DEX optimization guidance](https://developer.android.com/google/play/vitals/code-optimization), [R8 release configuration](https://developer.android.com/topic/performance/app-optimization/enable-app-optimization), [Expo SDK 57 build properties](https://docs.expo.dev/versions/v57.0.0/sdk/build-properties/).
+
 ## Opening animation
 
 The app opens with a short animation and the word WELCOME in Morse at 24 WPM and 600 Hz. It follows the trainer's saved theme and volume once the bundled screen has loaded, and also respects device sound settings. Skip stops the sound immediately and opens the trainer. Moving the app into the background stops the introduction. It runs once per cold launch and does not repeat when returning to an open app.

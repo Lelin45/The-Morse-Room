@@ -44,6 +44,16 @@
     "plugins": [
       "expo-router",
       [
+        "expo-build-properties",
+        {
+          "android": {
+            "enableMinifyInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true
+          }
+        }
+      ],
+      "./plugins/withAndroidReleaseOptimization.cjs",
+      [
         "expo-secure-store",
         {
           "configureAndroidBackup": true,

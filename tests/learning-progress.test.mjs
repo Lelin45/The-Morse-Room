@@ -137,3 +137,88 @@ test('a late response for an old account cannot replace the newly selected accou
   assert.deepEqual(sync.progress.completed, [2]);
   assert.equal(sync.userId, 'bob');
 });
+
+test('a lesson completed during an in-flight upload remains local and is uploaded in a follow-up sync', async () => {
+  const remote = cloud();
+  const store = storage();
+  let releaseUpload;
+  const heldUpload = new Promise(resolve => { releaseUpload = resolve; });
+  let announceUpload;
+  const uploadStarted = new Promise(resolve => { announceUpload = resolve; });
+  const uploads = [];
+  const fetcher = async (url, options) => {
+    if (options.method === 'POST') {
+      const snapshot = JSON.parse(options.body);
+      uploads.push(snapshot);
+      if (uploads.length === 1) {
+        announceUpload(snapshot);
+        await heldUpload;
+      }
+    }
+    return remote.fetcher(url, options);
+  };
+  const sync = client(store, fetcher);
+  await sync.setAccount('alice');
+  Object.assign(sync.progress, { completed: [1], best: { 1: 85 } });
+  const firstSave = sync.save();
+  assert.deepEqual((await uploadStarted).completed, [1]);
+
+  Object.assign(sync.progress, { completed: [1, 2], best: { 1: 95, 2: 90 } });
+  const laterSave = sync.save();
+  assert.deepEqual(sync.progress, { completed: [1, 2], best: { 1: 95, 2: 90 } });
+  assert.deepEqual(client(store, remote.fetcher).progress, sync.progress,
+    'The new lesson must be stored before the older upload finishes.');
+  releaseUpload();
+  await Promise.all([firstSave, laterSave]);
+  await new Promise(resolve => setImmediate(resolve));
+
+  assert.equal(uploads.length, 2);
+  assert.deepEqual(uploads[1].completed, [1, 2]);
+  assert.deepEqual(remote.saved.get('alice'), { completed: [1, 2], best: { 1: 95, 2: 90 } });
+  assert.deepEqual(sync.progress, remote.saved.get('alice'));
+  assert.equal(sync.status, 'saved');
+});
+
+test('a cookie account switch between reading and uploading cannot upload one learner into another account', async () => {
+  const env = testEnv();
+  try {
+    const alice = await person(env, 'alice'), bob = await person(env, 'bob');
+    let cookie = alice;
+    let switchAfterRead = false;
+    const replies = [];
+    const fetcher = async (url, options) => {
+      const request = new Request(new URL(url, env.SITE_URL), {
+        method: options.method,
+        headers: { ...options.headers, Cookie: cookie, ...(options.method === 'POST' ? { Origin: env.SITE_URL } : {}) },
+        ...(options.body ? { body: options.body } : {}),
+      });
+      const response = await handleChatRequest(request, env);
+      replies.push({ method: options.method, account: options.headers['X-Morse-Account'], status: response.status });
+      if (switchAfterRead && options.method === 'GET') {
+        switchAfterRead = false;
+        cookie = bob;
+      }
+      return response;
+    };
+    const sync = client(storage(), fetcher);
+    await sync.setAccount('alice');
+    Object.assign(sync.progress, { completed: [1, 2], best: { 1: 95, 2: 90 } });
+    switchAfterRead = true;
+    await sync.save();
+
+    assert.equal(replies.at(-1).method, 'POST');
+    assert.equal(replies.at(-1).account, 'alice');
+    assert.equal(replies.at(-1).status, 409);
+    assert.equal(sync.status, 'offline');
+    assert.deepEqual((await api(env, '/api/learning-progress', { cookie: bob })).data.completed, []);
+    assert.deepEqual((await api(env, '/api/learning-progress', { cookie: alice })).data.completed, []);
+
+    await sync.setAccount('bob');
+    assert.deepEqual(sync.progress.completed, []);
+    cookie = alice;
+    await sync.setAccount('alice');
+    assert.deepEqual(sync.progress, { completed: [1, 2], best: { 1: 95, 2: 90 } });
+    assert.deepEqual((await api(env, '/api/learning-progress', { cookie: alice })).data.completed, [1, 2]);
+    assert.deepEqual((await api(env, '/api/learning-progress', { cookie: bob })).data.completed, []);
+  } finally { env.DB.close(); }
+});

@@ -125,6 +125,8 @@ The Expo Android project in [mobile](mobile/) is named **Morse Code Nepal**, wit
 
 See [Android setup and builds](docs/ANDROID_APP.md) for the APK testing build, Play Store AAB, signing credentials, and developer commands. [Play Console setup](docs/PLAY_CONSOLE.md) includes the public policy links, review access instructions, and data disclosures.
 
+The [Google Play upload files](store-listing/) include the app name, descriptions, icon, feature graphic, phone and tablet screenshots, and a preview video. The folder's guide lists which files go into each Console field.
+
 ## Morse Chat Room
 
 Choose **Morse Chat Room** below Practice in the sidebar. Use the account icon at the top right to sign in with Google, then choose a unique username. Your username, profile settings, and Sign out stay in that account menu across all tabs. Sign-in applies only to Chat.

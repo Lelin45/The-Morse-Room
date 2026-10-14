@@ -1,0 +1,21 @@
+{
+  "file": "morse-code-nepal-app-preview.mp4",
+  "source": "A 24-second slideshow of exact bundled Android WebView content captures. It is not an emulator screen recording.",
+  "width": 1080,
+  "height": 1920,
+  "framesPerSecond": 30,
+  "audio": false,
+  "sha256": "23120b29163ca2803ba396980b0660b029ea161faad7e694dddc81b562ad8667",
+  "bytes": 621516,
+  "screens": [
+    "../screenshots/phone/01-learn-lessons.png",
+    "../screenshots/phone/02-audio-tutorial.png",
+    "../screenshots/phone/03-receive-keyboard.png",
+    "../screenshots/phone/04-send-paddles.png",
+    "../screenshots/phone/05-morse-reference.png",
+    "../screenshots/phone/06-custom-real-words.png",
+    "../screenshots/phone/07-morse-chat.png",
+    "../screenshots/phone/08-morse-chat-paddles.png"
+  ],
+  "youtube": "Upload to a YouTube channel as public or unlisted, with ads disabled and no age restriction. Paste its watch URL into the optional Play Console Video field."
+}

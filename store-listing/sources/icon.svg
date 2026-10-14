@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <title>Morse Code Nepal icon</title>
+  <rect width="512" height="512" fill="#05110b"/>
+  <g fill="#34f58c">
+    <circle cx="150" cy="256" r="40"/>
+    <rect x="241" y="216" width="161" height="80" rx="40"/>
+  </g>
+</svg>

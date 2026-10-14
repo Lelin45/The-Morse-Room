@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="500" viewBox="0 0 1024 500">
+  <title>Morse Code Nepal</title>
+  <desc>Sending and receiving practice, with the app's green dot and dash symbol.</desc>
+  <defs>
+    <radialGradient id="signal-field" cx="78%" cy="50%" r="45%">
+      <stop offset="0" stop-color="#0b2416"/>
+      <stop offset="1" stop-color="#05110b"/>
+    </radialGradient>
+  </defs>
+  <rect width="1024" height="500" fill="#05110b"/>
+  <rect width="1024" height="500" fill="url(#signal-field)"/>
+
+  <!-- The signal rings are artwork, not an app screen. -->
+  <g fill="none" stroke="#173a26" stroke-width="1.25">
+    <circle cx="788" cy="250" r="176"/>
+    <circle cx="788" cy="250" r="140" stroke-dasharray="3 11"/>
+    <path d="M612 250H964M788 74V426" opacity="0.6"/>
+  </g>
+  <g fill="none" stroke="#34f58c" stroke-width="2" stroke-linecap="round" opacity="0.38">
+    <path d="M684 108A176 176 0 0 1 734 83"/>
+    <path d="M892 392A176 176 0 0 1 842 417"/>
+  </g>
+
+  <!-- The same dit and dah proportions as the native app icon. -->
+  <g fill="#34f58c">
+    <circle cx="688" cy="250" r="40"/>
+    <rect x="779" y="210" width="161" height="80" rx="40"/>
+  </g>
+
+  <g fill="#34f58c">
+    <circle cx="72" cy="92" r="5"/>
+    <rect x="87" y="87" width="20" height="10" rx="5"/>
+  </g>
+  <text x="123" y="97" fill="#9ab7a6" font-family="Consolas, monospace" font-size="14" letter-spacing="1.8">LEARN · PRACTICE · CHAT</text>
+
+  <g font-family="Segoe UI, Arial, sans-serif" font-size="68" font-weight="700" letter-spacing="-2.3">
+    <text x="64" y="214" fill="#edfff3">Morse Code</text>
+    <text x="64" y="293" fill="#34f58c">Nepal</text>
+  </g>
+  <text x="68" y="344" fill="#afc9ba" font-family="Segoe UI, Arial, sans-serif" font-size="22">Sending and receiving practice</text>
+
+  <!-- MORSE in International Morse code, separated by letter spaces. -->
+  <g transform="translate(68 404)" fill="#52745f">
+    <rect x="0" y="0" width="15" height="5" rx="2.5"/>
+    <rect x="20" y="0" width="15" height="5" rx="2.5"/>
+    <rect x="53" y="0" width="15" height="5" rx="2.5"/>
+    <rect x="73" y="0" width="15" height="5" rx="2.5"/>
+    <rect x="93" y="0" width="15" height="5" rx="2.5"/>
+    <circle cx="128.5" cy="2.5" r="2.5"/>
+    <rect x="136" y="0" width="15" height="5" rx="2.5"/>
+    <circle cx="158.5" cy="2.5" r="2.5"/>
+    <circle cx="181.5" cy="2.5" r="2.5"/>
+    <circle cx="191.5" cy="2.5" r="2.5"/>
+    <circle cx="201.5" cy="2.5" r="2.5"/>
+    <circle cx="224.5" cy="2.5" r="2.5"/>
+  </g>
+</svg>

@@ -1,0 +1,26 @@
+Learn Morse code through listening, sending and everyday practice.
+
+Morse Code Nepal brings guided lessons, receiving practice, sending practice and Morse conversations into one app. Learn, Practice and Codes work offline without an account. Sign in with Google only when you want to use the Chat Room.
+
+Guided lessons
+Work through 18 levels covering all 26 letters and 10 numbers. Each lesson introduces two characters with their Morse pattern and audio. Practise everything you have learned so far, replay signals when needed, and get the current character right before moving forward. Your progress is saved on your device.
+
+Receiving practice
+Listen to a Morse signal and choose its letter or number on the familiar QWERTY keyboard. Incorrect answers repeat the same signal until you get it right. Reveal the correct answer when you need help. Choose an unlimited session or set a character count.
+
+Sending practice
+Read the character or word, then enter its Morse using the dit and dah buttons. Check your signal and try the same target again after a mistake. A wrong attempt clears automatically so you can start fresh.
+
+Custom sessions
+Focus on your own character selection, all letters, all numbers or both. Practise individual characters, random word groups or real English word groups. Set the session length and letters per word, and pause or stop whenever you need.
+
+Control your sound
+Adjust character speed, Farnsworth spacing, tone frequency and volume. Farnsworth gives you more time between characters while keeping each character's rhythm. Replay a signal or review the audio from a custom receiving session.
+
+Codes at a tap
+Browse the number row and QWERTY layout with Morse shown below each key. Tap any character to hear its signal.
+
+Morse Chat Room
+Send a friend request using a username or email, and chat after it is accepted. Create a group or join one through an invite code or link. Send typed messages as Morse, or enter dits and dahs yourself. Listen to each message and reveal its text when you want to check your reading. Morse signals contain letters and numbers; the original typed message keeps its punctuation. Chat needs an internet connection and a Google sign-in.
+
+Choose a light theme or a black and green dark theme. Lessons, sound settings and training progress stay on your device. Account deletion, blocking and message reporting are available for Chat.

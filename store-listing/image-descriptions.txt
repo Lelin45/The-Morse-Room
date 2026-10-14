@@ -1,0 +1,53 @@
+icon.png
+Morse Code Nepal icon with a green dit and dah on a dark background.
+
+feature-graphic.png
+Morse Code Nepal: guided lessons, sending and receiving practice, and Morse chat.
+
+screenshots/phone/01-learn-lessons.png
+Level 1 E and T with Morse symbols and all 18 lesson steps.
+
+screenshots/phone/02-audio-tutorial.png
+E audio tutorial with replay and next-character controls.
+
+screenshots/phone/03-receive-keyboard.png
+Receiving mode waiting for an answer on the built-in QWERTY and number keyboard.
+
+screenshots/phone/04-send-paddles.png
+Sending practice with the current target, dit and dah paddles, Space and Check.
+
+screenshots/phone/05-morse-reference.png
+All 36 letter and number reference keys with their Morse symbols.
+
+screenshots/phone/06-custom-real-words.png
+Custom practice setup with real word groups, word count and letters per word.
+
+screenshots/phone/07-morse-chat.png
+Genuine isolated reviewer conversation with Morse messages and reveal/listen controls outside the bubbles.
+
+screenshots/phone/08-morse-chat-paddles.png
+Morse composer in the same isolated sandbox with dit, dah and Space controls.
+
+screenshots/tablet-7/01-learn-lessons.png
+Tablet lesson introduction with E and T, Morse symbols and the full learning path.
+
+screenshots/tablet-7/02-custom-real-words.png
+Tablet custom practice setup with real words and adjustable audio controls.
+
+screenshots/tablet-7/03-sending-practice.png
+Tablet sending practice with a target, Morse entry, touch dit/dah paddles and Check.
+
+screenshots/tablet-7/04-morse-chat.png
+Tablet Morse chat with real sandbox messages, conversations and send controls.
+
+screenshots/tablet-10/01-learn-lessons.png
+Tablet lesson introduction with E and T, Morse symbols and the full learning path.
+
+screenshots/tablet-10/02-custom-real-words.png
+Tablet custom practice setup with real words and adjustable audio controls.
+
+screenshots/tablet-10/03-sending-practice.png
+Tablet sending practice with a target, Morse entry, touch dit/dah paddles and Check.
+
+screenshots/tablet-10/04-morse-chat.png
+Tablet Morse chat with real sandbox messages, conversations and send controls.

@@ -1,0 +1,166 @@
+{
+  "application": "com.morsenepal",
+  "trainerRevision": "5770ec9da03a00723edf",
+  "source": "Exact bundled Android WebView HTML rendered in isolated Chrome with Android user agent and native bridge stub. These are app-content captures, not Android emulator screenshots.",
+  "sourceHTMLBytes": 302409,
+  "sourceHTMLSha256": "5770ec9da03a00723edf1419993429a8b652cc53055afdd482fb9a71e4e73431",
+  "interfaceEdits": false,
+  "pixelContentEdits": false,
+  "rgbPNG": true,
+  "chatSource": "Live Cloudflare API using the isolated review sandbox. No ordinary accounts accessed.",
+  "liveChecks": [
+    "review login HTTP 200",
+    "reviewer identity verified",
+    "profile HTTP 200",
+    "inbox HTTP 200",
+    "test conversation HTTP 200",
+    "sandbox text message send HTTP 201"
+  ],
+  "capturedAt": "2026-10-13T17:23:32.093Z",
+  "captures": [
+    {
+      "file": "phone/01-learn-lessons.png",
+      "theme": "light",
+      "description": "Level 1 E and T with Morse symbols and all 18 lesson steps.",
+      "width": 1080,
+      "height": 1920,
+      "bytes": 73786,
+      "sha256": "31cefb3e7a2ce3f1fb414bc18621991997a6166aa1c69fee05491ee4386d73eb"
+    },
+    {
+      "file": "phone/02-audio-tutorial.png",
+      "theme": "light",
+      "description": "E audio tutorial with replay and next-character controls.",
+      "width": 1080,
+      "height": 1920,
+      "bytes": 71742,
+      "sha256": "49504a7468f219b624ebdc738c8fc187870e0ed64677964a8c7ad69410f59719"
+    },
+    {
+      "file": "phone/03-receive-keyboard.png",
+      "theme": "dark",
+      "description": "Receiving mode waiting for an answer on the built-in QWERTY and number keyboard.",
+      "width": 1080,
+      "height": 1920,
+      "bytes": 87378,
+      "sha256": "2273f927de8096d189303dec42b3ac148e2ddc1bbbbfbab8563516bb2153b035"
+    },
+    {
+      "file": "phone/04-send-paddles.png",
+      "theme": "light",
+      "description": "Sending practice with the current target, dit and dah paddles, Space and Check.",
+      "width": 1080,
+      "height": 1920,
+      "bytes": 89420,
+      "sha256": "253f923e8c18c7337b075b483ee3f6ddc8c57f2c9954a2e763bd4f52b45c2f83"
+    },
+    {
+      "file": "phone/05-morse-reference.png",
+      "theme": "dark",
+      "description": "All 36 letter and number reference keys with their Morse symbols.",
+      "width": 1080,
+      "height": 1920,
+      "bytes": 61380,
+      "sha256": "a92caa4bdb0e37d6b60d88bbf9dd27c6341489908e1d05335d177e3f8dc091a5"
+    },
+    {
+      "file": "phone/06-custom-real-words.png",
+      "theme": "light",
+      "description": "Custom practice setup with real word groups, word count and letters per word.",
+      "width": 1080,
+      "height": 1920,
+      "bytes": 124470,
+      "sha256": "db12560115c8ccf972ba297c0258fc43e30f706ac6198189dd6d9cbd26eb0a22"
+    },
+    {
+      "file": "phone/07-morse-chat.png",
+      "theme": "light",
+      "description": "Genuine isolated reviewer conversation with Morse messages and reveal/listen controls outside the bubbles.",
+      "width": 1080,
+      "height": 1920,
+      "bytes": 110848,
+      "sha256": "02868fe325bf8cc9af08c59941779b34faa61c8ef239420af2e664e78ebfa48e"
+    },
+    {
+      "file": "phone/08-morse-chat-paddles.png",
+      "theme": "dark",
+      "description": "Morse composer in the same isolated sandbox with dit, dah and Space controls.",
+      "width": 1080,
+      "height": 1920,
+      "bytes": 109362,
+      "sha256": "529c11ef58c2235a3b3514fe5e90baf8397a7e5faedb6203c55fce64fc5a6368"
+    },
+    {
+      "file": "tablet-7/01-learn-lessons.png",
+      "theme": "light",
+      "description": "Tablet lesson introduction with E and T, Morse symbols and the full learning path.",
+      "width": 1920,
+      "height": 1080,
+      "bytes": 84872,
+      "sha256": "e5dd86acee64fcdd9c9ff7c9fbc5b74218169d29d39b4c24da82f96640b8a47b"
+    },
+    {
+      "file": "tablet-7/02-custom-real-words.png",
+      "theme": "light",
+      "description": "Tablet custom practice setup with real words and adjustable audio controls.",
+      "width": 1920,
+      "height": 1080,
+      "bytes": 110442,
+      "sha256": "be40cbfccb18356accc1a448411e268339fad34df2ebddf02c9c39f65a696da4"
+    },
+    {
+      "file": "tablet-7/03-sending-practice.png",
+      "theme": "dark",
+      "description": "Tablet sending practice with a target, Morse entry, touch dit/dah paddles and Check.",
+      "width": 1920,
+      "height": 1080,
+      "bytes": 66167,
+      "sha256": "dceae7d5a3fc07d2e6644c19a67e0dbbb73489975621bfa2f17d9619af1c9bf4"
+    },
+    {
+      "file": "tablet-7/04-morse-chat.png",
+      "theme": "dark",
+      "description": "Tablet Morse chat with real sandbox messages, conversations and send controls.",
+      "width": 1920,
+      "height": 1080,
+      "bytes": 120434,
+      "sha256": "a29b35ab26fd64da1fda064445882ed8beea19771d3a3aa98fa4228bcd61002e"
+    },
+    {
+      "file": "tablet-10/01-learn-lessons.png",
+      "theme": "light",
+      "description": "Tablet lesson introduction with E and T, Morse symbols and the full learning path.",
+      "width": 2560,
+      "height": 1440,
+      "bytes": 124951,
+      "sha256": "3072467807b3541c95c106a047700456f09ed86fc9ee5e925cd53e7a16c1f396"
+    },
+    {
+      "file": "tablet-10/02-custom-real-words.png",
+      "theme": "light",
+      "description": "Tablet custom practice setup with real words and adjustable audio controls.",
+      "width": 2560,
+      "height": 1440,
+      "bytes": 164939,
+      "sha256": "95fab7b36500f2731fd8be911a2e52b80ecf27a8be2e378af2e9944b4151d89c"
+    },
+    {
+      "file": "tablet-10/03-sending-practice.png",
+      "theme": "dark",
+      "description": "Tablet sending practice with a target, Morse entry, touch dit/dah paddles and Check.",
+      "width": 2560,
+      "height": 1440,
+      "bytes": 112751,
+      "sha256": "11072766ed839c57f6c0f6522a3701c89ac55df29650ef5db57c5f89d181536d"
+    },
+    {
+      "file": "tablet-10/04-morse-chat.png",
+      "theme": "dark",
+      "description": "Tablet Morse chat with real sandbox messages, conversations and send controls.",
+      "width": 2560,
+      "height": 1440,
+      "bytes": 170014,
+      "sha256": "7a7718ac2417a35fb19fe318df373968cbdeb5efb7e6b7d4c880dad3caf22102"
+    }
+  ]
+}

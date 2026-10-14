@@ -79,6 +79,23 @@ for (const [device, label] of Object.entries(labels)) {
   }
 }
 
+const compositions = JSON.parse(await readFile(join(folder, 'screenshots', 'phone-framed', 'composition-manifest.json'), 'utf8'));
+assert.equal(compositions.application, 'com.morsenepal');
+assert.equal(compositions.deviceFrame, true);
+assert.equal(compositions.screenshotContentEdits, false);
+assert.equal(compositions.cards.length, 8);
+for (const card of compositions.cards) {
+  const source = captureManifest.captures.find(entry => entry.file === card.source);
+  assert.ok(source, `Missing framed screenshot source: ${card.source}`);
+  assert.equal(card.sourceSha256, source.sha256);
+  const file = `screenshots/phone-framed/${card.file}`;
+  await imageEntry(file, { width: 1080, height: 1920, minSide: 1080, maxSide: 3840,
+    channels: 3, maxBytes: 8 * 1024 ** 2, screen: true });
+  assert.equal(entries.at(-1).sha256, card.sha256);
+  Object.assign(entries.at(-1), { description: card.description, deviceFrame: true,
+    source: card.source, sourceSha256: card.sourceSha256 });
+}
+
 const videoFiles = (await readdir(join(folder, 'video'))).filter(name => /\.mp4$/i.test(name));
 assert.ok(videoFiles.length > 0, 'Optional preview video file has not been generated');
 for (const file of videoFiles) {
@@ -91,6 +108,7 @@ for (const file of videoFiles) {
 const manifest = {
   appName: 'Morse Code Nepal', applicationIdentifier: 'com.morsenepal',
   verifiedAt: new Date().toISOString(), captureSource: captureManifest.source,
+  promotionalScreenshotComposition: compositions.composition,
   files: entries,
   policies: {
     privacy: 'https://learnmorse.lelinadhikari.com.np/privacy.html',

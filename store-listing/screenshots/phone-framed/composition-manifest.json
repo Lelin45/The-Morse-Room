@@ -1,0 +1,91 @@
+{
+  "application": "com.morsenepal",
+  "source": "Exact bundled Android WebView HTML rendered in isolated Chrome with Android user agent and native bridge stub. These are app-content captures, not Android emulator screenshots.",
+  "composition": "Existing app-content screenshots scaled proportionally inside a generic Android phone frame, with feature captions.",
+  "deviceFrame": true,
+  "screenshotContentEdits": false,
+  "width": 1080,
+  "height": 1920,
+  "cards": [
+    {
+      "file": "01-learn-morse-code.png",
+      "heading": "Learn Morse code",
+      "caption": "18 guided lessons, one step at a time",
+      "source": "phone/01-learn-lessons.png",
+      "sourceSha256": "31cefb3e7a2ce3f1fb414bc18621991997a6166aa1c69fee05491ee4386d73eb",
+      "sha256": "b15ff636a3597d473342b80f35eb35bc2d7994b7a539cdf67d582c51dcac5ea9",
+      "bytes": 175227,
+      "description": "Learn Morse code through 18 lessons, shown inside an Android phone frame."
+    },
+    {
+      "file": "02-receiving-practice.png",
+      "heading": "Listen. Recognise.",
+      "caption": "Train your ear with receiving practice",
+      "source": "phone/03-receive-keyboard.png",
+      "sourceSha256": "2273f927de8096d189303dec42b3ac148e2ddc1bbbbfbab8563516bb2153b035",
+      "sha256": "8ed4fd25fd1c626d6542745ed70ce02eb95c377eea2f9849fdc90589089b333f",
+      "bytes": 202771,
+      "description": "Receiving practice with the app's QWERTY keyboard, shown inside an Android phone frame."
+    },
+    {
+      "file": "03-sending-practice.png",
+      "heading": "Send the signal",
+      "caption": "Practise with dit and dah controls",
+      "source": "phone/04-send-paddles.png",
+      "sourceSha256": "253f923e8c18c7337b075b483ee3f6ddc8c57f2c9954a2e763bd4f52b45c2f83",
+      "sha256": "f9a6db8ae0b039e672e2a057b9428907bca584bf4ef5b208bda74b6d1fc6584a",
+      "bytes": 193322,
+      "description": "Sending practice with dit and dah controls, shown inside an Android phone frame."
+    },
+    {
+      "file": "04-audio-tutorial.png",
+      "heading": "Learn the rhythm",
+      "caption": "Hear each character and replay it",
+      "source": "phone/02-audio-tutorial.png",
+      "sourceSha256": "49504a7468f219b624ebdc738c8fc187870e0ed64677964a8c7ad69410f59719",
+      "sha256": "ec6f773a23098a797e0351727ca44bab86dba65994333fe9ae6119b68cf3b145",
+      "bytes": 170229,
+      "description": "An audio lesson showing the letter E and its Morse code, inside an Android phone frame."
+    },
+    {
+      "file": "05-morse-reference.png",
+      "heading": "Every character",
+      "caption": "Tap letters and numbers to hear Morse",
+      "source": "phone/05-morse-reference.png",
+      "sourceSha256": "a92caa4bdb0e37d6b60d88bbf9dd27c6341489908e1d05335d177e3f8dc091a5",
+      "sha256": "dec235cdd2d03b342c094d8198007dc499e4b3c3a2a639b9dea4a680800a0782",
+      "bytes": 164225,
+      "description": "A QWERTY Morse reference with letters and numbers, shown inside an Android phone frame."
+    },
+    {
+      "file": "06-custom-practice.png",
+      "heading": "Practise your way",
+      "caption": "Choose characters or real word groups",
+      "source": "phone/06-custom-real-words.png",
+      "sourceSha256": "db12560115c8ccf972ba297c0258fc43e30f706ac6198189dd6d9cbd26eb0a22",
+      "sha256": "2986bc0fd3e830a8034536ff26195d9d178a50eebf84e190c2f40399413158c1",
+      "bytes": 226972,
+      "description": "Custom practice settings with real word groups, shown inside an Android phone frame."
+    },
+    {
+      "file": "07-morse-chat.png",
+      "heading": "Chat in Morse",
+      "caption": "Reveal the text or listen to the signal",
+      "source": "phone/07-morse-chat.png",
+      "sourceSha256": "02868fe325bf8cc9af08c59941779b34faa61c8ef239420af2e664e78ebfa48e",
+      "sha256": "492d49ad90af75e8d7d25286573b9c64527349da2ded12c7dafa70d9aaa55860",
+      "bytes": 232985,
+      "description": "Morse chat with text reveal and listening controls, shown inside an Android phone frame."
+    },
+    {
+      "file": "08-morse-chat-paddles.png",
+      "heading": "Tap out a message",
+      "caption": "Compose Morse with dit and dah",
+      "source": "phone/08-morse-chat-paddles.png",
+      "sourceSha256": "529c11ef58c2235a3b3514fe5e90baf8397a7e5faedb6203c55fce64fc5a6368",
+      "sha256": "884264c5ed1235e579fdc03e0f729204139a5e36ab473c3556c52e3cc17c6187",
+      "bytes": 226078,
+      "description": "Morse chat with a dit and dah message composer, shown inside an Android phone frame."
+    }
+  ]
+}

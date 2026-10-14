@@ -51,3 +51,27 @@ Tablet sending practice with a target, Morse entry, touch dit/dah paddles and Ch
 
 screenshots/tablet-10/04-morse-chat.png
 Tablet Morse chat with real sandbox messages, conversations and send controls.
+
+screenshots/phone-framed/01-learn-morse-code.png
+Learn Morse code through 18 lessons, shown inside an Android phone frame.
+
+screenshots/phone-framed/02-receiving-practice.png
+Receiving practice with the app's QWERTY keyboard, shown inside an Android phone frame.
+
+screenshots/phone-framed/03-sending-practice.png
+Sending practice with dit and dah controls, shown inside an Android phone frame.
+
+screenshots/phone-framed/04-audio-tutorial.png
+An audio lesson showing the letter E and its Morse code, inside an Android phone frame.
+
+screenshots/phone-framed/05-morse-reference.png
+A QWERTY Morse reference with letters and numbers, shown inside an Android phone frame.
+
+screenshots/phone-framed/06-custom-practice.png
+Custom practice settings with real word groups, shown inside an Android phone frame.
+
+screenshots/phone-framed/07-morse-chat.png
+Morse chat with text reveal and listening controls, shown inside an Android phone frame.
+
+screenshots/phone-framed/08-morse-chat-paddles.png
+Morse chat with a dit and dah message composer, shown inside an Android phone frame.

@@ -47,7 +47,7 @@ async function firebaseAccessToken(env, fetcher, now) {
   const payload = encoded({ iss: account.client_email, scope: SCOPE, aud: TOKEN_URL, iat: seconds, exp: seconds + 3600 });
   const signingInput = `${header}.${payload}`;
   const signature = base64url(await crypto.subtle.sign(algorithm, key, new TextEncoder().encode(signingInput)));
-  const response = await fetcher(TOKEN_URL, { method: 'POST', redirect: 'error',
+  const response = await fetcher(TOKEN_URL, { method: 'POST', redirect: 'manual',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({ grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer', assertion: `${signingInput}.${signature}` }),
     signal: AbortSignal.timeout(5000),
@@ -63,7 +63,7 @@ async function firebaseAccessToken(env, fetcher, now) {
 
 async function deliver(job, auth, fetcher) {
   const response = await fetcher(`https://fcm.googleapis.com/v1/projects/${auth.account.project_id}/messages:send`, {
-    method: 'POST', redirect: 'error', headers: {
+    method: 'POST', redirect: 'manual', headers: {
       'Content-Type': 'application/json', Authorization: `Bearer ${auth.token}`,
     }, body: JSON.stringify({ message: {
       token: job.fcmToken,

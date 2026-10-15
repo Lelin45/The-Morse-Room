@@ -201,7 +201,7 @@ export async function dispatchPending(env, fetcher = fetch) {
   if ((!binding && !url) || !opaque.test(env.PUSH_DISPATCH_KEY || '')) return false;
   const options = { method: 'POST', headers: {
     Authorization: `Bearer ${env.PUSH_DISPATCH_KEY}`, 'Content-Type': 'application/json',
-  }, body: '{}', signal: AbortSignal.timeout(5000), redirect: 'error' };
+  }, body: '{}', signal: AbortSignal.timeout(5000), redirect: 'manual' };
   // A private service binding works without exposing a workers.dev endpoint or
   // requiring account-subdomain permissions. The dispatch key still authenticates
   // the request; the fully qualified internal URL is never sent to the network.

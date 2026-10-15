@@ -1,12 +1,78 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { generateKeyPairSync } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
 import { testEnv, person, api, friends } from './helpers/chat-db.mjs';
 import { handleChatRequest } from '../server/chat/api.js';
 import { hashToken } from '../server/chat/db.js';
 import { dispatchPending } from '../server/chat/notifications.js';
 import { drainNotifications } from '../worker/push/index.js';
 import pushWorker from '../worker/push/index.js';
+
+test('real Workers runtime sends notifications and rejects provider and dispatch redirects', async () => {
+  const { Miniflare, convertV4MiniflareOptions } = await import('miniflare');
+  const root = new URL('../', import.meta.url);
+  const entry = `
+    import { drainNotifications } from './worker/push/index.js';
+    import { dispatchPending } from './server/chat/notifications.js';
+    export default { async fetch(request, bindings) {
+      const scenario = new URL(request.url).searchParams.get('scenario');
+      const calls = []; const updates = [];
+      const service = JSON.parse(bindings.TEST_SERVICE_ACCOUNT);
+      service.client_email = 'runtime-' + scenario + '@morse-push-test.iam.gserviceaccount.com';
+      const recipient = { deviceId: 'runtime-device', fcmToken: 'runtime-test-device-token',
+        messageId: 1, conversationId: 'runtime-room' };
+      const DB = { prepare(query) { return { bind(...values) { return {
+        async all() { return { results: [{ id: 1, deviceId: recipient.deviceId, messageId: 1, attempts: 1 }] }; },
+        async first() { return query.includes('SELECT d.id AS deviceId') ? recipient : null; },
+        async run() { updates.push(query.includes("status = 'done'") ? 'done' : 'retry'); return { success: true }; }
+      }; } }; } };
+      const fetcher = async (url, options) => {
+        // Use the actual Workers Request constructor, which rejects redirect:error.
+        const outgoing = new Request(url, options);
+        const stage = url.includes('oauth2.googleapis.com') ? 'oauth' : 'fcm';
+        calls.push({ stage, redirect: outgoing.redirect });
+        if (scenario === stage + '-redirect') {
+          return new Response(null, { status: 302, headers: { Location: 'https://untrusted.invalid/never' } });
+        }
+        return Response.json(stage === 'oauth'
+          ? { access_token: 'runtime-test-access', expires_in: 3600 }
+          : { name: 'runtime-test-delivery' });
+      };
+      const result = await drainNotifications({ DB, FIREBASE_SERVICE_ACCOUNT_JSON: JSON.stringify(service) }, { fetcher });
+      const dispatch = await dispatchPending({ PUSH_DISPATCH_KEY: 'x'.repeat(43), PUSH_DISPATCHER: {
+        async fetch(outgoing) {
+          calls.push({ stage: 'dispatch', redirect: outgoing.redirect });
+          return new Response(null, { status: scenario === 'dispatch-redirect' ? 302 : 202 });
+        }
+      } });
+      return Response.json({ result, dispatch, calls, updates });
+    } };
+  `;
+  const modules = [{ type: 'ESModule', path: fileURLToPath(new URL('__notification-runtime-test__.js', root)), contents: entry }];
+  for (const name of ['worker/push/index.js', 'server/chat/notifications.js', 'server/chat/db.js']) {
+    modules.push({ type: 'ESModule', path: fileURLToPath(new URL(name, root)), contents: await readFile(new URL(name, root), 'utf8') });
+  }
+  const runtime = new Miniflare(convertV4MiniflareOptions({ host: '127.0.0.1', port: 0,
+    modules, compatibilityDate: '2026-10-01', bindings: {
+      TEST_SERVICE_ACCOUNT: JSON.stringify({ type: 'service_account', project_id: 'morse-push-test',
+        client_email: 'runtime@morse-push-test.iam.gserviceaccount.com', private_key: key }),
+    } }));
+  try {
+    for (const scenario of ['success', 'oauth-redirect', 'fcm-redirect', 'dispatch-redirect']) {
+      const response = await runtime.dispatchFetch('https://runtime.test/?scenario=' + scenario);
+      assert.equal(response.status, 200, scenario);
+      const value = await response.json();
+      assert.ok(value.calls.every(call => call.redirect === 'manual'), scenario);
+      assert.deepEqual(value.calls.map(call => call.stage), scenario === 'oauth-redirect'
+        ? ['oauth', 'dispatch'] : ['oauth', 'fcm', 'dispatch'], scenario);
+      assert.equal(value.result.delivered, ['oauth-redirect', 'fcm-redirect'].includes(scenario) ? 0 : 1, scenario);
+      assert.equal(value.dispatch, scenario !== 'dispatch-redirect', scenario);
+      assert.deepEqual(value.updates, ['oauth-redirect', 'fcm-redirect'].includes(scenario) ? ['retry'] : ['done'], scenario);
+    }
+  } finally { await runtime.dispose(); }
+});
 
 const key = generateKeyPairSync('rsa', { modulusLength: 2048 }).privateKey.export({ type: 'pkcs8', format: 'pem' });
 let accountNumber = 0;

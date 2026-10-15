@@ -3,30 +3,225 @@
   display: none;
 }
 
+/* A single compact form, with full-size labels and touch targets. */
+.practice-card {
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.practice-card-top,
+html[data-theme='dark'] .practice-card-top {
+  display: grid;
+  grid-template-columns: minmax(210px, .9fr) minmax(240px, 1fr);
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 14px;
+  padding: 0;
+  border: 0;
+}
+
 .practice-setup-section {
-  display: contents;
+  display: block;
+  min-width: 0;
 }
 
-.setup-section-heading,
-.setup-choice-icon,
-.setup-choice-note,
-.mobile-session-options {
-  display: none;
+.practice-card .setup-section-heading {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }
 
-.field .custom-pool-presets {
+.practice-card .segmented {
+  display: flex;
+  width: 100%;
+  height: auto;
+  min-width: 0;
+  padding: 3px;
+  gap: 2px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--paper);
+}
+
+.practice-card .segmented button {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 40px;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--ui-font);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  white-space: normal;
+  box-shadow: none;
+}
+
+.practice-card .segmented button.active {
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: 0 1px 3px #0000000a;
+}
+
+.practice-card .segmented button:hover:not(:disabled):not(.active) {
+  color: var(--ink);
+  background: var(--soft-green);
+}
+
+.practice-card .setup-choice-label {
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+}
+
+.practice-card .practice-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
+  gap: 12px 20px;
+  padding: 0;
+}
+
+.practice-card .practice-fields > .field {
+  min-width: 0;
+  grid-column: auto;
+}
+
+.practice-card .practice-fields :is(.session-length-field, .practice-count-field) {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+}
+
+.practice-card .practice-fields .field :is(label, .field-label) {
+  margin-bottom: 6px;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+}
+
+.practice-card .practice-fields :is(.session-length-field, .practice-count-field) > label {
+  flex: 0 0 auto;
+  margin: 0;
+}
+
+.practice-card .practice-fields .field :is(input, select) {
+  min-width: 0;
+  min-height: 44px;
+  height: 44px;
+  padding: 9px 10px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--ink);
+  font-family: var(--ui-font);
+  font-size: 16px;
+  line-height: 24px;
+}
+
+.practice-card .session-length-field select {
+  flex: 1;
+}
+
+.practice-card .practice-count-field input {
+  width: 90px;
+  max-width: 100%;
+  text-align: center;
+}
+
+.practice-card .practice-fields .practice-character-field {
+  grid-column: 1 / -1;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.practice-card .practice-fields .practice-word-fields {
+  grid-column: 2;
+}
+
+.practice-card .practice-word-fields .double-fields {
+  gap: 12px;
+}
+
+.practice-card .practice-fields .field p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.practice-card .field .custom-pool-presets {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 3px;
-  height: auto;
   margin-bottom: 8px;
 }
 
-.custom-pool-presets button {
-  min-width: 0;
-  padding: 7px 6px;
+.practice-card .custom-pool-presets button {
+  min-height: 40px;
+  padding: 5px 4px;
+  font-size: 13px;
+}
+
+.practice-card #custom-characters {
+  font-family: var(--signal-font);
+  letter-spacing: 2px;
+}
+
+.practice-card .practice-character-reference {
+  margin-top: 14px;
+  padding-top: 14px;
+}
+
+.practice-character-reference .reference-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+}
+
+.practice-character-reference .reference-heading h2 {
+  font-size: 14px;
+}
+
+.practice-character-reference .reference-heading p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.practice-character-reference .character-reference-grid {
+  grid-template-columns: repeat(auto-fill, minmax(48px, 1fr));
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.practice-character-reference .character-reference {
+  min-height: 54px;
+  padding: 6px 3px;
+  gap: 6px;
+}
+
+.practice-character-reference .reference-letter {
+  font-size: 18px;
+}
+
+.practice-character-reference .reference-morse {
   font-size: 11px;
-  white-space: normal;
+  letter-spacing: 0;
 }
 
 #custom-characters:disabled {
@@ -314,254 +509,34 @@ body[data-practice-round='true'] .writing-columns {
   }
 
   .practice-card-top,
-  .practice-fields {
-    padding: 0;
-  }
-
-  .practice-card-top {
-    flex-direction: column;
-    align-items: stretch;
-    flex-wrap: wrap;
-    gap: 16px;
-    margin-bottom: 16px;
-  }
-
-  .practice-card-top .small-label {
-    display: none;
-  }
-
-  .practice-card .segmented {
-    max-width: 100%;
-  }
-
-  .practice-setup-section {
-    display: grid;
+  html[data-theme='dark'] .practice-card-top {
+    grid-template-columns: minmax(0, 1fr);
     gap: 8px;
-    min-width: 0;
+    margin-bottom: 12px;
   }
 
-  .practice-card .setup-section-heading {
-    display: block;
-    margin: 0;
-    color: var(--ink);
-    font-size: 11px;
-    font-weight: 600;
-    line-height: 1.3;
+  .practice-card .practice-fields {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
   }
 
-  .practice-card :is(.practice-direction, .practice-category) {
-    display: grid;
-    gap: 8px;
-    padding: 0;
-    border: 0;
-    background: transparent;
-  }
-
-  .practice-card .practice-direction {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .practice-card .practice-category {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .practice-card :is(.practice-direction, .practice-category) button {
-    border: 1px solid var(--line);
-    border-radius: 10px;
-    background: var(--paper);
-    box-shadow: none;
-    color: var(--muted);
-  }
-
-  .practice-card :is(.practice-direction, .practice-category) button.active {
-    border-color: var(--green);
-    background: var(--soft-green);
-    color: var(--ink);
-  }
-
-  .practice-card .practice-direction button {
-    display: grid;
-    grid-template-columns: 22px minmax(0, 1fr);
-    align-content: center;
-    align-items: center;
-    gap: 3px 7px;
-    min-height: 68px;
-    padding: 10px 8px;
-    text-align: left;
-  }
-
-  .practice-card .setup-choice-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: inherit;
-  }
-
-  .practice-card .practice-direction .setup-choice-icon {
+  .practice-card .practice-fields > .field,
+  .practice-card .practice-fields .practice-word-fields {
     grid-column: 1;
-    grid-row: 1;
-    width: 22px;
-    height: 24px;
   }
 
-  .practice-card .practice-direction .setup-choice-icon svg {
-    width: 21px;
-    height: 21px;
-  }
-
-  .practice-card .setup-choice-label {
-    display: block;
-    font-size: 13px;
-    font-weight: 600;
-    line-height: 1.3;
-  }
-
-  .practice-card .setup-choice-note {
-    display: block;
-    font-size: 10px;
-    font-weight: 400;
-    line-height: 1.4;
-  }
-
-  .practice-card .setup-choice-copy {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-    min-width: 0;
-  }
-
-  .practice-card .practice-category button {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    min-height: 64px;
-    padding: 8px;
-  }
-
-  .practice-card .practice-category .setup-choice-icon {
-    height: 24px;
-    font-family: inherit;
-    font-size: 23px;
-    font-weight: 600;
-    line-height: 1;
-  }
-
-  .practice-card .practice-category .setup-choice-icon svg {
-    width: 21px;
-    height: 21px;
-  }
-
-  .practice-card .practice-category .setup-choice-label {
-    font-size: 12px;
-  }
-
-  .practice-fields .session-length-field {
-    grid-column: 1 / -1;
-    min-width: 0;
-  }
-
-  .practice-fields .session-length-field > label {
-    display: block;
-    margin-bottom: 0;
-    color: var(--ink);
-    font-size: 11px;
-    font-weight: 600;
-    line-height: 1.3;
-  }
-
-  .session-length-field #session-length {
-    display: none;
-  }
-
-  .mobile-session-options {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 6px;
-    margin-top: 8px;
-  }
-
-  .mobile-session-options button {
-    min-height: 40px;
-    padding: 8px 6px;
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    background: var(--paper);
-    color: var(--muted);
-    font-size: 12px;
-    font-weight: 500;
-    line-height: 1.3;
-  }
-
-  .mobile-session-options button.active {
-    border-color: var(--green);
-    background: var(--soft-green);
-    color: var(--ink);
-  }
-
-  .practice-fields .practice-count-field {
-    display: flex;
-    grid-column: 1 / -1;
-    align-items: center;
+  .practice-card .practice-fields :is(.session-length-field, .practice-count-field) {
     justify-content: space-between;
-    gap: 12px;
-    padding-top: 2px;
   }
 
-  .practice-fields .practice-count-field label {
-    margin-bottom: 0;
-    color: var(--ink);
+  .practice-card .session-length-field select {
+    flex: 0 1 190px;
+    width: auto;
+    max-width: calc(100% - 105px);
   }
 
-  .practice-fields .practice-count-field input {
-    width: 90px;
-    flex: 0 0 90px;
-    text-align: center;
-  }
-
-  .practice-fields .practice-word-fields {
-    grid-column: 1 / -1;
-    min-width: 0;
-  }
-
-  .practice-card-top .segmented button {
-    flex: 1;
-  }
-
-  .practice-card .segmented button {
-    min-height: 40px;
-    padding: 7px 12px;
-    font-size: 13px;
-    white-space: normal;
-  }
-
-  .practice-card .custom-pool-presets button {
-    padding: 7px 4px;
-    font-size: 11px;
-  }
-
-  .practice-fields {
-    gap: 14px;
-  }
-
-  .practice-fields .field :is(input, select) {
-    height: 42px;
-    min-height: 42px;
-    padding: 8px 10px;
-    font-family: inherit;
-    font-size: 16px;
-    line-height: 1.4;
-  }
-
-  .practice-fields .field :is(label, .field-label) {
-    font-size: 12px;
-  }
-
-  .practice-fields .field p {
-    margin-top: 5px;
-    font-size: 11px;
-    line-height: 1.5;
+  .practice-card .practice-fields .practice-character-field {
+    padding-top: 10px;
   }
 
   body[data-mode='practice'] .character-reference-panel {
@@ -841,7 +816,9 @@ body[data-practice-round='true'] .writing-columns {
     font-size: clamp(8px, 2.4vw, 9px);
     letter-spacing: 0;
     line-height: 1.25;
-    white-space: nowrap;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-align: center;
   }
 
   .mobile-keyboard.qwerty-keyboard {
@@ -1008,46 +985,19 @@ body[data-practice-round='true'] .writing-columns {
     font-size: .8125rem;
   }
 
-  .practice-card :is(.setup-section-heading, .setup-choice-label),
-  .practice-fields .session-length-field > label,
-  .practice-card .practice-category .setup-choice-label,
-  .practice-card .segmented button,
-  .mobile-session-options button,
   .practice-round-tools .button,
   .mobile-audio-access .button {
     font-size: .875rem;
   }
 
-  .practice-card .setup-choice-note,
-  .practice-fields .field p {
-    font-size: .75rem;
-    line-height: 1.5;
-  }
-
-  .practice-fields .field :is(label, .field-label),
-  .practice-card .custom-pool-presets button {
-    font-size: .8125rem;
-  }
-
-  .practice-card .practice-direction button {
-    min-height: 72px;
-  }
-
-  .practice-card .custom-pool-presets {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .mobile-session-options button {
-    min-height: 44px;
-  }
-
   #characters-panel .reference-keyboard {
-    gap: 8px;
+    gap: 6px;
   }
 
   #characters-panel .reference-keyboard .character-reference {
-    min-height: 70px;
-    gap: 9px;
+    min-height: 60px;
+    padding: 6px 0;
+    gap: 6px;
   }
 
   #characters-panel .reference-keyboard .reference-letter {
@@ -1056,8 +1006,9 @@ body[data-practice-round='true'] .writing-columns {
   }
 
   #characters-panel .reference-keyboard .reference-morse {
+    color: var(--signal-ink);
     font-family: var(--signal-font);
-    font-size: clamp(9px, 2.6vw, 10px);
+    font-size: clamp(9px, 2.7vw, 12px);
     font-weight: 700;
   }
 
@@ -1068,6 +1019,12 @@ body[data-practice-round='true'] .writing-columns {
   #characters-panel .reference-heading p {
     font-size: .75rem;
     line-height: 1.5;
+  }
+}
+
+@media (max-width: 350px) {
+  #characters-panel .reference-keyboard .reference-morse {
+    letter-spacing: -.25px;
   }
 }
 

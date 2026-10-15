@@ -6,11 +6,13 @@ import timing from '../generated/welcome-timing.json';
 type OpeningProps = { dark: boolean; volume: number; preferencesReady: boolean; visible: boolean; loadFailed: boolean; onFinish: () => void };
 
 export default function Opening({ dark, volume, preferencesReady, visible, loadFailed, onFinish }: OpeningProps) {
-  const player = useAudioPlayer(require('../assets/welcome.wav'), { updateInterval: 40, downloadFirst: true });
+  // The WAV is bundled with the app, so it can load directly without an asset download.
+  const player = useAudioPlayer(require('../assets/welcome.wav'), { updateInterval: 40 });
   const status = useAudioPlayerStatus(player);
   const [fade] = useState(() => new Animated.Value(1));
   const [pulse] = useState(() => new Animated.Value(0.45));
   const [playbackStarted, setPlaybackStarted] = useState(false);
+  const [appState, setAppState] = useState(() => AppState.currentState);
   const finished = useRef(false);
   const started = useRef(false);
   const accent = dark ? '#34f58c' : '#217044';
@@ -24,19 +26,24 @@ export default function Opening({ dark, volume, preferencesReady, visible, loadF
   }, [fade, onFinish, player]);
 
   useEffect(() => {
-    const subscription = AppState.addEventListener('change', (state) => { if (state !== 'active') finish(); });
+    const subscription = AppState.addEventListener('change', (state) => {
+      setAppState(state);
+      // Startup can report null or inactive before the Activity becomes active.
+      // An actual background transition after requesting playback ends the welcome.
+      if (state === 'background' && visible && started.current) finish();
+    });
     return () => subscription.remove();
-  }, [finish]);
+  }, [finish, visible]);
 
   useEffect(() => {
-    if (!visible || !preferencesReady || finished.current) return;
+    if (!visible || !preferencesReady || appState !== 'active' || finished.current) return;
     const animation = Animated.loop(Animated.sequence([
       Animated.timing(pulse, { toValue: 1, duration: 300, useNativeDriver: true }),
       Animated.timing(pulse, { toValue: 0.45, duration: 350, useNativeDriver: true }),
     ]));
     animation.start();
     return () => animation.stop();
-  }, [visible, preferencesReady, pulse]);
+  }, [visible, preferencesReady, appState, pulse]);
 
   useEffect(() => {
     // Expo Audio exposes native volume through this documented setter.
@@ -44,30 +51,36 @@ export default function Opening({ dark, volume, preferencesReady, visible, loadF
     player.volume = Math.max(0, Math.min(1, volume / 100));
   }, [player, volume]);
   useEffect(() => {
-    if (!visible || preferencesReady || finished.current) return;
+    if (!visible || preferencesReady || appState !== 'active' || finished.current) return;
     // A failed WebView must not emit a default sound over a saved mute setting.
     const timeout = setTimeout(finish, 15000);
     return () => clearTimeout(timeout);
-  }, [visible, preferencesReady, finish]);
+  }, [visible, preferencesReady, appState, finish]);
   useEffect(() => { if (visible && loadFailed) finish(); }, [visible, loadFailed, finish]);
   useEffect(() => {
-    if (!visible || !preferencesReady || loadFailed || !status.isLoaded || started.current || finished.current) return;
+    if (!visible || !preferencesReady || loadFailed || appState !== 'active' || !status.isLoaded || started.current || finished.current) return;
     let active = true;
-    void setAudioModeAsync({ allowsRecording: false, playsInSilentMode: false,
-      shouldPlayInBackground: false, interruptionMode: 'duckOthers' }).then(() => {
+    // Android's silent/vibrate ringer must not suppress media with media volume on.
+    // System media volume and the saved trainer mute still apply.
+    void setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true,
+      shouldPlayInBackground: false, shouldRouteThroughEarpiece: false, interruptionMode: 'duckOthers' }).then(() => {
       if (active && !started.current && !finished.current && AppState.currentState === 'active') {
         started.current = true;
         player.play();
-        setPlaybackStarted(true);
       }
     }).catch(() => { /* The bounded animation continues if audio is unavailable. */ });
     return () => { active = false; };
-  }, [visible, preferencesReady, loadFailed, status.isLoaded, player]);
+  }, [visible, preferencesReady, loadFailed, appState, status.isLoaded, player]);
   useEffect(() => {
-    if (!visible || !preferencesReady || playbackStarted || finished.current) return;
-    const timeout = setTimeout(finish, 2000);
+    if (started.current && !finished.current && (status.playing || status.currentTime > 0)) setPlaybackStarted(true);
+  }, [status.playing, status.currentTime]);
+  useEffect(() => {
+    if (!visible || !preferencesReady || appState !== 'active' || playbackStarted || finished.current) return;
+    // Wait for native playback confirmation, not just a synchronous play request.
+    // Cold launches on slower devices can take longer than the old two-second limit.
+    const timeout = setTimeout(finish, 10000);
     return () => clearTimeout(timeout);
-  }, [visible, preferencesReady, playbackStarted, finish]);
+  }, [visible, preferencesReady, appState, playbackStarted, finish]);
   useEffect(() => {
     if (!playbackStarted || finished.current) return;
     const maximum = setTimeout(finish, (timing.duration + 2) * 1000);

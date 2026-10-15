@@ -13,7 +13,9 @@ const settle = () => new Promise((resolve) => setImmediate(resolve));
 
 // Run the actual component with persistent hooks and native API boundaries.
 // Timers and promises remain separate, as they are during a slow native launch.
-function createOpening(initialProps = {}, { loaded = true, audioMode = 'resolve' } = {}) {
+function createOpening(initialProps = {}, {
+  loaded = true, audioMode = 'resolve', confirmPlayback = true, ringerMode = 'normal', initialAppState = 'active',
+} = {}) {
   let now = 0;
   let nextTimer = 0;
   let hookIndex = 0;
@@ -22,7 +24,8 @@ function createOpening(initialProps = {}, { loaded = true, audioMode = 'resolve'
   let mounted = true;
   let root;
   let props;
-  let status = { isLoaded: loaded, didJustFinish: false, currentTime: 0 };
+  let status = { isLoaded: loaded, didJustFinish: false, currentTime: 0, playing: false };
+  let appliedAudioMode = {};
   let volume = 1;
   let finishCount = 0;
   const timers = new Map();
@@ -54,7 +57,20 @@ function createOpening(initialProps = {}, { loaded = true, audioMode = 'resolve'
   const player = {
     get volume() { return volume; },
     set volume(value) { volume = value; calls.push({ type: 'volume', value, at: now }); },
-    play() { calls.push({ type: 'play', volume, at: now }); },
+    play() {
+      calls.push({ type: 'play', volume, at: now });
+      // Expo 57's Android native play() returns without playback for silent or
+      // vibrate ringer mode when playsInSilentMode is false, without throwing.
+      if (ringerMode !== 'normal' && !appliedAudioMode.playsInSilentMode) {
+        calls.push({ type: 'ringer-suppressed', at: now });
+        return;
+      }
+      if (confirmPlayback) void Promise.resolve().then(() => {
+        if (!mounted) return;
+        status = { ...status, playing: true };
+        render();
+      });
+    },
     pause() { calls.push({ type: 'pause', at: now }); },
   };
   class AnimatedValue {
@@ -77,7 +93,7 @@ function createOpening(initialProps = {}, { loaded = true, audioMode = 'resolve'
   };
   const element = (type, elementProps) => ({ type, props: elementProps });
   const appState = {
-    currentState: 'active',
+    currentState: initialAppState,
     addEventListener(name, callback) {
       assert.equal(name, 'change');
       listeners.add(callback);
@@ -126,15 +142,17 @@ function createOpening(initialProps = {}, { loaded = true, audioMode = 'resolve'
       useAudioPlayer(asset, options) {
         assert.equal(asset, 'welcome.wav');
         assert.equal(options.updateInterval, 40);
-        assert.equal(options.downloadFirst, true);
+        assert.notEqual(options.downloadFirst, true, 'Bundled welcome audio must not wait for an asset download');
         return player;
       },
       useAudioPlayerStatus: (instance) => { assert.equal(instance, player); return status; },
       setAudioModeAsync(options) {
         calls.push({ type: 'audio-mode', options, at: now });
-        if (audioMode === 'resolve') return Promise.resolve();
+        if (audioMode === 'resolve') return Promise.resolve().then(() => { appliedAudioMode = options; });
         if (audioMode === 'reject') return Promise.reject(new Error('Audio mode unavailable'));
-        return new Promise((resolve, reject) => modeRequests.push({ resolve, reject }));
+        return new Promise((resolve, reject) => modeRequests.push({
+          resolve: () => { appliedAudioMode = options; resolve(); }, reject,
+        }));
       },
     },
     '../generated/welcome-timing.json': timing,
@@ -278,28 +296,29 @@ test('ten seconds of visible preference loading and delayed audio setup do not c
   assert.equal(opening.finishCount, 1, 'A missing native completion event must still allow entry');
 });
 
-test('Skip and background stop the welcome once and block late audio setup from playing', async () => {
+test('Skip cancels pending audio setup and Skip or background stop confirmed playback once', async () => {
   for (const action of ['skip', 'background']) {
-    const opening = createOpening({}, { audioMode: 'defer' });
-    try {
-      await settle();
-      if (action === 'skip') opening.skip();
-      else opening.appState('background');
-      assert.equal(opening.calls.filter((call) => call.type === 'pause').length, 1, `${action} must pause promptly`);
-      opening.resolveAudioMode();
-      await settle();
-      assert.equal(opening.calls.filter((call) => call.type === 'play').length, 0, `${action} must cancel delayed play`);
-      opening.skip();
-      opening.appState('background');
-      await opening.advance(220);
-      assert.equal(opening.finishCount, 1);
-      opening.appState('active');
-      opening.setStatus({ currentTime: timing.duration, didJustFinish: true });
-      await opening.advance(20000);
-      assert.equal(opening.finishCount, 1, `${action} and remaining timers must finish only once`);
-      assert.equal(opening.calls.filter((call) => call.type === 'play').length, 0);
-    } finally { opening.unmount(); }
-    assert.equal(opening.listenerCount, 0, 'Unmount must remove the AppState subscription');
+    if (action === 'skip') {
+      const opening = createOpening({}, { audioMode: 'defer' });
+      try {
+        await settle();
+        opening.skip();
+        assert.equal(opening.calls.filter((call) => call.type === 'pause').length, 1, 'Skip must pause promptly');
+        opening.resolveAudioMode();
+        await settle();
+        assert.equal(opening.calls.filter((call) => call.type === 'play').length, 0, 'Skip must cancel delayed play');
+        opening.skip();
+        opening.appState('background');
+        await opening.advance(220);
+        assert.equal(opening.finishCount, 1);
+        opening.appState('active');
+        opening.setStatus({ currentTime: timing.duration, didJustFinish: true });
+        await opening.advance(20000);
+        assert.equal(opening.finishCount, 1, 'Skip and remaining timers must finish only once');
+        assert.equal(opening.calls.filter((call) => call.type === 'play').length, 0);
+      } finally { opening.unmount(); }
+      assert.equal(opening.listenerCount, 0, 'Unmount must remove the AppState subscription');
+    }
 
     const playing = createOpening();
     try {
@@ -344,14 +363,14 @@ test('missing preferences and an explicit load failure use bounded silent entry 
   }
 });
 
-test('unloaded audio and rejected audio setup finish silently within two visible ready seconds', async () => {
+test('unloaded audio and rejected audio setup use bounded entry after ten foreground ready seconds', async () => {
   for (const options of [{ loaded: false }, { audioMode: 'reject' }]) {
     const opening = createOpening({ visible: false }, options);
     try {
       await opening.advance(10000);
       assert.equal(opening.finishCount, 0);
       opening.update({ visible: true });
-      await opening.advance(1999);
+      await opening.advance(9999);
       assert.equal(opening.finishCount, 0);
       assert.equal(opening.calls.filter((call) => call.type === 'pause').length, 0);
       await opening.advance(1);
@@ -364,4 +383,107 @@ test('unloaded audio and rejected audio setup finish silently within two visible
       assert.equal(opening.finishCount, 1);
     } finally { opening.unmount(); }
   }
+});
+
+test('silent and vibrate Android ringer settings do not suppress welcome media', async () => {
+  for (const ringerMode of ['silent', 'vibrate']) {
+    const opening = createOpening({ volume: 50 }, { ringerMode });
+    try {
+      await settle();
+      const mode = opening.calls.find((call) => call.type === 'audio-mode');
+      assert.equal(mode.options.playsInSilentMode, true);
+      assert.equal(mode.options.shouldRouteThroughEarpiece, false);
+      assert.equal(opening.calls.filter((call) => call.type === 'ringer-suppressed').length, 0);
+      assert.equal(opening.calls.filter((call) => call.type === 'play').length, 1);
+      assert.equal(opening.calls.find((call) => call.type === 'play').volume, 0.5);
+      opening.setStatus({ currentTime: timing.duration, didJustFinish: true, playing: false });
+      await opening.advance(220);
+      assert.equal(opening.finishCount, 1, `${ringerMode} must reach native completion rather than a silent timeout`);
+    } finally { opening.unmount(); }
+  }
+});
+
+test('a bundled audio source taking more than two seconds to load still plays completely', async (t) => {
+  const opening = createOpening({}, { loaded: false });
+  t.after(() => opening.unmount());
+  await opening.advance(4500);
+  assert.equal(opening.finishCount, 0);
+  assert.equal(opening.calls.filter((call) => call.type === 'play').length, 0);
+  opening.setStatus({ isLoaded: true });
+  await settle();
+  assert.equal(opening.calls.filter((call) => call.type === 'play').length, 1);
+  await opening.advance(timing.duration * 1000);
+  assert.equal(opening.finishCount, 0, 'Preparation must not consume the playback time');
+  opening.setStatus({ currentTime: timing.duration, didJustFinish: true, playing: false });
+  await opening.advance(220);
+  assert.equal(opening.finishCount, 1);
+});
+
+test('the playback deadline starts at native confirmation rather than a no-op play request', async () => {
+  const waiting = createOpening({}, { confirmPlayback: false });
+  try {
+    await settle();
+    assert.equal(waiting.calls.filter((call) => call.type === 'play').length, 1);
+    await waiting.advance(9000);
+    assert.equal(waiting.finishCount, 0, 'A request alone must not start the shorter playback deadline');
+    waiting.setStatus({ playing: true });
+    await waiting.advance((timing.duration + 2) * 1000 - 1);
+    assert.equal(waiting.calls.filter((call) => call.type === 'pause').length, 0);
+    await waiting.advance(221);
+    assert.equal(waiting.finishCount, 1, 'Confirmed playback still has a bounded completion fallback');
+  } finally { waiting.unmount(); }
+
+  const noOp = createOpening({}, { confirmPlayback: false });
+  try {
+    await settle();
+    await noOp.advance(9999);
+    assert.equal(noOp.finishCount, 0);
+    await noOp.advance(221);
+    assert.equal(noOp.finishCount, 1, 'Missing native confirmation must eventually allow entry');
+    assert.equal(noOp.calls.filter((call) => call.type === 'play').length, 1);
+  } finally { noOp.unmount(); }
+});
+
+test('initial null or inactive AppState waits for active and keeps the full welcome', async () => {
+  for (const initialAppState of [null, 'inactive']) {
+    const opening = createOpening({}, { initialAppState });
+    try {
+      await opening.advance(20000);
+      assert.equal(opening.finishCount, 0, 'Startup state must not silently discard the welcome');
+      assert.equal(opening.calls.filter((call) => call.type === 'audio-mode').length, 0);
+      opening.appState('active');
+      await settle();
+      assert.equal(opening.calls.filter((call) => call.type === 'play').length, 1);
+      opening.appState('inactive');
+      await opening.advance(500);
+      assert.equal(opening.finishCount, 0, 'A temporary inactive state is not a background transition');
+      opening.appState('active');
+      await settle();
+      assert.equal(opening.calls.filter((call) => call.type === 'play').length, 1, 'Foreground status changes must not duplicate playback');
+      opening.setStatus({ currentTime: timing.duration, didJustFinish: true, playing: false });
+      await opening.advance(220);
+      assert.equal(opening.finishCount, 1);
+    } finally { opening.unmount(); }
+  }
+});
+
+test('background during preparation cancels the pending request and resumes safely on foreground', async (t) => {
+  const opening = createOpening({}, { audioMode: 'defer' });
+  t.after(() => opening.unmount());
+  await settle();
+  opening.appState('background');
+  opening.resolveAudioMode(0);
+  await opening.advance(20000);
+  assert.equal(opening.finishCount, 0);
+  assert.equal(opening.calls.filter((call) => call.type === 'play').length, 0);
+  opening.appState('active');
+  opening.resolveAudioMode(1);
+  await settle();
+  assert.equal(opening.calls.filter((call) => call.type === 'play').length, 1);
+  opening.appState('background');
+  await opening.advance(220);
+  assert.equal(opening.finishCount, 1, 'Background after requesting playback must stop the welcome');
+  opening.appState('active');
+  await opening.advance(20000);
+  assert.equal(opening.calls.filter((call) => call.type === 'play').length, 1);
 });

@@ -2191,11 +2191,16 @@ html[data-theme='dark'] .theme-icon-moon {
 :root {
   --ui-font: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --signal-font: ui-monospace, 'SFMono-Regular', Consolas, 'Courier New', monospace;
+  --signal-ink: #355c47;
+  --muted: #606e65;
+  --amber: #945715;
+  --radius: 12px;
   font-family: var(--ui-font);
 }
 
 html[data-theme='dark'] {
   --dark-font: var(--ui-font);
+  --signal-ink: #63f79d;
 }
 
 html :is(.brand, .page-title, .view-heading h1, .pane-heading h2,
@@ -2216,11 +2221,52 @@ html[data-theme='dark'] :is(.brand, .page-title, .view-heading h1,
 html :is(.morse-pattern, .answer-morse, .reference-morse),
 html[data-theme='dark'] :is(.morse-pattern, .answer-morse, .reference-morse) {
   font-family: var(--signal-font);
+  color: var(--signal-ink);
+  font-weight: 700;
+  font-synthesis: weight;
 }
 
 .page-title,
 html[data-theme='dark'] .page-title {
-  font-size: clamp(25px, 2.2vw, 31px);
+  font-size: 24px;
+  line-height: 1.25;
+  letter-spacing: -.4px;
+}
+
+@media (min-width: 761px) {
+  .app-shell {
+    grid-template-columns: 232px minmax(0, 1fr);
+  }
+
+  .app-shell > .sidebar {
+    padding: 24px 18px;
+  }
+
+  .brand {
+    margin-bottom: 30px;
+  }
+
+  .mode-nav {
+    margin-bottom: 24px;
+  }
+
+  .mode-button {
+    padding: 11px 10px;
+  }
+
+  .sound-settings {
+    gap: 20px;
+  }
+
+  .app-shell > .topbar {
+    min-height: 64px;
+    padding: 12px 24px;
+  }
+
+  .app-shell > .main-content {
+    max-width: 1600px;
+    padding: 16px 24px 24px;
+  }
 }
 
 @media (max-width: 760px), (pointer: coarse), (hover: none) {

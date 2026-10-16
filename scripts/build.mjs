@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const output = resolve(root, 'public');
 const publicFiles = [
-  'index.html', 'app.js', 'audio.js', 'trainer.js', 'learn-session.js', 'learning-progress.js',
+  'index.html', 'app.js', 'audio.js', 'audio-settings.js', 'trainer.js', 'learn-session.js', 'learning-progress.js',
   'replay.js', 'styles.css', 'chat.js', 'chat-codec.js', 'chat.css',
   'mobile-shell.js', 'mobile-practice-session.js', 'timed-morse.js',
   'practice.css', 'practice-round-session.js', 'qwerty-keyboard.js', 'real-word-bank.js',

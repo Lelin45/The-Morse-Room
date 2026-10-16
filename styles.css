@@ -1568,9 +1568,12 @@ html[data-theme='dark'] .theme-icon-moon {
 }
 
 #audio-settings-toggle {
-  display: none;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
   padding: 0;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -1785,42 +1788,6 @@ html[data-theme='dark'] .theme-icon-moon {
 
   .sidebar .audio-controls {
     display: none;
-    position: fixed;
-    z-index: 75;
-    top: calc(var(--app-top, 0px) + 66px + env(safe-area-inset-top));
-    right: 12px;
-    left: 12px;
-    max-height: calc(var(--app-height, 100dvh) - 84px);
-    padding: 19px;
-    overflow-y: auto;
-    border: 1px solid var(--line);
-    border-radius: 14px;
-    background: var(--card);
-    box-shadow: 0 12px 32px #0002;
-  }
-
-  body.audio-settings-open .sidebar .audio-controls {
-    display: grid;
-    gap: 16px;
-  }
-
-  .audio-controls .settings-heading {
-    display: flex;
-    margin: 0;
-    padding-bottom: 12px;
-  }
-
-  .audio-controls .sound-settings {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
-  }
-
-  .audio-controls .tone-test {
-    min-height: 40px;
-    margin: 0;
-    justify-self: stretch;
-    width: 100%;
   }
 
   .setting label {
@@ -2118,6 +2085,296 @@ html[data-theme='dark'] .theme-icon-moon {
   html[data-theme='dark'] .app-shell > .topbar .page-title {
     font-size: 16px;
     letter-spacing: -.6px;
+  }
+}
+
+/* One audio profile and one settings dialog in every workspace. */
+.setting input[type='range'],
+html[data-theme='dark'] .setting input[type='range'] {
+  background: linear-gradient(to right,
+    var(--range-fill) 0 var(--range-progress, 0%),
+    var(--range-track) var(--range-progress, 0%) 100%);
+}
+
+#audio-controls .settings-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+#audio-settings-title {
+  margin: 0;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.4;
+}
+
+#audio-settings-close {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+#audio-settings-close svg {
+  width: 18px;
+  height: 18px;
+  color: inherit;
+}
+
+.audio-presets {
+  min-width: 0;
+  margin-bottom: 18px;
+}
+
+.audio-presets .segmented {
+  display: flex;
+}
+
+.audio-presets .segmented button {
+  flex: 1;
+  min-width: 0;
+  min-height: 38px;
+  font-size: 12px;
+}
+
+.audio-presets .segmented button[aria-pressed='true'] {
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: 0 1px 3px #0001;
+}
+
+.audio-presets > p {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+body[data-audio-mode='default'] #audio-controls .setting:not(:has(#volume-number)) {
+  opacity: .5;
+}
+
+#audio-controls .setting input:disabled {
+  cursor: default;
+  opacity: 1;
+}
+
+body[data-audio-mode='default'] #audio-controls .setting:not(:has(#volume-number)) input[type='range'] {
+  filter: grayscale(1);
+}
+
+html.audio-dialog-open,
+body.audio-settings-open {
+  overflow: hidden;
+}
+
+.audio-settings-backdrop:not([hidden]) {
+  position: fixed;
+  z-index: 999;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: #08150f80;
+  cursor: default;
+  touch-action: none;
+}
+
+body.audio-settings-open > #audio-controls {
+  position: fixed;
+  z-index: 1000;
+  top: calc(var(--app-top, 0px) + max(12px, env(safe-area-inset-top)));
+  left: 50%;
+  display: grid;
+  width: min(540px, calc(100% - 24px));
+  min-width: 0;
+  max-height: calc(var(--app-height, 100dvh) - max(12px, env(safe-area-inset-top)) - max(12px, env(safe-area-inset-bottom)));
+  padding: 0 20px 20px;
+  gap: 16px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: 0 16px 60px #0004;
+  transform: translateX(-50%);
+  scrollbar-gutter: stable;
+  scroll-padding: 76px 0 12px;
+  touch-action: pan-y;
+}
+
+#audio-controls[role='dialog'] .settings-heading {
+  position: sticky;
+  z-index: 1;
+  top: 0;
+  min-height: 64px;
+  margin: 0 -20px;
+  padding: 10px 16px 10px 20px;
+  border-bottom: 1px solid var(--line);
+  background: var(--card);
+}
+
+#audio-controls[role='dialog'] #audio-settings-title {
+  font-size: 16px;
+}
+
+#audio-controls[role='dialog'] #audio-settings-close {
+  display: inline-flex;
+}
+
+#audio-controls[role='dialog'] .audio-presets {
+  margin: 0;
+}
+
+#audio-controls[role='dialog'] .audio-presets .segmented button {
+  min-height: 42px;
+  font-size: 14px;
+}
+
+#audio-controls[role='dialog'] .audio-presets > p {
+  font-size: 12px;
+}
+
+#audio-controls[role='dialog'] .sound-settings {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 24px;
+}
+
+#audio-controls[role='dialog'] .setting {
+  grid-template-columns: minmax(0, 1fr) auto;
+  min-width: 0;
+  column-gap: 8px;
+  row-gap: 4px;
+  align-content: start;
+}
+
+#audio-controls[role='dialog'] .setting label {
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+#audio-controls[role='dialog'] .setting-value {
+  min-width: 0;
+  min-height: 36px;
+  padding: 4px 6px;
+  border-color: var(--line);
+  border-radius: 7px;
+  background: var(--paper);
+}
+
+#audio-controls[role='dialog'] .setting-value input,
+#audio-controls[role='dialog'] .setting:has(#frequency-number) .setting-value input {
+  width: 45px;
+  min-width: 0;
+  padding: 2px 0;
+  font-family: var(--ui-font);
+  font-size: 16px;
+  line-height: 1.25;
+}
+
+#audio-controls[role='dialog'] .setting-value span {
+  font-size: 11px;
+}
+
+#audio-controls[role='dialog'] .setting input[type='range'] {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  height: 28px;
+  margin: 0;
+  border: 0;
+  background: transparent;
+}
+
+#audio-controls[role='dialog'] .setting input[type='range']::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 4px;
+  background: linear-gradient(to right,
+    var(--range-fill) 0 var(--range-progress, 0%),
+    var(--range-track) var(--range-progress, 0%) 100%);
+}
+
+#audio-controls[role='dialog'] .setting input[type='range']::-webkit-slider-thumb {
+  width: 20px;
+  height: 20px;
+  margin-top: -8px;
+  border: 3px solid var(--card);
+  background: var(--green);
+  box-shadow: 0 0 0 1px var(--green);
+}
+
+#audio-controls[role='dialog'] .setting input[type='range']::-moz-range-track {
+  height: 4px;
+  border-radius: 4px;
+  background: linear-gradient(to right,
+    var(--range-fill) 0 var(--range-progress, 0%),
+    var(--range-track) var(--range-progress, 0%) 100%);
+}
+
+#audio-controls[role='dialog'] .setting input[type='range']::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: 3px solid var(--card);
+  background: var(--green);
+}
+
+#audio-controls[role='dialog'] .setting p {
+  display: block;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+#audio-controls[role='dialog'] .tone-test {
+  justify-self: stretch;
+  width: 100%;
+  min-height: 44px;
+  margin: 0;
+  padding: 10px 14px;
+  border-color: var(--line);
+  font-size: 14px;
+}
+
+@media (max-width: 559px) {
+  body.audio-settings-open > #audio-controls {
+    padding-right: 16px;
+    padding-left: 16px;
+    gap: 12px;
+  }
+
+  #audio-controls[role='dialog'] .settings-heading {
+    min-height: 58px;
+    margin-right: -16px;
+    margin-left: -16px;
+    padding: 8px 12px 8px 16px;
+  }
+
+  #audio-controls[role='dialog'] .sound-settings {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  #audio-controls[role='dialog'] .setting label {
+    font-size: 14px;
   }
 }
 

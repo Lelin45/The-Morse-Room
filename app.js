@@ -9,6 +9,7 @@ import { generateRealWordGroups } from './real-word-bank.js';
 import { PracticeRecording, ReplayPlayer } from './replay.js';
 import { createChatRoom } from './chat.js';
 import { LearningProgressSync } from './learning-progress.js';
+import { AUDIO_SETTINGS_KEY, restoreAudioSettings, effectiveAudio } from './audio-settings.js';
 
 const $ = (selector) => document.querySelector(selector);
 const mobileViewport = matchMedia('(max-width: 760px)');
@@ -34,23 +35,9 @@ function applyTheme(theme, save = false) {
 applyTheme(document.documentElement.dataset.theme);
 $('#theme-toggle').addEventListener('click', () => applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark', true));
 
-const savedSound = readStorage('morse-room-sound', {});
-const sound = {
-  wpm: clamp(savedSound.wpm, 5, 60, 20),
-  farnsworth: clamp(savedSound.farnsworth, 1, 60, 10),
-  frequency: clamp(savedSound.frequency, 200, 1200, 600),
-  volume: clamp(savedSound.volume, 0, 100, 50),
-};
-sound.farnsworth = Math.min(sound.farnsworth, sound.wpm);
-const chatAudioDefaults = { wpm: 18, farnsworth: 12, frequency: 600 };
-const savedChatSound = readStorage('morse-room-chat-sound', {});
-const chatSound = {
-  mode: savedChatSound.mode === 'custom' ? 'custom' : 'default',
-  wpm: clamp(savedChatSound.wpm, 5, 60, 18),
-  farnsworth: clamp(savedChatSound.farnsworth, 1, 60, 12),
-  frequency: clamp(savedChatSound.frequency, 200, 1200, 600),
-};
-chatSound.farnsworth = Math.min(chatSound.farnsworth, chatSound.wpm);
+const audioSettings = restoreAudioSettings(readStorage(AUDIO_SETTINGS_KEY, null),
+  readStorage('morse-room-sound', null), readStorage('morse-room-chat-sound', null));
+const sound = effectiveAudio(audioSettings);
 const progressSync = new LearningProgressSync({
   curriculum: LEVELS.map(level => level.newCharacters).join(''),
   storage: { getItem: key => localStorage.getItem(key), setItem: (key, value) => localStorage.setItem(key, value) },
@@ -147,39 +134,37 @@ function handleAudioError(error) {
 }
 
 function syncSound() {
+  Object.assign(sound, effectiveAudio(audioSettings));
   const current = activeSound();
   for (const [key, value] of Object.entries(current)) {
     const range = $(`#${key}-range`);
     const number = $(`#${key}-number`);
     if (key === 'farnsworth') { range.max = current.wpm; number.max = current.wpm; }
-    range.disabled = number.disabled = mode === 'chat' && chatSound.mode === 'default' && key !== 'volume';
+    range.disabled = number.disabled = audioSettings.mode === 'default' && key !== 'volume';
     range.value = value;
     number.value = value;
     const percent = (value - Number(range.min)) / (Number(range.max) - Number(range.min)) * 100;
-    range.style.background = `linear-gradient(to right, var(--range-fill) ${percent}%, var(--range-track) ${percent}%)`;
+    range.style.setProperty('--range-progress', `${percent}%`);
   }
   writeStorage('morse-room-sound', sound);
-  writeStorage('morse-room-chat-sound', chatSound);
-  document.body.dataset.chatAudio = chatSound.mode;
-  $('.chat-audio-presets').hidden = mode !== 'chat';
+  writeStorage(AUDIO_SETTINGS_KEY, audioSettings);
+  document.body.dataset.audioMode = audioSettings.mode;
   const mobileAudioSummary = $('#mobile-audio-summary');
   if (mobileAudioSummary) mobileAudioSummary.textContent = `${current.wpm} WPM · ${current.farnsworth} Farnsworth`;
   for (const preset of ['default', 'custom']) {
-    const selected = chatSound.mode === preset;
-    $(`#chat-audio-${preset}`).classList.toggle('active', selected);
-    $(`#chat-audio-${preset}`).setAttribute('aria-pressed', String(selected));
+    const selected = audioSettings.mode === preset;
+    $(`#audio-${preset}`).classList.toggle('active', selected);
+    $(`#audio-${preset}`).setAttribute('aria-pressed', String(selected));
   }
 }
 
 function activeSound() {
-  return mode === 'chat' ? { ...(chatSound.mode === 'default' ? chatAudioDefaults : {
-    wpm: chatSound.wpm, farnsworth: chatSound.farnsworth, frequency: chatSound.frequency,
-  }), volume: sound.volume } : { ...sound };
+  return { ...sound };
 }
 
 for (const preset of ['default', 'custom']) {
-  $(`#chat-audio-${preset}`).addEventListener('click', () => {
-    chatRoom.stopAudio(); chatSound.mode = preset; syncSound();
+  $(`#audio-${preset}`).addEventListener('click', () => {
+    chatRoom.stopAudio(); audioSettings.mode = preset; syncSound();
   });
 }
 
@@ -187,7 +172,8 @@ for (const key of Object.keys(sound)) {
   const update = (event) => {
     const input = event.target;
     if (input.value === '') { if (event.type === 'change') syncSound(); return; }
-    const target = mode === 'chat' && key !== 'volume' ? chatSound : sound;
+    if (audioSettings.mode === 'default' && key !== 'volume') return;
+    const target = audioSettings;
     target[key] = clamp(input.value, Number(input.min), Number(input.max), target[key]);
     target.farnsworth = Math.min(target.farnsworth, target.wpm);
     if (mode === 'chat') chatRoom.stopAudio();
@@ -1160,6 +1146,7 @@ function submitPractice() {
 }
 
 document.addEventListener('keydown', (event) => {
+  if (document.body.classList.contains('audio-settings-open')) return;
   const keyTarget = event.target instanceof Element ? event.target : document.activeElement;
   const editingField = keyTarget?.isContentEditable || keyTarget?.closest('input:not([readonly]),textarea:not([readonly]),select,[role="textbox"],dialog[open]');
   if (mode === 'practice' && roundPractice() && practice.phase === 'playing' && !editingField && !event.ctrlKey && !event.metaKey && !event.altKey && !event.repeat && !event.isComposing) {

@@ -771,44 +771,6 @@ html[data-theme='dark'] .chat-key-tools .button.quiet {
   background: var(--dark-input);
 }
 
-.chat-audio-presets {
-  margin-bottom: 16px;
-}
-
-.chat-audio-presets > .sidebar-section-label {
-  display: block;
-  margin-bottom: 8px;
-}
-
-.chat-audio-presets > p {
-  margin: 8px 0 0;
-  color: var(--muted);
-  font-size: 10px;
-  line-height: 1.6;
-}
-
-.chat-audio-presets button {
-  flex: 1;
-  min-height: 33px;
-}
-
-body[data-mode='chat'][data-chat-audio='default'] .setting:not(:has(#volume-number)) {
-  opacity: .47;
-}
-
-body[data-mode='chat'][data-chat-audio='default'] .setting input:disabled {
-  cursor: default;
-  opacity: 1;
-}
-
-body[data-mode='chat'][data-chat-audio='default'] .setting:not(:has(#volume-number)) input[type='range'] {
-  filter: grayscale(1);
-}
-
-body[data-mode='chat'][data-chat-audio='default'] .setting:not(:has(#volume-number)) .setting-value {
-  background: var(--paper);
-}
-
 #chat-panel > .chat-status:not([hidden]) {
   margin: 0 0 12px;
 }
@@ -1657,15 +1619,6 @@ html[data-theme='dark'] .chat-policy h2 {
     padding: 5px 3px;
     font-size: 9px;
     line-height: 1.3;
-  }
-
-  .chat-audio-presets {
-    grid-column: 1 / -1;
-    margin-bottom: 0;
-  }
-
-  .chat-audio-presets button {
-    min-height: 38px;
   }
 
   .chat-compose textarea.is-morse {
@@ -2826,6 +2779,32 @@ html[data-theme='dark'] .chat-message-actions .button[aria-pressed='true'] {
 
   .chat-sidebar {
     padding: 12px 10px;
+    gap: 10px;
+  }
+
+  .chat-toolbar {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .chat-toolbar .button {
+    min-height: 44px;
+    padding: 6px;
+    gap: 5px;
+    font-size: 13px;
+    line-height: 18px;
+  }
+
+  .chat-toolbar .button svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .chat-public-group .button {
+    min-height: 44px;
+    padding: 6px 10px;
+    font-size: 13px;
+    line-height: 18px;
   }
 
   html.chat-conversation-open body[data-mode='chat'] .app-shell > .topbar,
@@ -2967,7 +2946,7 @@ html[data-theme='dark'] .chat-message-actions .button[aria-pressed='true'] {
 
   .chat-public-group {
     gap: 8px;
-    padding: 10px;
+    padding: 8px;
   }
 }
 

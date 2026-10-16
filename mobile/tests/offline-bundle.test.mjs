@@ -8,6 +8,15 @@ import { MORSE, getTiming } from '../../audio.js';
 
 const mobile = fileURLToPath(new URL('..', import.meta.url));
 
+test('native preference validation uses a generated copy of the public audio rules inside the mobile project', async () => {
+  const original = await readFile(resolve(mobile, '../audio-settings.js'), 'utf8');
+  const generated = await readFile(resolve(mobile, 'generated/audio-settings.js'), 'utf8');
+  assert.equal(generated, original.replace(/\r\n?/g, '\n'));
+  const utility = await readFile(resolve(mobile, 'src/audio-preferences.js'), 'utf8');
+  assert.match(utility, /from ['"]\.\.\/generated\/audio-settings\.js['"]/);
+  assert.ok(!utility.includes('../../audio-settings.js'));
+});
+
 test('bundled trainer contains its complete local code and styling, without server modules', async () => {
   const { default: html, trainerRevision } = await import('../generated/trainer-html.js');
   const manifest = JSON.parse(await readFile(resolve(mobile, 'generated/trainer-manifest.json'), 'utf8'));

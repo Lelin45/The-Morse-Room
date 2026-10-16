@@ -4,9 +4,11 @@ This local Expo module receives FCM data messages and provides notification acti
 
 - Default message actions: Show text, Listen and Reply.
 - Reply changes the notification to Text reply or Morse reply. Text uses Android inline reply. Morse uses an expanded native editor with dit, word space, dah, Send Morse and Backspace.
+- Show text, Listen and reply mode changes use background broadcasts so the notification shade stays open. Text reply opens Android's inline keyboard in the same notification. Morse reply keeps the keyboard hidden and uses the notification's own buttons.
 - A 650 ms pause separates Morse letters. The word-space button adds `//`. The sending endpoint validates and decodes the complete draft.
 - Listen streams 18 WPM, 600 Hz audio through Android media playback. It respects the system media volume and audio focus. Stop ends playback.
 - Locked devices display a generic private preview. Showing text, playing audio and sending replies require the device to be unlocked.
+- Actions deliberately do not set `authenticationRequired`: Android closes the shade for that flag even on an unlocked phone. The receiver checks the lock state before reading or changing a message, Android protects inline reply on the lock screen, and the public preview has no private content or actions.
 - Credentials, message previews and drafts use Android Keystore AES-GCM encryption. Sign-out cancels work and notifications and forgets account data. Only the device identifier and FCM registration token survive sign-out.
 - The message cache keeps up to 20 previews for at most seven days. Worker job data contains routing identifiers only, never message text or credentials.
 

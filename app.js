@@ -35,8 +35,9 @@ function applyTheme(theme, save = false) {
 applyTheme(document.documentElement.dataset.theme);
 $('#theme-toggle').addEventListener('click', () => applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark', true));
 
-const audioSettings = restoreAudioSettings(readStorage(AUDIO_SETTINGS_KEY, null),
+const audioSettings = restoreAudioSettings(window.__MORSE_AUDIO_SETTINGS ?? readStorage(AUDIO_SETTINGS_KEY, null),
   readStorage('morse-room-sound', null), readStorage('morse-room-chat-sound', null));
+delete window.__MORSE_AUDIO_SETTINGS;
 const sound = effectiveAudio(audioSettings);
 const progressSync = new LearningProgressSync({
   curriculum: LEVELS.map(level => level.newCharacters).join(''),
@@ -148,6 +149,7 @@ function syncSound() {
   }
   writeStorage('morse-room-sound', sound);
   writeStorage(AUDIO_SETTINGS_KEY, audioSettings);
+  window.ReactNativeWebView?.postMessage(JSON.stringify({ type: 'audio-settings', settings: audioSettings }));
   document.body.dataset.audioMode = audioSettings.mode;
   const mobileAudioSummary = $('#mobile-audio-summary');
   if (mobileAudioSummary) mobileAudioSummary.textContent = `${current.wpm} WPM · ${current.farnsworth} Farnsworth`;

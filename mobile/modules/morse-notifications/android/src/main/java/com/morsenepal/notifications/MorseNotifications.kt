@@ -139,7 +139,11 @@ internal object MorseNotifications {
       .setShowsUserInterface(false)
     if (remoteInput) builder.addRemoteInput(RemoteInput.Builder(REPLY_KEY).setLabel("Reply in text").build())
       .setSemanticAction(NotificationCompat.Action.SEMANTIC_ACTION_REPLY).setAllowGeneratedReplies(false)
-    if (Build.VERSION.SDK_INT >= 31) builder.setAuthenticationRequired(true)
+    // System UI closes the notification shade for authentication-required actions,
+    // even when the phone is already unlocked. These are background broadcasts:
+    // the receiver checks isDeviceLocked, and Android authenticates RemoteInput.
+    // The private publicVersion contains no message or reply controls on the lock screen.
+    if (Build.VERSION.SDK_INT >= 31) builder.setAuthenticationRequired(false)
     return builder.build()
   }
 

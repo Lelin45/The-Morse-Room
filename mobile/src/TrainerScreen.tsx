@@ -12,10 +12,12 @@ import html from '../generated/trainer-html';
 import Opening from './Opening';
 import { useChatNotifications } from './use-chat-notifications';
 import { AUTH_RETURN_URL, SITE_URL, PENDING_AUTH_KEY, base64URL, finishAuthScript, navigationAction, parseAuthCallback, readPendingAuth } from './auth-utils';
+import { AUDIO_PREFERENCES_KEY, readAudioPreferences, withAudioPreferences, createAudioPreferenceWriter } from './audio-preferences';
 
 void SplashScreen.preventAutoHideAsync().catch(() => { /* A development shell may already be visible. */ });
 WebBrowser.maybeCompleteAuthSession();
-const source = { html, baseUrl: SITE_URL };
+type AudioPreferences = NonNullable<ReturnType<typeof readAudioPreferences>>;
+const trainerSource = (preferences: AudioPreferences | null) => ({ html: withAudioPreferences(html, preferences), baseUrl: SITE_URL });
 const dispatch = (name: string) => `window.dispatchEvent(new CustomEvent(${JSON.stringify(name)})); true;`;
 type Pending = NonNullable<ReturnType<typeof readPendingAuth>>;
 
@@ -31,6 +33,9 @@ export default function TrainerScreen() {
   const backWaiting = useRef(false);
   const backTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const splashHideRequested = useRef(false);
+  const audioPreferences = useRef<AudioPreferences | null>(null);
+  const saveAudioPreferences = useRef(createAudioPreferenceWriter((value: string) => SecureStore.setItemAsync(AUDIO_PREFERENCES_KEY, value)));
+  const [source, setSource] = useState<ReturnType<typeof trainerSource> | null>(null);
   const [dark, setDark] = useState(true);
   const [volume, setVolume] = useState(50);
   const [preferencesReady, setPreferencesReady] = useState(false);
@@ -43,6 +48,17 @@ export default function TrainerScreen() {
   const { handleMessage: handleNotificationMessage, clear: clearNotificationAccount } = useChatNotifications({ webview, visible: !opening, ready: !loading && !failure });
   const background = dark ? '#000000' : '#f7f6f2';
   const foreground = dark ? '#d5f8df' : '#123226';
+
+  useEffect(() => {
+    let active = true;
+    // Restore before the trainer starts so an old WebView snapshot cannot
+    // replace the profile the user saved in the installed app.
+    void SecureStore.getItemAsync(AUDIO_PREFERENCES_KEY).then((saved) => {
+      if (active) audioPreferences.current = readAudioPreferences(saved);
+    }).catch(() => { /* Existing WebView preferences remain the upgrade fallback. */ })
+      .finally(() => { if (active) setSource(trainerSource(audioPreferences.current)); });
+    return () => { active = false; };
+  }, []);
 
   const flushExchange = useCallback(() => {
     if (!ready.current || exchangeRunning.current || !pending.current?.code) return;
@@ -146,7 +162,13 @@ export default function TrainerScreen() {
     try {
       const value = JSON.parse(event.nativeEvent.data);
       if (handleNotificationMessage(value)) return;
-      if (value.type === 'ready' || value.type === 'morse-native-ready') {
+      if (value.type === 'audio-settings') {
+        const settings = readAudioPreferences(value.settings);
+        if (!settings) return;
+        audioPreferences.current = settings;
+        setVolume(settings.volume);
+        void saveAudioPreferences.current(settings);
+      } else if (value.type === 'ready' || value.type === 'morse-native-ready') {
         ready.current = true; setLoading(false); setFailure(false); flushExchange();
         if (value.type === 'morse-native-ready') {
           if (value.theme === 'dark' || value.theme === 'light') setDark(value.theme === 'dark');
@@ -191,6 +213,7 @@ export default function TrainerScreen() {
   }, [openBrowser, receiveCallback, signIn]);
   const reload = useCallback(() => {
     ready.current = false; exchangeRunning.current = false;
+    setSource(trainerSource(audioPreferences.current));
     setFailure(false); setLoading(true); setGeneration((value) => value + 1);
   }, []);
   const loadFailure = useCallback(() => { ready.current = false; setFailure(true); setLoading(false); }, []);
@@ -207,7 +230,7 @@ export default function TrainerScreen() {
     onLayout={hideSplash}>
     <StatusBar style={dark ? 'light' : 'dark'} />
     <KeyboardAvoidingView style={styles.content} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <WebView key={generation} ref={webview} source={source} style={{ backgroundColor: background }}
+      {source && <WebView key={generation} ref={webview} source={source} style={{ backgroundColor: background }}
         originWhitelist={['*']} onShouldStartLoadWithRequest={navigate} onMessage={message}
         onOpenWindow={({ nativeEvent }) => {
           const action = navigationAction(nativeEvent.targetUrl);
@@ -223,7 +246,7 @@ export default function TrainerScreen() {
         onLoadEnd={() => { setLoading(false); }} onError={loadFailure}
         onRenderProcessGone={loadFailure} onContentProcessDidTerminate={loadFailure}
         keyboardDisplayRequiresUserAction={false}
-        contentInsetAdjustmentBehavior="never" automaticallyAdjustContentInsets={false} />
+        contentInsetAdjustmentBehavior="never" automaticallyAdjustContentInsets={false} />}
       {loading && !opening && !failure && <View style={[styles.overlay, { backgroundColor: background }]}><ActivityIndicator color={dark ? '#34f58c' : '#217044'} /></View>}
       {failure && <View style={[styles.overlay, { backgroundColor: background }]}>
         <Text style={[styles.failureTitle, { color: foreground }]}>Open your trainer again</Text>

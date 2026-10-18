@@ -28,7 +28,7 @@ async function seedReview(env) {
     const taken = await one(env, 'SELECT id FROM chat_users WHERE username = ? AND id <> ?', preferred, id);
     people.push([id, existing?.username || (taken ? `${preferred}_${randomToken(3).replace(/[^A-Za-z0-9]/g, 'X')}` : preferred)]);
   }
-  const welcome = 'Welcome to Morse Code Nepal. Try Show text, Listen, sending a message, Block, or Report. This is a test conversation.';
+  const welcome = 'Welcome to Morse Room: Learn & Chat. Try Show text, Listen, sending a message, Block, or Report. This is a test conversation.';
   const groupText = 'This private test group is ready for the app review.';
   await batch(env, [
     ...people.flatMap(([id, username]) => [

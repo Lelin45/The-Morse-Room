@@ -3002,3 +3002,12 @@ html[data-theme='dark'] .chat-message-actions .button[aria-pressed='true'] {
     bottom: max(8px, env(safe-area-inset-bottom));
   }
 }
+.chat-compose [data-morse-key] {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.chat-compose [data-morse-key].is-pressed:not(:disabled) {
+  filter: brightness(.88);
+}

@@ -1,4 +1,4 @@
-# Chat setup for The Morse Room
+# Chat setup for Morse Room
 
 The trainer still runs with Node 22.13 or newer and `npm start`. That server serves Learn and Practice locally. Chat uses Cloudflare Pages Functions and a D1 database, so use the steps below for chat development and the public site.
 
@@ -100,7 +100,7 @@ Create or select a project in [Google Cloud Console](https://console.cloud.googl
 
 The sign-in button uses Google's pre-approved light and dark PNG assets from its [branding guide](https://developers.google.com/identity/branding-guidelines). Keep these images and their proportions when changing the login screen.
 
-In **Branding**, use The Morse Room as the app name and your actual support/contact email. Set these public URLs:
+In **Branding**, use Morse Room as the app name and your actual support/contact email. Set these public URLs:
 
 | Field | Value |
 | --- | --- |

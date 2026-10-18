@@ -1,8 +1,8 @@
 icon.png
-Morse Code Nepal icon with a green dit and dah on a dark background.
+Morse Room: Learn & Chat icon with a green dit and dah on a dark background.
 
 feature-graphic.png
-Morse Code Nepal: guided lessons, sending and receiving practice, and Morse chat.
+Morse Room: Learn & Chat: guided lessons, sending and receiving practice, and Morse chat.
 
 screenshots/phone/01-learn-lessons.png
 Level 1 E and T with Morse symbols and all 18 lesson steps.

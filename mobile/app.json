@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Morse Code Nepal",
+    "name": "Morse Room: Learn & Chat",
     "slug": "the-morse-room",
     "owner": "lelin455",
     "version": "1.0.0",
@@ -9,6 +9,14 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "backgroundColor": "#000000",
+    "runtimeVersion": { "policy": "fingerprint" },
+    "updates": {
+      "enabled": true,
+      "url": "https://u.expo.dev/4ebe6e90-f56c-4bb4-8e98-d6317801aaf9",
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0,
+      "useEmbeddedUpdate": true
+    },
     "ios": {
       "bundleIdentifier": "com.morsenepal",
       "supportsTablet": true,

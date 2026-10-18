@@ -13,7 +13,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const sources = [
   'index.html', 'app.js', 'audio.js', 'audio-settings.js', 'trainer.js', 'learn-session.js', 'learning-progress.js',
   'replay.js', 'styles.css', 'chat.js', 'chat-codec.js', 'chat.css',
-  'mobile-shell.js', 'mobile-practice-session.js', 'timed-morse.js',
+  'mobile-shell.js', 'mobile-practice-session.js', 'timed-morse.js', 'press-controls.js',
   'practice.css', 'practice-round-session.js', 'qwerty-keyboard.js', 'real-word-bank.js',
   'privacy.html', 'terms.html', 'delete-account.html', 'delete-account.js', 'google-signin-light.png', 'google-signin-dark.png',
 ];

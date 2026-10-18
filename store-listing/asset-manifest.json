@@ -1,16 +1,16 @@
 {
-  "appName": "Morse Code Nepal",
+  "appName": "Morse Room: Learn & Chat",
   "applicationIdentifier": "com.morsenepal",
-  "verifiedAt": "2026-10-14T00:34:08.378Z",
+  "verifiedAt": "2026-10-18T05:27:21.017Z",
   "captureSource": "Exact bundled Android WebView HTML rendered in isolated Chrome with Android user agent and native bridge stub. These are app-content captures, not Android emulator screenshots.",
   "promotionalScreenshotComposition": "Existing app-content screenshots scaled proportionally inside a generic Android phone frame, with feature captions.",
   "files": [
     {
       "file": "app-name.txt",
-      "characters": 16,
+      "characters": 24,
       "maxCharacters": 30,
-      "bytes": 17,
-      "sha256": "8c67e77b00e16d2d4a794765939360f85cb89870562cf2aee123d8b02b76d050"
+      "bytes": 25,
+      "sha256": "6187c4b91b46e7feb78abab8b9d337550758ac1e31a626bf992872547129ff1f"
     },
     {
       "file": "short-description.txt",
@@ -21,10 +21,10 @@
     },
     {
       "file": "full-description.txt",
-      "characters": 2396,
+      "characters": 2404,
       "maxCharacters": 4000,
-      "bytes": 2397,
-      "sha256": "0599cfe6e45f3aed158575b3bff242dcb2d54566aff750fc894ea2df884dad68"
+      "bytes": 2405,
+      "sha256": "71f1793720eba42148da9144ab799b469eaca5967e052f292d4a234be3b7db9d"
     },
     {
       "file": "icon.png",

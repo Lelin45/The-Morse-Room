@@ -13,6 +13,8 @@ import Opening from './Opening';
 import { useChatNotifications } from './use-chat-notifications';
 import { AUTH_RETURN_URL, SITE_URL, PENDING_AUTH_KEY, base64URL, finishAuthScript, navigationAction, parseAuthCallback, readPendingAuth } from './auth-utils';
 import { AUDIO_PREFERENCES_KEY, readAudioPreferences, withAudioPreferences, createAudioPreferenceWriter } from './audio-preferences';
+import { effectiveAudio } from '../generated/audio-settings';
+import { nativeNotifications } from './notifications-native';
 
 void SplashScreen.preventAutoHideAsync().catch(() => { /* A development shell may already be visible. */ });
 WebBrowser.maybeCompleteAuthSession();
@@ -34,7 +36,11 @@ export default function TrainerScreen() {
   const backTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const splashHideRequested = useRef(false);
   const audioPreferences = useRef<AudioPreferences | null>(null);
-  const saveAudioPreferences = useRef(createAudioPreferenceWriter((value: string) => SecureStore.setItemAsync(AUDIO_PREFERENCES_KEY, value)));
+  const saveAudioPreferences = useRef(createAudioPreferenceWriter(async (value: string) => {
+    await SecureStore.setItemAsync(AUDIO_PREFERENCES_KEY, value).catch(() => {});
+    const profile = readAudioPreferences(value);
+    if (profile) await nativeNotifications.updateAudioSettingsAsync(effectiveAudio(profile));
+  }));
   const [source, setSource] = useState<ReturnType<typeof trainerSource> | null>(null);
   const [dark, setDark] = useState(true);
   const [volume, setVolume] = useState(50);

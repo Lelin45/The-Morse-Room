@@ -23,7 +23,7 @@ test('bundled trainer contains its complete local code and styling, without serv
   assert.equal(createHash('sha256').update(html).digest('hex').slice(0, 20), trainerRevision);
   assert.equal(manifest.revision, trainerRevision);
   assert.equal(manifest.bytes, Buffer.byteLength(html));
-  assert(html.includes('<title>Morse Code Nepal</title>'));
+  assert(html.includes('<title>Morse Room: Learn &amp; Chat</title>'));
   assert(html.includes('data-mode="learn"'));
   assert(html.includes('data-mode="practice"'));
   assert(html.includes('data-mode="characters"'));

@@ -94,7 +94,7 @@ export default function Opening({ dark, volume, preferencesReady, visible, loadF
       <View style={[styles.dit, { backgroundColor: accent }]} />
       <View style={[styles.dah, { backgroundColor: accent }]} />
     </Animated.View>
-    <Text style={[styles.title, { color }]}>Morse Code Nepal</Text>
+    <Text style={[styles.title, { color }]}>Morse Room: Learn & Chat</Text>
     <View style={styles.letters} accessibilityLabel="Welcome in Morse code">
       {timing.letters.map((entry, index) => <View key={index} style={styles.letter}>
         <Text style={[styles.character, { color: accent, opacity: elapsed >= entry.start ? 1 : 0.72 }]}>{entry.letter}</Text>
@@ -113,7 +113,7 @@ const styles = StyleSheet.create({
   mark: { flexDirection: 'row', alignItems: 'center', gap: 19, marginBottom: 32 },
   dit: { width: 25, height: 25, borderRadius: 14 },
   dah: { width: 76, height: 25, borderRadius: 14 },
-  title: { fontSize: 24, fontWeight: '600', marginBottom: 38 },
+  title: { fontSize: 24, fontWeight: '600', marginBottom: 38, width: '100%', maxWidth: 360, paddingHorizontal: 24, textAlign: 'center', flexShrink: 1 },
   letters: { flexDirection: 'row', gap: 3, width: '100%', maxWidth: 350, paddingHorizontal: 12 },
   letter: { alignItems: 'center', flex: 1, minWidth: 0 },
   character: { fontSize: 28, fontWeight: '600' },

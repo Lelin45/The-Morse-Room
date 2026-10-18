@@ -83,7 +83,7 @@ internal object MorseNotifications {
       putExtra("morse_notification_user", userId)
     }
     val public = NotificationCompat.Builder(context, CHANNEL).setSmallIcon(R.drawable.morse_notification_icon)
-      .setContentTitle("Morse Code Nepal").setContentText("New Morse message").build()
+      .setContentTitle("Morse Room: Learn & Chat").setContentText("New Morse message").build()
     val builder = NotificationCompat.Builder(context, CHANNEL)
       .setSmallIcon(R.drawable.morse_notification_icon).setContentTitle(title).setContentText(body)
       .setStyle(NotificationCompat.BigTextStyle().bigText(body))
@@ -128,6 +128,7 @@ internal object MorseNotifications {
   fun pendingAction(context: Context, messageId: String, key: String, mutable: Boolean = false): PendingIntent {
     val intent = Intent(context, NotificationActionReceiver::class.java)
       .setAction("com.morsenepal.notifications.$key")
+      .addFlags(Intent.FLAG_RECEIVER_FOREGROUND)
       .setData(Uri.parse("morse-notification://action/" + Uri.encode(messageId) + "/" + key))
       .putExtra("messageId", messageId).putExtra("key", key)
     val flag = if (mutable) (if (Build.VERSION.SDK_INT >= 31) PendingIntent.FLAG_MUTABLE else 0) else PendingIntent.FLAG_IMMUTABLE

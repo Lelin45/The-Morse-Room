@@ -1,4 +1,4 @@
-# Morse Code Nepal: Google Play upload files
+# Morse Room: Learn & Chat: Google Play upload files
 
 The app name and descriptions are ready to copy from the three text files. The 16 screenshots show the app's exact bundled interface rendered in Chrome with touch input. The capture manifest records this source; these are app-content captures. The filenames identify the section and device size.
 

@@ -5,11 +5,12 @@ This local Expo module receives FCM data messages and provides notification acti
 - Default message actions: Show text, Listen and Reply.
 - Reply changes the notification to Text reply or Morse reply. Text uses Android inline reply. Morse uses an expanded native editor with dit, word space, dah, Send Morse and Backspace.
 - Show text, Listen and reply mode changes use background broadcasts so the notification shade stays open. Text reply opens Android's inline keyboard in the same notification. Morse reply keeps the keyboard hidden and uses the notification's own buttons.
-- A 650 ms pause separates Morse letters. The word-space button adds `//`. The sending endpoint validates and decodes the complete draft.
-- Listen streams 18 WPM, 600 Hz audio through Android media playback. It respects the system media volume and audio focus. Stop ends playback.
+- Letter pauses use the app's effective WPM and Farnsworth profile, with the same PARIS timing calculation as Learn and Practice. The word-space button adds `//`. The sending endpoint validates and decodes the complete draft.
+- Every received dit/dah action is recorded in order before encrypted storage or notification rendering. Draft snapshots are coalesced at 250 ms to avoid Android notification-update limits. A warm audio stream queues all tones without cutting off previous marks; tapping never waits for audio playback.
+- Listen and reply tones use the app's global WPM, Farnsworth, frequency and volume settings. They also respect system media volume and audio focus. Stop ends playback.
 - Locked devices display a generic private preview. Showing text, playing audio and sending replies require the device to be unlocked.
 - Actions deliberately do not set `authenticationRequired`: Android closes the shade for that flag even on an unlocked phone. The receiver checks the lock state before reading or changing a message, Android protects inline reply on the lock screen, and the public preview has no private content or actions.
-- Credentials, message previews and drafts use Android Keystore AES-GCM encryption. Sign-out cancels work and notifications and forgets account data. Only the device identifier and FCM registration token survive sign-out.
+- Credentials, message previews and drafts use Android Keystore AES-GCM encryption. Sign-out cancels work and notifications and forgets account data. The device identifier, FCM registration token and global audio profile survive sign-out.
 - The message cache keeps up to 20 previews for at most seven days. Worker job data contains routing identifiers only, never message text or credentials.
 
 ## Configuration
@@ -23,6 +24,16 @@ The app obtains a revocable, device-scoped capability from its own authenticated
 ```ts
 await nativeNotifications.configureAsync({ deviceId, userId, authToken });
 ```
+
+Audio settings are independent of chat sign-in and survive sign-out. Supply the effective Default or Custom profile whenever global audio settings change:
+
+```ts
+await nativeNotifications.updateAudioSettingsAsync({
+  wpm: 18, farnsworth: 12, frequency: 600, volume: 50,
+});
+```
+
+Volume ranges from 0 to 100, including a silent 0. Notification actions can restore this profile after the app process has closed.
 
 `getStateAsync().deviceId` is the installation UUID and is sent to the registration endpoint as `installationId`. The registration endpoint returns a separate server `deviceId`; that returned value is passed to `configureAsync()`. State exposes it as `registeredDeviceId`, while `configuredUserId` identifies the signed-in account. Token rotation sends the configured server identifier. Call `clearAsync()` after revoking that device capability on sign-out. Account changes also clear old account data automatically.
 
@@ -38,7 +49,7 @@ All native requests use the fixed HTTPS app origin and `Authorization: Bearer <d
 
 ## Verification
 
-`MorseCodecTest` checks the complete alphabet and numbers, punctuation removal, accented text, invalid drafts and the standard PARIS timing unit. Run the module's `testReleaseUnitTest` task in a generated Android project.
+`MorseCodecTest` checks the complete alphabet and numbers, punctuation removal, accented text, invalid drafts and the standard PARIS timing unit. `MorseDraftTest` checks 100 alternating rapid taps, exact letter-gap boundaries, backspace, word spaces and monotonic-clock resets. `MorseAudioSettingsTest` checks Farnsworth timing, supported speeds, normalization and mute. Run the module's `testReleaseUnitTest` task in a generated Android project. Real-touch notification QA must also confirm that Android keeps the shade open while accepting fast input.
 
 `showDebugNotificationAsync()` rejects production builds. Release QA can call `fetchMessageNotificationAsync(realMessageId)`, which fetches only a real, authorized server message and runs the same delivery worker as FCM. This can verify notification controls while Firebase provisioning is pending. Actual push delivery still requires Firebase configuration and a physical or Play-services-enabled Android device.
 

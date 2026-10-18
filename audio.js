@@ -118,7 +118,7 @@ export class MorsePlayer {
         const timing = getTiming(entry.settings);
         const completed = await this._playAudio([
           { tone: true, duration: entry.symbol === '.' ? timing.dit : timing.dah },
-        ], entry.settings);
+        ], entry.settings, { feedback: true });
         entry.resolve(completed);
         entry = null;
         if (!completed || this._symbolDrain !== drain) return;
@@ -134,8 +134,9 @@ export class MorsePlayer {
     }
   }
 
-  async _playAudio(segments, settings) {
+  async _playAudio(segments, settings, { feedback = false } = {}) {
     const operation = this._createOperation('audio', settings);
+    operation.warmFeedback = feedback && this._clockReady && this._context?.state === 'running';
     operation.segments = segments;
     operation.leadRemaining = null;
     try {
@@ -308,7 +309,7 @@ export class MorsePlayer {
     } else if (this._nextStartAt !== null) {
       start = Math.max(this._nextStartAt, now + MINIMUM_LEAD_SECONDS);
     } else {
-      start = now + LOOKAHEAD_SECONDS;
+      start = now + (operation.warmFeedback ? MINIMUM_LEAD_SECONDS : LOOKAHEAD_SECONDS);
     }
     this._nextStartAt = null;
     const frequency = Math.min(20000, Math.max(20, positiveNumber(operation.settings.frequency, 600)));

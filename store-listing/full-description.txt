@@ -1,6 +1,6 @@
 Learn Morse code through listening, sending and everyday practice.
 
-Morse Code Nepal brings guided lessons, receiving practice, sending practice and Morse conversations into one app. Learn, Practice and Codes work offline without an account. Sign in with Google only when you want to use the Chat Room.
+Morse Room: Learn & Chat brings guided lessons, receiving practice, sending practice and Morse conversations into one app. Learn, Practice and Codes work offline without an account. Sign in with Google only when you want to use the Chat Room.
 
 Guided lessons
 Work through 18 levels covering all 26 letters and 10 numbers. Each lesson introduces two characters with their Morse pattern and audio. Practise everything you have learned so far, replay signals when needed, and get the current character right before moving forward. Your progress is saved on your device.

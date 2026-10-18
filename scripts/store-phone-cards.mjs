@@ -28,7 +28,7 @@ function artwork(card) {
     <rect width="1080" height="1920" fill="url(#field)"/>
     <g fill="none" stroke="#244a33" opacity=".45"><circle cx="540" cy="1150" r="625"/><circle cx="540" cy="1150" r="680" stroke-dasharray="2 16"/></g>
     <circle cx="79" cy="61" r="8" fill="#34f58c"/><rect x="97" y="53" width="32" height="16" rx="8" fill="#34f58c"/>
-    <text x="147" y="69" fill="#b1cbbd" font-family="Segoe UI, Arial, sans-serif" font-size="26" font-weight="500" letter-spacing=".4">Morse Code Nepal</text>
+    <text x="147" y="69" fill="#b1cbbd" font-family="Segoe UI, Arial, sans-serif" font-size="26" font-weight="500" letter-spacing=".4">Morse Room: Learn &amp; Chat</text>
     <text x="998" y="69" text-anchor="end" fill="#527b61" font-family="Consolas, monospace" font-size="22">${card.number} / 08</text>
     <g font-family="Segoe UI, Arial, sans-serif" font-size="78" font-weight="700" letter-spacing="-2">
       <text x="70" y="167" fill="#effff4">${escape(card.heading[0])}</text>

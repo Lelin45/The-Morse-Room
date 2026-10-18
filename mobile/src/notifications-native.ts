@@ -18,6 +18,13 @@ export interface NotificationConfiguration {
   userId: string;
 }
 
+export interface NotificationAudioSettings {
+  wpm: number;
+  farnsworth: number;
+  frequency: number;
+  volume: number;
+}
+
 export interface NotificationRoute {
   conversationId: string;
   messageId: string;
@@ -31,6 +38,7 @@ type NotificationEvents = {
 };
 
 interface NativeNotificationsModule {
+  updateAudioSettingsAsync?(options: NotificationAudioSettings): Promise<void>;
   getStateAsync(): Promise<NotificationState>;
   getFCMTokenAsync(): Promise<string | null>;
   configureAsync(options: NotificationConfiguration): Promise<NotificationState>;
@@ -51,6 +59,9 @@ const unsupported: NotificationState = {
 };
 
 export const nativeNotifications = {
+  async updateAudioSettingsAsync(options: NotificationAudioSettings): Promise<void> {
+    if (nativeModule?.updateAudioSettingsAsync) await nativeModule.updateAudioSettingsAsync(options);
+  },
   async getStateAsync(): Promise<NotificationState> {
     return nativeModule ? nativeModule.getStateAsync() : { ...unsupported };
   },

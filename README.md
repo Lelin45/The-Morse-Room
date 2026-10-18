@@ -1,6 +1,6 @@
 # Morse Room
 
-A Morse code trainer with free lessons, sending practice, and receiving practice. Run it on your own computer, or visit [The Morse Room](https://learnmorse.lelinadhikari.com.np). Learn and Practice need no account. The optional Morse Chat Room uses Google sign-in to practise through conversations with friends.
+A Morse code trainer with free lessons, sending practice, and receiving practice. Run it on your own computer, or visit [Morse Room](https://learnmorse.lelinadhikari.com.np). Learn and Practice need no account. The optional Morse Chat Room uses Google sign-in to practise through conversations with friends.
 
 ## Requirements
 
@@ -121,7 +121,7 @@ Completed levels, sound settings, and your theme choice are stored in this brows
 
 ## Android app
 
-The Expo Android project in [mobile](mobile/) is named **Morse Code Nepal**, with application ID **com.morsenepal**. It bundles Learn, Practice, Codes, and the sound generator for offline use. Only Chat needs sign-in and an internet connection. The opening animation plays WELCOME in Morse at 24 WPM and can be skipped.
+The Expo Android project in [mobile](mobile/) is named **Morse Room: Learn & Chat**, with application ID **com.morsenepal**. It bundles Learn, Practice, Codes, and the sound generator for offline use. Only Chat needs sign-in and an internet connection. The opening animation plays WELCOME in Morse at 24 WPM and can be skipped.
 
 See [Android setup and builds](docs/ANDROID_APP.md) for the APK testing build, Play Store AAB, signing credentials, and developer commands. [Play Console setup](docs/PLAY_CONSOLE.md) includes the public policy links, review access instructions, and data disclosures.
 

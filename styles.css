@@ -2088,6 +2088,19 @@ html[data-theme='dark'] .theme-icon-moon {
   }
 }
 
+.site-credit {
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+  text-align: right;
+}
+
+body[data-mode='chat'] .site-credit,
+body[data-training-active='true'] .site-credit {
+  display: none;
+}
+
 /* One audio profile and one settings dialog in every workspace. */
 .setting input[type='range'],
 html[data-theme='dark'] .setting input[type='range'] {

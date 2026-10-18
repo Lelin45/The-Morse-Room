@@ -71,10 +71,8 @@ class NotificationWorker(context: Context, parameters: WorkerParameters) : Worke
     if (operation == "reply") {
       val pending = NotificationStore.read(applicationContext, "reply:$id")
       pending?.optString("messageId")?.let { messageId ->
-        MorseNotifications.currentMessage(applicationContext, messageId)?.let { message ->
+        NotificationActionDispatcher.updateFromWorker(applicationContext, messageId, pending.optString("userId")) { message ->
           message.put("status", "Waiting for a connection...")
-          MorseNotifications.save(applicationContext, message)
-          MorseNotifications.show(applicationContext, message)
         }
       }
     }
@@ -84,11 +82,10 @@ class NotificationWorker(context: Context, parameters: WorkerParameters) : Worke
   private fun completeReply(replyId: String, status: String, clearDraft: Boolean = false) {
     val pending = NotificationStore.read(applicationContext, "reply:$replyId") ?: return
     NotificationStore.remove(applicationContext, "reply:$replyId")
-    val message = MorseNotifications.currentMessage(applicationContext, pending.optString("messageId")) ?: return
-    message.put("sending", false).put("status", status)
-    if (clearDraft) message.put("draft", "").put("replyMode", "message")
-    MorseNotifications.save(applicationContext, message)
-    MorseNotifications.show(applicationContext, message)
+    NotificationActionDispatcher.updateFromWorker(applicationContext, pending.optString("messageId"), pending.optString("userId")) { message ->
+      message.put("sending", false).put("status", status)
+      if (clearDraft) message.put("draft", "").put("replyMode", "message").put("lastTap", 0L)
+    }
   }
 
   companion object {

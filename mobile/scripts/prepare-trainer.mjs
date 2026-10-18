@@ -33,7 +33,7 @@ let html = await text('index.html');
 html = html.replace('<html lang="en">', '<html lang="en" data-native-app="true">')
   .replace(/<link\b[^>]*rel=["']stylesheet["'][^>]*>\s*/gi, '')
   .replace(/<script\b[^>]*type=["']module["'][^>]*>[\s\S]*?<\/script>\s*/gi, '')
-  .replace(/<title>[\s\S]*?<\/title>/i, '<title>Morse Code Nepal</title>')
+  .replace(/<title>[\s\S]*?<\/title>/i, '<title>Morse Room: Learn &amp; Chat</title>')
   .replace('</head>', `<style>${css.replaceAll('</style', '<\\/style')}</style>\n</head>`)
   .replace('</body>', `<script>${javascript.replaceAll('</script', '<\\/script')}</script>\n</body>`);
 for (const image of images) html = html.replaceAll(image.name, image.data);

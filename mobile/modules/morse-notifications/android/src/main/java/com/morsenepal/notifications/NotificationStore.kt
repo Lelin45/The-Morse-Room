@@ -10,6 +10,7 @@ import org.json.JSONObject
 import java.io.File
 import java.security.KeyStore
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicLong
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
@@ -20,6 +21,7 @@ internal object NotificationStore {
   private const val PREFS = "morse_notifications_encrypted"
   private const val KEY_ALIAS = "com.morsenepal.notifications.aes.v1"
   private val aad = "MorseCodeNepal.notifications.v1".toByteArray(Charsets.UTF_8)
+  val accountEpoch = AtomicLong(0L)
 
   private fun key(): SecretKey {
     val store = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
@@ -75,10 +77,13 @@ internal object NotificationStore {
   }
 
   @Synchronized fun forgetAccount(context: Context) {
+    accountEpoch.incrementAndGet()
     val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
     val token = read(context, "fcm")
+    val audio = read(context, "audio")
     prefs.edit().clear().commit()
     if (token != null) write(context, "fcm", token)
+    if (audio != null) write(context, "audio", audio)
   }
 
   @Synchronized fun pruneMessages(context: Context) {

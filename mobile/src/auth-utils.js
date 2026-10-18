@@ -37,7 +37,7 @@ export function parseAuthCallback(url, expectedState) {
   const target = new URL(url);
   if (target.protocol !== 'morsenepal:' || target.hostname !== 'auth' || target.port
       || target.username || target.password || target.hash || !['', '/'].includes(target.pathname)) {
-    throw new Error('This sign-in link is not for Morse Code Nepal.');
+    throw new Error('This sign-in link is not for Morse Room: Learn & Chat.');
   }
   const states = target.searchParams.getAll('state');
   const codes = target.searchParams.getAll('code');

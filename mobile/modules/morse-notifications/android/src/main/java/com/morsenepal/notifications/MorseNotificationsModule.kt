@@ -34,6 +34,10 @@ class MorseNotificationsModule : Module() {
 
     AsyncFunction("getStateAsync") { state() }
 
+    AsyncFunction("updateAudioSettingsAsync") { options: Map<String, Double> ->
+      NotificationAudioSettings.update(context, options).asMap()
+    }
+
     AsyncFunction("getFCMTokenAsync") { promise: Promise ->
       if (!firebaseConfigured() || !MorseNotifications.enabled(context)) promise.resolve(null)
       else try {

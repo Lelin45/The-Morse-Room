@@ -5,6 +5,7 @@ import vm from 'node:vm';
 import ts from 'typescript';
 import * as auth from '../src/auth-utils.js';
 import * as audio from '../src/audio-preferences.js';
+import * as audioRules from '../generated/audio-settings.js';
 
 const source = await readFile(new URL('../src/TrainerScreen.tsx', import.meta.url), 'utf8');
 const compiled = ts.transpileModule(source, {
@@ -18,6 +19,7 @@ function createShell(initialProof = null, { initialAudio = null, failAudio = fal
   const browserCalls = [];
   const injectedScripts = [];
   const audioWrites = [];
+  const notificationAudio = [];
   let savedAudio = initialAudio;
   let stored = initialProof;
   let readCount = 0;
@@ -76,6 +78,10 @@ function createShell(initialProof = null, { initialAudio = null, failAudio = fal
     './use-chat-notifications': { useChatNotifications: () => notificationBridge },
     './auth-utils': auth,
     './audio-preferences': audio,
+    '../generated/audio-settings': audioRules,
+    './notifications-native': { nativeNotifications: {
+      async updateAudioSettingsAsync(profile) { notificationAudio.push(JSON.parse(JSON.stringify(profile))); },
+    } },
   };
   const context = {
     exports: {}, URL, __DEV__: false, setTimeout, clearTimeout,
@@ -104,7 +110,7 @@ function createShell(initialProof = null, { initialAudio = null, failAudio = fal
   const startAudioRestore = () => effects.find(callback => callback.toString().includes('AUDIO_PREFERENCES_KEY'))();
   const startAuthRestore = () => effects.find(callback => callback.toString().includes('getInitialURL'))();
   return {
-    writes, browserCalls, injectedScripts, audioWrites, message,
+    writes, browserCalls, injectedScripts, audioWrites, notificationAudio, message,
     get stored() { return stored; },
     get savedAudio() { return savedAudio; },
     get webview() { return render(); },
@@ -167,6 +173,25 @@ test('an unreadable native audio backup keeps the original WebView upgrade fallb
   shell.message({ type: 'audio-settings', settings: { mode: 'other', wpm: 24, farnsworth: 15, frequency: 700, volume: 43 } });
   await settle();
   assert.deepEqual(shell.audioWrites, []);
+  assert.deepEqual(shell.notificationAudio, []);
+});
+
+test('notification timing follows effective global audio while Default preserves remembered Custom values', async () => {
+  const custom = { mode: 'custom', wpm: 24, farnsworth: 15, frequency: 700, volume: 43 };
+  const shell = createShell();
+  shell.startAudioRestore();
+  await settle();
+  shell.message({ type: 'audio-settings', settings: custom });
+  shell.message({ type: 'audio-settings', settings: { ...custom, mode: 'default', volume: 0 } });
+  shell.message({ type: 'audio-settings', settings: { ...custom, volume: 0 } });
+  await settle();
+  assert.deepEqual(shell.notificationAudio, [
+    { wpm: 24, farnsworth: 15, frequency: 700, volume: 43 },
+    { wpm: 18, farnsworth: 12, frequency: 600, volume: 0 },
+    { wpm: 24, farnsworth: 15, frequency: 700, volume: 0 },
+  ]);
+  assert.deepEqual(JSON.parse(shell.savedAudio), { ...custom, volume: 0 });
+  assert.deepEqual(shell.writes, []);
 });
 
 test('startup restoration finishes before a new sign-in can save its proof', async () => {

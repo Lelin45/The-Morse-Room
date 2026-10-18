@@ -10,7 +10,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   }
   return {
     ...config,
-    name: config.name || 'Morse Code Nepal',
+    name: config.name || 'Morse Room: Learn & Chat',
     slug: config.slug || 'the-morse-room',
     android: { ...config.android, ...(googleServicesFile ? { googleServicesFile } : {}) },
   };

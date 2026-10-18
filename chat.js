@@ -1,5 +1,6 @@
 import { MorsePlayer, getTiming } from './audio.js';
 import { TimedMorseInput } from './timed-morse.js';
+import { bindPressControls } from './press-controls.js';
 import { morseText, decodeMorse, validateMessage, validateMorseMessage, validateUsername, MAX_MESSAGE_LENGTH, MAX_MORSE_LENGTH } from './chat-codec.js';
 
 const escape = (value) => String(value ?? '').replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
@@ -24,6 +25,12 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
   const feedbackPlayer = new MorsePlayer();
   const mobile = matchMedia('(max-width: 760px)');
   const touchInput = matchMedia('(max-width: 760px), (pointer: coarse), (hover: none)');
+  const pressControls = bindPressControls(panel, {
+    selector: '[data-morse-key]',
+    onPress: (control) => insertMorse(control.dataset.morseKey),
+    repeats: (control) => control.dataset.morseKey === 'undo',
+  });
+  let composerResizeFrame = null;
   const morseInput = new TimedMorseInput({
     getLetterGap: () => Math.max(700, Math.min(1500, getTiming(getSound()).characterGap * 1000)),
     onChange(value) {
@@ -120,6 +127,7 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
   }
 
   function render() {
+    pressControls.cancel();
     updateConversationLayout();
     if (!state.active) return;
     if (!state.ready) {
@@ -194,6 +202,7 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
   }
 
   function renderConversation() {
+    pressControls.cancel();
     updateConversationLayout();
     const room = state.conversation;
     const view = panel.querySelector('.chat-conversation');
@@ -246,14 +255,19 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
   }
 
   function growComposer(input) {
-    const morse = state.composeMode === 'morse';
-    const minimum = 48;
-    const maximum = morse ? 92 : 114;
-    input.style.height = 'auto';
-    input.style.height = `${Math.max(minimum, Math.min(maximum, input.scrollHeight + 2))}px`;
+    if (composerResizeFrame !== null) cancelAnimationFrame(composerResizeFrame);
+    // Reading scrollHeight can force layout. Batch it outside the tap handler.
+    composerResizeFrame = requestAnimationFrame(() => {
+      composerResizeFrame = null;
+      if (!panel.contains(input)) return;
+      const maximum = state.composeMode === 'morse' ? 92 : 114;
+      input.style.height = 'auto';
+      input.style.height = `${Math.max(48, Math.min(maximum, input.scrollHeight + 2))}px`;
+    });
   }
 
   function updateComposer() {
+    pressControls.cancel();
     const input = panel.querySelector('#chat-draft');
     if (!input) return;
     const morse = state.composeMode === 'morse';
@@ -783,8 +797,6 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
       }
       return;
     }
-    const morseKey = event.target.closest('[data-morse-key]');
-    if (morseKey) { insertMorse(morseKey.dataset.morseKey); return; }
     const conversation = event.target.closest('[data-conversation]');
     if (conversation) { await selectConversation(conversation.dataset.conversation); return; }
     const reveal = event.target.closest('[data-reveal]');
@@ -968,7 +980,7 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
   });
   return {
     open() { state.active = true; render(); if (state.ready) { void poll(); void offerPendingJoin(); } },
-    close() { saveDraft(); state.active = false; updateConversationLayout(); stopAudio(); closeNotifications(); document.querySelector('.chat-dialog')?.close(); },
+    close() { pressControls.cancel(); saveDraft(); state.active = false; updateConversationLayout(); stopAudio(); closeNotifications(); document.querySelector('.chat-dialog')?.close(); },
     stopAudio,
   };
 }

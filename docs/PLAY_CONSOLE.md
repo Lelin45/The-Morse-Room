@@ -1,6 +1,8 @@
-# Morse Code Nepal in Google Play Console
+# Morse Room: Learn & Chat in Google Play Console
 
-Store name: **Morse Code Nepal**. Android package: **com.morsenepal**. Developer: **Lelin Adhikari**. The package name identifies this app across every Android update.
+Store name: **Morse Room: Learn & Chat**. Android package: **com.morsenepal**. Developer: **Lelin Adhikari**. The package name identifies this app across every Android update.
+
+Build 11 introduces OTA support for compatible JavaScript, styles and bundled assets. Build 10 and earlier still need a binary update to gain that support. Native changes, including Android notification code or permissions, require a new AAB and the normal Play Console release process. OTA publication and website deployment are separate operations. See [Android updates](ANDROID_APP.md#updates-without-a-new-download-from-google-play) for the update channels and publishing commands.
 
 ## Public links
 

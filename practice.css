@@ -1061,3 +1061,14 @@ body[data-practice-round='true'] .writing-columns {
     font-size: 1rem;
   }
 }
+.practice-round-panel [data-practice-morse],
+.practice-round-panel #undo-practice-morse {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.practice-round-panel [data-practice-morse].is-pressed:not(:disabled),
+.practice-round-panel #undo-practice-morse.is-pressed:not(:disabled) {
+  filter: brightness(.88);
+}

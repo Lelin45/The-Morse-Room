@@ -106,7 +106,7 @@ for (const file of videoFiles) {
 }
 
 const manifest = {
-  appName: 'Morse Code Nepal', applicationIdentifier: 'com.morsenepal',
+  appName: 'Morse Room: Learn & Chat', applicationIdentifier: 'com.morsenepal',
   verifiedAt: new Date().toISOString(), captureSource: captureManifest.source,
   promotionalScreenshotComposition: compositions.composition,
   files: entries,
@@ -119,8 +119,8 @@ const manifest = {
 await writeFile(join(folder, 'asset-manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
 const imageDescriptions = entries.filter(entry => entry.width).map(entry => {
   const description = entry.description ?? (entry.file === 'icon.png'
-    ? 'Morse Code Nepal icon with a green dit and dah on a dark background.'
-    : 'Morse Code Nepal: guided lessons, sending and receiving practice, and Morse chat.');
+    ? 'Morse Room: Learn & Chat icon with a green dit and dah on a dark background.'
+    : 'Morse Room: Learn & Chat: guided lessons, sending and receiving practice, and Morse chat.');
   assert.ok([...description].length <= 140, `${entry.file}: alt text must be concise`);
   return `${entry.file}\n${description}\n`;
 }).join('\n');

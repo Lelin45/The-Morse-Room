@@ -462,6 +462,37 @@ test('quick Morse key taps retain every complete mark in order with short gaps',
   });
 });
 
+test('warm Morse feedback starts after 3 ms while cold feedback and receiving keep their safety lead', async () => {
+  await withAudio({ manual: true }, async ({ events, contexts }) => {
+    const player = new MorsePlayer();
+    const first = player.playSymbol('.');
+    await sleep(25);
+    const context = contexts[0];
+    const cold = scheduledMarks(events)[0];
+    close(cold.start - context.currentTime, 0.05);
+    context.time = cold.end + 0.01;
+    assert.equal(await first, true);
+    await sleep(0);
+
+    const warm = player.playSymbol('-');
+    await sleep(0);
+    const second = scheduledMarks(events)[1];
+    close(second.start - context.currentTime, 0.003);
+    close(second.duration, 0.18);
+    context.time = second.end + 0.01;
+    assert.equal(await warm, true);
+    await sleep(0);
+
+    const receiving = player.playCharacter('Q');
+    await sleep(0);
+    const received = scheduledMarks(events).slice(2);
+    close(received[0].start - context.currentTime, 0.05);
+    assert.equal(received.length, 4);
+    context.time = received.at(-1).end + 0.01;
+    assert.equal(await receiving, true);
+  });
+});
+
 test('stopping Morse feedback cancels the playing mark and every queued tap', async () => {
   await withAudio({ manual: true, delayedResume: true }, async ({ events, contexts }) => {
     const player = new MorsePlayer();

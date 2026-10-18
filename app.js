@@ -4,6 +4,7 @@ import { LearnSession } from './learn-session.js';
 import { PracticeRoundSession } from './practice-round-session.js';
 import { QWERTY_ROWS, renderQwertyKeyboard } from './qwerty-keyboard.js';
 import { TimedMorseInput } from './timed-morse.js';
+import { bindPressControls } from './press-controls.js';
 import { decodeMorse } from './chat-codec.js';
 import { generateRealWordGroups } from './real-word-bank.js';
 import { PracticeRecording, ReplayPlayer } from './replay.js';
@@ -80,6 +81,16 @@ const sendingInput = new TimedMorseInput({
   getLetterGap: () => Math.max(500, getTiming(sound).characterGap * 1000),
   onChange: (value) => { practice.morse = value; const entry = $('#practice-morse-entry'); if (entry) entry.value = value; },
 });
+const practicePressControls = bindPressControls(roundPanel, {
+  selector: '[data-practice-morse],#undo-practice-morse',
+  onPress: (control) => {
+    if (control.id === 'undo-practice-morse') {
+      if (practice.phase === 'playing' && practice.roundReady && !practice.roundBusy) sendingInput.backspace();
+      syncPracticeRoundControls();
+    } else enterPracticeMorse(control.dataset.practiceMorse);
+  },
+  repeats: (control) => control.id === 'undo-practice-morse',
+});
 
 function mobileTrainingActive() {
   return mode === 'learn' && touchInput.matches && learn.phase === 'practice';
@@ -111,6 +122,7 @@ function notify(text = '', success = false) {
 }
 
 function cancelAudio() {
+  practicePressControls.cancel();
   runId += 1;
   player.stop();
   sendingPlayer.stop();
@@ -863,6 +875,7 @@ function checkLearn() {
 }
 
 function renderPracticeRound() {
+  practicePressControls.cancel();
   mobileTrainingPanel.hidden = true;
   document.body.dataset.trainingActive = String(mobileViewport.matches && ['countdown', 'playing', 'paused'].includes(practice.phase));
   $('#keyboard-note').innerHTML = '';
@@ -879,11 +892,9 @@ function renderPracticeRound() {
   const target = practice.round?.current || '';
   roundPanel.innerHTML = `<div class="practice-round-heading"><h2>${sending ? target.length > 1 ? 'Send the word' : 'Send the character' : 'Listen and choose'}</h2><p class="practice-round-status" role="status"></p></div>${sending ? `<div class="practice-target" aria-label="Character or word to send">${target || '?'}</div><textarea id="practice-morse-entry" class="practice-response practice-morse-entry" rows="2" readonly inputmode="none" autocomplete="off" aria-label="Your Morse answer" placeholder="Morse code">${escapeHTML(practice.morse)}</textarea><p class="practice-morse-help">${touchInput.matches ? 'Pause for letters. Space for words.' : '← Dit · → Dah · Space between words. Pause between letters.'}</p><div class="practice-morse-paddles"><button type="button" class="practice-morse-paddle dit" data-practice-morse="." aria-label="Dit"><strong>·</strong><span>Dit</span></button><button type="button" class="practice-morse-space" data-practice-morse="word" aria-label="Space between words">Space</button><button type="button" class="practice-morse-paddle dah" data-practice-morse="-" aria-label="Dah"><strong>−</strong><span>Dah</span></button></div><div class="practice-round-tools"><button id="undo-practice-morse" type="button" class="button quiet">Undo</button>${button('show-correct-answer', mobileViewport.matches ? 'Show answer' : 'Show correct answer', 'eye')}${button('check-practice-round', 'Check', 'check', 'primary')}</div>` : `<div class="practice-response" aria-label="Latest answer">${escapeHTML(practice.mobileInput || '?')}</div><div class="practice-round-tools">${button('replay-practice-round', 'Replay', 'replay')}${button('show-correct-answer', mobileViewport.matches ? 'Show answer' : 'Show correct answer', 'eye')}</div>${renderQwertyKeyboard({ attribute: 'data-round-key' })}`}<p class="practice-round-alert ${practice.roundCorrect === false ? 'incorrect' : practice.roundCorrect === true ? 'correct' : ''}" role="alert">${escapeHTML(practice.roundFeedback)}</p><div class="practice-correct-answer" ${practice.roundShown ? '' : 'hidden'}>${escapeHTML(target)} <span class="morse-pattern">${[...target].map(morseDisplay).join(' / ')}</span></div>`;
   roundPanel.querySelectorAll('[data-round-key]').forEach((key) => key.addEventListener('click', () => submitRoundAnswer(key.dataset.roundKey)));
-  roundPanel.querySelectorAll('[data-practice-morse]').forEach((key) => key.addEventListener('click', () => enterPracticeMorse(key.dataset.practiceMorse)));
   $('#replay-practice-round')?.addEventListener('click', () => playPracticeRound());
   $('#show-correct-answer')?.addEventListener('click', () => { practice.roundShown = true; renderPracticeRound(); playPracticeRound(); });
   $('#check-practice-round')?.addEventListener('click', checkSendingRound);
-  $('#undo-practice-morse')?.addEventListener('click', () => { if (practice.phase === 'playing' && practice.roundReady) sendingInput.backspace(); syncPracticeRoundControls(); });
   syncPracticeRoundControls();
 }
 
@@ -1151,7 +1162,8 @@ document.addEventListener('keydown', (event) => {
   if (document.body.classList.contains('audio-settings-open')) return;
   const keyTarget = event.target instanceof Element ? event.target : document.activeElement;
   const editingField = keyTarget?.isContentEditable || keyTarget?.closest('input:not([readonly]),textarea:not([readonly]),select,[role="textbox"],dialog[open]');
-  if (mode === 'practice' && roundPractice() && practice.phase === 'playing' && !editingField && !event.ctrlKey && !event.metaKey && !event.altKey && !event.repeat && !event.isComposing) {
+  if (mode === 'practice' && roundPractice() && practice.phase === 'playing' && !editingField && !event.ctrlKey && !event.metaKey && !event.altKey && !event.isComposing) {
+    if (event.repeat && event.key !== 'Backspace') return;
     if (practice.session.direction === 'receiving' && /^[A-Za-z0-9]$/.test(event.key)) { event.preventDefault(); submitRoundAnswer(event.key.toUpperCase()); return; }
     if (practice.session.direction === 'sending') {
       const mark = ({ ArrowLeft: '.', ArrowRight: '-', '.': '.', '-': '-', ' ': 'word' })[event.key];

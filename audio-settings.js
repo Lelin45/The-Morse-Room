@@ -26,5 +26,5 @@ export function restoreAudioSettings(saved, legacyTrainer, legacyChat) {
 
 export function effectiveAudio(settings) {
   const source = settings.mode === 'default' ? DEFAULT_AUDIO : settings;
-  return { wpm: source.wpm, farnsworth: source.farnsworth, frequency: source.frequency, volume: settings.volume };
+  return { wpm: source.wpm, farnsworth: source.farnsworth, frequency: settings.frequency, volume: settings.volume };
 }

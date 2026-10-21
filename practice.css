@@ -133,8 +133,11 @@ html[data-theme='dark'] .practice-card-top {
   line-height: 24px;
 }
 
-.practice-card .session-length-field select {
+.practice-card .practice-fields .session-length-field select {
   flex: 1;
+  font-size: 14px;
+  line-height: 20px;
+  padding: 7px 10px;
 }
 
 .practice-card .practice-count-field input {
@@ -556,10 +559,16 @@ body[data-practice-round='true'] .writing-columns {
     justify-content: space-between;
   }
 
-  .practice-card .session-length-field select {
+  .practice-card .practice-fields .field:is(.session-length-field, .practice-count-field) > label {
+    font-size: 13px;
+  }
+
+  .practice-card .practice-fields .session-length-field select {
     flex: 0 1 190px;
     width: auto;
     max-width: calc(100% - 105px);
+    padding: 6px 8px;
+    font-size: 13px;
   }
 
   .practice-card .practice-fields .practice-character-field {

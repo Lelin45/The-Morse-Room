@@ -153,7 +153,7 @@ function syncSound() {
     const range = $(`#${key}-range`);
     const number = $(`#${key}-number`);
     if (key === 'farnsworth') { range.max = current.wpm; number.max = current.wpm; }
-    range.disabled = number.disabled = audioSettings.mode === 'default' && key !== 'volume';
+    range.disabled = number.disabled = audioSettings.mode === 'default' && ['wpm', 'farnsworth'].includes(key);
     range.value = value;
     number.value = value;
     const percent = (value - Number(range.min)) / (Number(range.max) - Number(range.min)) * 100;
@@ -186,7 +186,7 @@ for (const key of Object.keys(sound)) {
   const update = (event) => {
     const input = event.target;
     if (input.value === '') { if (event.type === 'change') syncSound(); return; }
-    if (audioSettings.mode === 'default' && key !== 'volume') return;
+    if (audioSettings.mode === 'default' && ['wpm', 'farnsworth'].includes(key)) return;
     const target = audioSettings;
     target[key] = clamp(input.value, Number(input.min), Number(input.max), target[key]);
     target.farnsworth = Math.min(target.farnsworth, target.wpm);

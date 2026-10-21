@@ -2174,7 +2174,7 @@ html[data-theme='dark'] .setting input[type='range'] {
   line-height: 1.5;
 }
 
-body[data-audio-mode='default'] #audio-controls .setting:not(:has(#volume-number)) {
+body[data-audio-mode='default'] #audio-controls .setting:has(:is(#wpm-number, #farnsworth-number)) {
   opacity: .5;
 }
 
@@ -2183,7 +2183,7 @@ body[data-audio-mode='default'] #audio-controls .setting:not(:has(#volume-number
   opacity: 1;
 }
 
-body[data-audio-mode='default'] #audio-controls .setting:not(:has(#volume-number)) input[type='range'] {
+body[data-audio-mode='default'] #audio-controls .setting:has(:is(#wpm-number, #farnsworth-number)) input[type='range'] {
   filter: grayscale(1);
 }
 

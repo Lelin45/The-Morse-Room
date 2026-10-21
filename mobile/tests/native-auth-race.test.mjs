@@ -187,7 +187,7 @@ test('notification timing follows effective global audio while Default preserves
   await settle();
   assert.deepEqual(shell.notificationAudio, [
     { wpm: 24, farnsworth: 15, frequency: 700, volume: 43 },
-    { wpm: 18, farnsworth: 12, frequency: 600, volume: 0 },
+    { wpm: 18, farnsworth: 12, frequency: 700, volume: 0 },
     { wpm: 24, farnsworth: 15, frequency: 700, volume: 0 },
   ]);
   assert.deepEqual(JSON.parse(shell.savedAudio), { ...custom, volume: 0 });

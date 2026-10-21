@@ -20,10 +20,10 @@ test('older custom chat preferences can migrate when no trainer settings exist',
   assert.deepEqual(effectiveAudio(settings), { wpm: 24, farnsworth: 14, frequency: 700, volume: 50 });
 });
 
-test('default keeps volume and preserves custom values through reload and switching back', () => {
+test('default keeps tone and volume and preserves custom speeds through reload and switching back', () => {
   const settings = restoreAudioSettings({ mode: 'custom', wpm: 30, farnsworth: 17, frequency: 800, volume: 35 });
   settings.mode = 'default';
-  assert.deepEqual(effectiveAudio(settings), { ...DEFAULT_AUDIO, volume: 35 });
+  assert.deepEqual(effectiveAudio(settings), { ...DEFAULT_AUDIO, frequency: 800, volume: 35 });
   const reloaded = restoreAudioSettings(JSON.parse(JSON.stringify(settings)), { wpm: 18, farnsworth: 12, frequency: 600, volume: 35 });
   reloaded.mode = 'custom';
   assert.deepEqual(effectiveAudio(reloaded), { wpm: 30, farnsworth: 17, frequency: 800, volume: 35 });

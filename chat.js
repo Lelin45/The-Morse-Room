@@ -31,6 +31,9 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
     repeats: (control) => control.dataset.morseKey === 'undo',
   });
   let composerResizeFrame = null;
+  let historyResizeObserver = null;
+  let historyScrollFrame = null;
+  let followLatest = true;
   const morseInput = new TimedMorseInput({
     getLetterGap: () => Math.max(700, Math.min(1500, getTiming(getSound()).characterGap * 1000)),
     onChange(value) {
@@ -207,7 +210,7 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
     const room = state.conversation;
     const view = panel.querySelector('.chat-conversation');
     if (!view || !room) return;
-    view.innerHTML = `<header class="chat-conversation-header">${action('back', 'Back', 'back', 'quiet chat-mobile-back')}<div class="chat-room-identity">${avatar(room.name, 'chat-room-avatar')}<div class="chat-item-copy"><h2 title="${escape(room.name)}">${escape(room.type === 'direct' ? `@${room.name}` : room.name)}</h2><small class="chat-member-summary">${room.type === 'group' ? `${room.visibility === 'public' ? 'Public' : 'Private'} · ${state.members.length}/100 members` : 'Morse messages between friends'}</small></div></div><div class="chat-room-actions"><button type="button" class="button quiet chat-audio-button" data-open-audio aria-label="Audio settings" title="Audio settings">${icon('volume')}</button>${room.type === 'group' ? `${action('members', 'Members', 'users', 'quiet')}${room.code ? action('invite', 'Invite', 'link', 'quiet') : ''}` : room.peer?.id ? action('block', 'Block', '', 'quiet chat-block-button') : ''}</div></header>
+    view.innerHTML = `<header class="chat-conversation-header">${action('back', 'Back', 'back', 'quiet chat-mobile-back')}<div class="chat-room-identity">${avatar(room.name, 'chat-room-avatar')}<div class="chat-item-copy"><h2 title="${escape(room.name)}">${escape(room.type === 'direct' ? `@${room.name}` : room.name)}</h2>${room.type === 'group' ? `<small class="chat-member-summary">${room.visibility === 'public' ? 'Public' : 'Private'} · ${state.members.length}/100 members</small>` : ''}</div></div><div class="chat-room-actions"><button type="button" class="button quiet chat-audio-button" data-open-audio aria-label="Audio settings" title="Audio settings">${icon('volume')}</button>${room.type === 'group' ? `${action('members', 'Members', 'users', 'quiet')}${room.code ? action('invite', 'Invite', 'link', 'quiet') : ''}` : room.peer?.id ? action('block', 'Block', '', 'quiet chat-block-button') : ''}</div></header>
       ${room.type === 'group' ? '<div class="chat-invite-details" hidden></div>' : ''}
       <div class="chat-history-actions" ${state.hasMore ? '' : 'hidden'}>${action('earlier', 'Load earlier signals', 'replay')}</div>
       <div class="chat-message-list" aria-label="Messages"></div>
@@ -218,10 +221,13 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
         <div class="chat-morse-help" id="chat-morse-help" hidden><p><span class="chat-desktop-morse-help"><kbd>←</kbd> dit <span>·</span> <kbd>→</kbd> dah <span>·</span> </span>Pause between letters. Space between words. <span id="chat-morse-boundary" aria-live="off"></span></p><div class="morse-paddles"><button type="button" class="morse-paddle dit" data-morse-key="." aria-label="Dit"><strong>.</strong><span>Dit</span></button><button type="button" class="morse-space" data-morse-key="word" aria-label="Space between words">Space</button><button type="button" class="morse-paddle dah" data-morse-key="-" aria-label="Dah"><strong>-</strong><span>Dah</span></button></div><button type="button" class="button quiet chat-morse-undo" data-morse-key="undo" aria-label="Backspace" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M9 5h11v14H9L3 12z"/><path d="m12 9 6 6m0-6-6 6"/></svg></button></div>
       </form>`;
     state.messageKey = '';
+    watchHistorySize(view.querySelector('.chat-message-list'));
     renderMessages(true);
     const draft = view.querySelector('#chat-draft');
     draft.value = state.draft;
     updateComposer();
+    draft.addEventListener('focus', () => keepLatestVisible(true));
+    draft.addEventListener('pointerdown', () => keepLatestVisible(true));
     draft.addEventListener('input', () => {
       if (state.composeMode === 'morse') morseInput.replace(draft.value);
       else updateDraft();
@@ -260,10 +266,35 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
     composerResizeFrame = requestAnimationFrame(() => {
       composerResizeFrame = null;
       if (!panel.contains(input)) return;
-      const maximum = state.composeMode === 'morse' ? 92 : 114;
+      const maximum = state.composeMode === 'morse' ? 88 : 110;
       input.style.height = 'auto';
-      input.style.height = `${Math.max(48, Math.min(maximum, input.scrollHeight + 2))}px`;
+      input.style.height = `${Math.max(44, Math.min(maximum, input.scrollHeight + 2))}px`;
+      keepLatestVisible();
     });
+  }
+
+  function keepLatestVisible(force = false) {
+    if (force) followLatest = true;
+    if (!followLatest || historyScrollFrame !== null || !state.active || state.view !== 'conversation') return;
+    historyScrollFrame = requestAnimationFrame(() => {
+      historyScrollFrame = null;
+      const list = panel.querySelector('.chat-message-list');
+      if (followLatest && state.active && state.view === 'conversation' && list) list.scrollTop = list.scrollHeight;
+    });
+  }
+
+  function watchHistorySize(list) {
+    historyResizeObserver?.disconnect();
+    followLatest = true;
+    list.addEventListener('scroll', () => {
+      followLatest = list.scrollHeight - list.scrollTop - list.clientHeight < 80;
+    }, { passive: true });
+    // Follow each frame of the system keyboard resize, and the Morse panel or
+    // composer growing. Preserve the reader's place when browsing older messages.
+    if (typeof ResizeObserver !== 'undefined') {
+      historyResizeObserver = new ResizeObserver(() => keepLatestVisible());
+      historyResizeObserver.observe(list);
+    }
   }
 
   function updateComposer() {
@@ -308,6 +339,7 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
   function insertMorse(symbol) {
     const input = panel.querySelector('#chat-draft');
     if (!input || state.composeMode !== 'morse' || state.busy) return;
+    keepLatestVisible(true);
     try {
       if (symbol === 'word') morseInput.word();
       else if (symbol === 'undo') morseInput.backspace();
@@ -341,7 +373,11 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
       const shown = state.revealed.has(String(item.id));
       return `<div class="chat-message-row ${mine ? 'mine' : ''}" data-message="${escape(item.id)}"><article class="chat-message ${mine ? 'mine' : ''} ${listening ? 'listening' : ''}"><div class="chat-message-meta"><strong>@${escape(item.username)}</strong><time>${escape(dateLabel(item.createdAt))}</time></div><div class="chat-message-content ${shown ? 'is-revealed' : ''}"><p class="chat-message-morse" aria-label="Morse code message" aria-hidden="${shown}">${escape(item.morse)}</p><p class="chat-message-text ${shown ? '' : 'is-concealed'}" aria-hidden="${!shown}">${escape(item.text)}</p></div></article><div class="chat-message-actions"><button type="button" class="button quiet" data-reveal="${escape(item.id)}" aria-expanded="${shown}">${icon('eye')}${shown ? 'Hide text' : 'Show text'}</button><button type="button" class="button quiet" data-listen="${escape(item.id)}" aria-pressed="${listening}">${icon(listening ? 'stop' : 'volume')}${listening ? 'Stop audio' : 'Listen'}</button>${mine ? '' : `<button type="button" class="button quiet chat-report-button" data-report="${escape(item.id)}" aria-label="Report message from ${escape(item.username)}">Report</button>`}</div></div>`;
     }).join('') : '<div class="chat-empty"><h3>You found each other.</h3><p>Send a hello in Morse. The words stay hidden until revealed.</p></div>';
-    if (scrollToEnd || nearBottom) list.scrollTop = list.scrollHeight;
+    if (scrollToEnd || nearBottom) {
+      followLatest = true;
+      list.scrollTop = list.scrollHeight;
+      keepLatestVisible();
+    }
     else list.scrollTop = previousTop;
     if (focusedListen) [...list.querySelectorAll('[data-listen]')].find((button) => button.dataset.listen === focusedListen)?.focus({ preventScroll: true });
     else if (focusedReveal) [...list.querySelectorAll('[data-reveal]')].find((button) => button.dataset.reveal === focusedReveal)?.focus({ preventScroll: true });
@@ -793,7 +829,7 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
         }
         stopAudio(); state.composeMode = nextMode; status();
         if (touchInput.matches) panel.querySelector('#chat-draft')?.blur();
-        updateComposer(); focusComposer();
+        updateComposer(); focusComposer(); keepLatestVisible(true);
       }
       return;
     }
@@ -840,6 +876,7 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
           state.hasMore = Boolean(data.hasMore);
           renderMessages();
           list.scrollTop = top + list.scrollHeight - height;
+          followLatest = false;
           panel.querySelector('.chat-history-actions').hidden = !state.hasMore;
         } catch (error) { status(error.message, true); }
         finally { button.disabled = false; }
@@ -963,8 +1000,9 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
   });
   window.addEventListener('resize', () => {
     const input = panel.querySelector('#chat-draft');
-    if (state.active && input) growComposer(input);
+    if (state.active && input) { growComposer(input); keepLatestVisible(); }
   });
+  window.visualViewport?.addEventListener('resize', () => keepLatestVisible());
   document.addEventListener('click', (event) => {
     if (!event.target.closest('.chat-code-info')) {
       const note = panel.querySelector('.chat-code-info');
@@ -980,7 +1018,7 @@ export function createChatRoom({ panel, bell, notifications, accountToggle, acco
   });
   return {
     open() { state.active = true; render(); if (state.ready) { void poll(); void offerPendingJoin(); } },
-    close() { pressControls.cancel(); saveDraft(); state.active = false; updateConversationLayout(); stopAudio(); closeNotifications(); document.querySelector('.chat-dialog')?.close(); },
+    close() { pressControls.cancel(); historyResizeObserver?.disconnect(); saveDraft(); state.active = false; updateConversationLayout(); stopAudio(); closeNotifications(); document.querySelector('.chat-dialog')?.close(); },
     stopAudio,
   };
 }

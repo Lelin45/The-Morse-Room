@@ -2401,6 +2401,25 @@ body[data-mode='learn'] #letter-entry.mobile-character-entry.incorrect {
   border-color: var(--red);
 }
 
+body[data-mode='learn'] .mobile-entry-row {
+  display: grid;
+  grid-template-columns: 76px max-content;
+  align-items: center;
+  justify-content: center;
+  column-gap: 12px;
+  row-gap: 4px;
+}
+
+body[data-mode='learn'] .mobile-entry-row .mobile-character-entry {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+body[data-mode='learn'] .mobile-entry-row .entry-replay {
+  grid-column: 2;
+  grid-row: 1;
+}
+
 body[data-mode='learn'] .mobile-training-feedback {
   margin: 6px 0 10px;
   line-height: 1.45;
@@ -2408,12 +2427,23 @@ body[data-mode='learn'] .mobile-training-feedback {
 
 body[data-mode='learn'] .mobile-training-feedback-pattern {
   display: flex;
+  grid-column: 1;
+  grid-row: 2;
+  justify-self: center;
   align-items: center;
   justify-content: center;
+  width: max-content;
+  max-width: none;
   gap: 12px;
   color: var(--ink);
   font-size: 18px;
   font-weight: 600;
+}
+
+@media (max-width: 760px) and (max-height: 650px) {
+  body[data-mode='learn'] .mobile-entry-row {
+    grid-template-columns: 62px max-content;
+  }
 }
 
 body[data-mode='learn'] .mobile-training-feedback p {

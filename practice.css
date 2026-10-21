@@ -307,6 +307,17 @@ body[data-practice-round='true'] .writing-columns {
   margin: 4px;
 }
 
+.practice-round-panel #undo-practice-morse {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 8px;
+}
+
+.practice-round-panel #undo-practice-morse svg {
+  width: 25px;
+  height: 25px;
+}
+
 #practice-morse-entry {
   width: 100%;
   min-height: 64px;

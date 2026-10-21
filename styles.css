@@ -2391,6 +2391,35 @@ body.audio-settings-open > #audio-controls {
   }
 }
 
+body[data-mode='learn'] #letter-entry.mobile-character-entry.correct {
+  border-color: var(--green);
+  background: var(--soft-green);
+  color: var(--green);
+}
+
+body[data-mode='learn'] #letter-entry.mobile-character-entry.incorrect {
+  border-color: var(--red);
+}
+
+body[data-mode='learn'] .mobile-training-feedback {
+  margin: 6px 0 10px;
+  line-height: 1.45;
+}
+
+body[data-mode='learn'] .mobile-training-feedback-pattern {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--ink);
+  font-size: 18px;
+  font-weight: 600;
+}
+
+body[data-mode='learn'] .mobile-training-feedback p {
+  margin: 4px 0 0;
+}
+
 /* A practice session keeps its touch keyboard if the screen grows mid-session. */
 @media (min-width: 761px) {
   body[data-training-active='true'] .writing-columns {

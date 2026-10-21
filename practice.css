@@ -716,6 +716,23 @@ body[data-practice-round='true'] .writing-columns {
     min-height: 40px;
   }
 
+  body[data-practice-reviewed='true'] .receiver-actions {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+
+  /* Keep scrolling results covered through the page gutter and device inset. */
+  body[data-practice-reviewed='true'] .receiver-actions::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    right: -1px;
+    left: -1px;
+    height: calc(20px + env(safe-area-inset-bottom, 0px));
+    background: var(--card);
+    pointer-events: none;
+  }
+
   body[data-practice-copy='true']:not([data-practice-reviewed='true']) .answer-pane {
     display: none;
   }
@@ -766,7 +783,7 @@ body[data-practice-round='true'] .writing-columns {
     font-size: 16px;
   }
 
-  body.keyboard-open[data-practice-copy='true'] #setup-panel,
+  body.keyboard-open[data-practice-copy='true'] #setup-panel:not(:focus-within),
   body.keyboard-open[data-practice-copy='true'] .mobile-audio-access,
   body.keyboard-open[data-practice-copy='true'] .practice-audio-bar {
     display: none;

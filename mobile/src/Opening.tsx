@@ -98,7 +98,6 @@ export default function Opening({ dark, volume, preferencesReady, visible, loadF
     <View style={styles.letters} accessibilityLabel="Welcome in Morse code">
       {timing.letters.map((entry, index) => <View key={index} style={styles.letter}>
         <Text style={[styles.character, { color: accent, opacity: elapsed >= entry.start ? 1 : 0.72 }]}>{entry.letter}</Text>
-        <Text style={[styles.morse, { color, opacity: elapsed >= entry.start ? 1 : 0.82 }]}>{['.--', '.', '.-..', '-.-.', '---', '--', '.'][index]}</Text>
       </View>)}
     </View>
     <Pressable accessibilityRole="button" accessibilityLabel="Skip welcome and open trainer" onPress={finish}
@@ -117,7 +116,6 @@ const styles = StyleSheet.create({
   letters: { flexDirection: 'row', gap: 3, width: '100%', maxWidth: 350, paddingHorizontal: 12 },
   letter: { alignItems: 'center', flex: 1, minWidth: 0 },
   character: { fontSize: 28, fontWeight: '600' },
-  morse: { fontSize: 15, fontWeight: '600', marginTop: 9, letterSpacing: 0, fontVariant: ['tabular-nums'] },
   skip: { position: 'absolute', right: 18, bottom: 28, minHeight: 48, minWidth: 64, justifyContent: 'center', alignItems: 'center' },
   skipText: { fontSize: 14 },
 });

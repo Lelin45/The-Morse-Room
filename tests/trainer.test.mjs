@@ -55,9 +55,34 @@ test('weighted lessons cover all learned characters and balance each pool across
         const counts = [...pool].map((character) => [...sequence].filter((item) => item === character).length);
         assert.ok(Math.max(...counts) - Math.min(...counts) <= 1);
       }
-      assert.ok([...sequence].every((character, index) => index === 0 || character !== sequence[index - 1]));
     }
   }
+});
+
+test('lesson order allows the newest letters to repeat or lead into review without forced alternation', () => {
+  const level = LEVELS[5];
+  const successors = new Map([...level.newCharacters].map((character) => [character, new Set()]));
+  const firstLessonRepeats = new Set();
+  for (let seed = 1; seed <= 128; seed += 1) {
+    const sequence = generateLessonSequence(level, { random: seededRandom(seed) });
+    assert.equal([...sequence].filter((character) => level.newCharacters.includes(character)).length, 18);
+    assert.equal([...sequence].filter((character) => !level.newCharacters.includes(character)).length, 12);
+    for (let index = 1; index < sequence.length; index += 1) {
+      successors.get(sequence[index - 1])?.add(sequence[index]);
+    }
+    const firstLesson = generateLessonSequence(1, { random: seededRandom(seed) });
+    for (let index = 1; index < firstLesson.length; index += 1) {
+      if (firstLesson[index] === firstLesson[index - 1]) firstLessonRepeats.add(firstLesson[index]);
+    }
+  }
+  for (const [character, following] of successors) {
+    assert.ok(following.has(character), `${character} may be followed by itself`);
+    assert.ok([...level.newCharacters].some((next) => next !== character && following.has(next)),
+      `${character} may be followed by the other new letter`);
+    assert.ok([...following].some((next) => !level.newCharacters.includes(next)),
+      `${character} may be followed by a previously learned letter`);
+  }
+  assert.deepEqual([...firstLessonRepeats].sort(), ['E', 'T']);
 });
 
 test('new and review targets are mixed together rather than presented in separate blocks', () => {
@@ -76,7 +101,7 @@ test('new and review targets are mixed together rather than presented in separat
   }
 });
 
-test('constant random sources finish weighted lessons without repeated targets or retry loops', () => {
+test('constant random sources finish weighted lessons with exact quotas and no retry loops', () => {
   for (const level of LEVELS) {
     for (const value of [0, 0.999999]) {
       let calls = 0;
@@ -87,7 +112,6 @@ test('constant random sources finish weighted lessons without repeated targets o
         },
       });
       assert.equal(sequence.length, level.practiceCount);
-      assert.ok([...sequence].every((character, index) => index === 0 || character !== sequence[index - 1]));
       assert.equal([...sequence].filter((character) => level.newCharacters.includes(character)).length,
         level.number === 1 ? 5 : level.number * 3);
     }

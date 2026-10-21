@@ -87,27 +87,11 @@ export function createPracticeGenerator(pool, { random = Math.random } = {}) {
 }
 
 function mixLessonCharacters(characters, random) {
-  const counts = new Map();
-  for (const character of characters) counts.set(character, (counts.get(character) ?? 0) + 1);
-  const sequence = [];
-  let previous = '';
-  while (sequence.length < characters.length) {
-    const remaining = characters.length - sequence.length - 1;
-    // Choose randomly from characters that leave a possible finish without repeats.
-    // This avoids retrying shuffles forever when the random source is constant.
-    const choices = [...counts].filter(([character, count]) => count > 0 && character !== previous
-      && [...counts].every(([other, otherCount]) => otherCount - (other === character ? 1 : 0)
-        <= (other === character ? Math.floor(remaining / 2) : Math.ceil(remaining / 2))));
-    let draw = randomIndex(choices.reduce((total, [, count]) => total + count, 0), random);
-    for (const [character, count] of choices) {
-      if (draw < count) {
-        sequence.push(character);
-        counts.set(character, count - 1);
-        previous = character;
-        break;
-      }
-      draw -= count;
-    }
+  const sequence = characters.slice();
+  // Shuffle the full quota together. Banning repeats forces two letters to alternate.
+  for (let index = sequence.length - 1; index > 0; index -= 1) {
+    const swapIndex = randomIndex(index + 1, random);
+    [sequence[index], sequence[swapIndex]] = [sequence[swapIndex], sequence[index]];
   }
   return sequence.join('');
 }

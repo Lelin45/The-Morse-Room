@@ -15,6 +15,7 @@ import { AUTH_RETURN_URL, SITE_URL, PENDING_AUTH_KEY, base64URL, finishAuthScrip
 import { AUDIO_PREFERENCES_KEY, readAudioPreferences, withAudioPreferences, createAudioPreferenceWriter } from './audio-preferences';
 import { effectiveAudio } from '../generated/audio-settings';
 import { nativeNotifications } from './notifications-native';
+import { useRadioBridge } from './use-radio-bridge';
 
 void SplashScreen.preventAutoHideAsync().catch(() => { /* A development shell may already be visible. */ });
 WebBrowser.maybeCompleteAuthSession();
@@ -25,6 +26,7 @@ type Pending = NonNullable<ReturnType<typeof readPendingAuth>>;
 
 export default function TrainerScreen() {
   const webview = useRef<WebView>(null);
+  const handleRadioMessage = useRadioBridge(webview);
   const ready = useRef(false);
   const pending = useRef<Pending | null>(null);
   const exchangeRunning = useRef(false);
@@ -164,9 +166,11 @@ export default function TrainerScreen() {
   }, [failure, opening]);
 
   const message = useCallback((event: WebViewMessageEvent) => {
-    if (event.nativeEvent.data.length > 2048) return;
+    if (event.nativeEvent.data.length > 16384) return;
     try {
       const value = JSON.parse(event.nativeEvent.data);
+      if (handleRadioMessage(value)) return;
+      if (event.nativeEvent.data.length > 2048) return;
       if (handleNotificationMessage(value)) return;
       if (value.type === 'audio-settings') {
         const settings = readAudioPreferences(value.settings);
@@ -201,7 +205,7 @@ export default function TrainerScreen() {
         if (value.handled !== true) BackHandler.exitApp();
       }
     } catch { /* Discard unrecognized bridge messages. */ }
-  }, [flushExchange, signIn, handleNotificationMessage, clearNotificationAccount]);
+  }, [flushExchange, signIn, handleNotificationMessage, clearNotificationAccount, handleRadioMessage]);
 
   const openBrowser = useCallback((url: string) => {
     void (url.startsWith('mailto:') ? Linking.openURL(url) : WebBrowser.openBrowserAsync(url))

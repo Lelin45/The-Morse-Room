@@ -10,6 +10,7 @@ const publicFiles = [
   'replay.js', 'styles.css', 'chat.js', 'chat-codec.js', 'chat.css',
   'mobile-shell.js', 'mobile-practice-session.js', 'timed-morse.js', 'press-controls.js',
   'practice.css', 'practice-round-session.js', 'qwerty-keyboard.js', 'real-word-bank.js',
+  'radio.js', 'radio.css', 'radio-codec.js', 'radio-client.js',
   'privacy.html', 'terms.html', 'delete-account.html', 'delete-account.js',
   'google-signin-light.png', 'google-signin-dark.png',
 ];

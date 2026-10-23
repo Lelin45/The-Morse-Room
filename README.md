@@ -125,6 +125,16 @@ The Expo Android project in [mobile](mobile/) is named **Morse Room: Learn & Cha
 
 See [Android setup and builds](docs/ANDROID_APP.md) for the APK testing build, Play Store AAB, signing credentials, and developer commands. [Play Console setup](docs/PLAY_CONSOLE.md) includes the public policy links, review access instructions, and data disclosures.
 
+## Advanced Radio mode
+
+Turn on **Advanced mode** in the audio settings to use **Radio, Practice, Callsigns and Chat**. Turn it off to return to Learn and Codes; lesson progress is preserved. The standard training and chat layouts keep their existing controls and themes.
+
+The Android Radio screen can decode live PCM audio from a selected microphone or compatible wired/USB audio input. Choose the input and audible target tone in Connection setup, then Start receiving. Incoming audio is processed locally in memory and is not saved or uploaded. Noise and uneven sending can cause decoding errors. Callsigns provides a local station profile and saved-station notebook; no online callsign identity verification is implied.
+
+S-Pixie transmission requires an external isolated **MR1 USB keyer**, not an ordinary USB cable. Transmit remains disabled until a compatible controller completes its handshake, a station callsign has been entered, and the physical interface has been acknowledged. The controller performs dit/dah timing and has a 2.5-second host-loss watchdog. Only its completion event marks a message as transmitted. Leaving the app, unplugging hardware or pressing Stop cancels the operation.
+
+The 7.023 MHz Pixie has no USB or Bluetooth built in. USB-C phones such as the OnePlus Nord 2T need an audio adapter with a microphone/line **input**; output-only headphone dongles cannot receive radio audio. A compatible hub can connect audio and keying interfaces together. See the [hardware guide and Raspberry Pi Pico reference firmware](hardware/pixie-keyer/README.md) before choosing or connecting adapters. Wireless keying and other radio-control protocols are not included in this first version. Hardware communication is available in the Android build, while the website can show setup guidance and manage local callsigns.
+
 Android chat notifications use Firebase Cloud Messaging with a separate Cloudflare Worker. They offer Show text, Listen, and Text or Morse replies directly in the notification. See [notification setup](docs/NOTIFICATIONS_SETUP.md) for the Firebase files, private Worker binding and build requirements. Chat data stays in the existing D1 database.
 
 Signing in also syncs completed lessons and best scores between the website and Android app. Reinstalling the app restores that account's lessons after sign-in. Guest practice stays local, and offline account progress syncs when the device reconnects.

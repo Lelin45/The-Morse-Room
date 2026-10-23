@@ -1,0 +1,6 @@
+{
+  "name": "morse-radio",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Local Android audio receiving and Morse Room USB keyer connection"
+}

@@ -30,8 +30,8 @@ window.addEventListener('morse-native-back', () => {
   } else if (account) account.click();
   else if (bell) bell.click();
   else if (back?.getClientRects().length) back.click();
-  else if (!document.querySelector('[data-mode="learn"].active')) {
-    document.querySelector('[data-mode="learn"]')?.click();
+  else if (!document.querySelector(document.body.dataset.advanced === 'true' ? '[data-mode="radio"].active' : '[data-mode="learn"].active')) {
+    document.querySelector(document.body.dataset.advanced === 'true' ? '[data-mode="radio"]' : '[data-mode="learn"]')?.click();
   } else handled = false;
   post({ type: 'back', handled });
 });

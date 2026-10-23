@@ -11,6 +11,7 @@ import { PracticeRecording, ReplayPlayer } from './replay.js';
 import { createChatRoom } from './chat.js';
 import { LearningProgressSync } from './learning-progress.js';
 import { AUDIO_SETTINGS_KEY, restoreAudioSettings, effectiveAudio } from './audio-settings.js';
+import { createRadioRoom, createCallsigns } from './radio.js';
 
 const $ = (selector) => document.querySelector(selector);
 const mobileViewport = matchMedia('(max-width: 760px)');
@@ -54,7 +55,8 @@ const progressSync = new LearningProgressSync({
   },
 });
 const progress = progressSync.progress;
-let mode = 'learn';
+let advancedMode = readStorage('morse-room-advanced', false) === true;
+let mode = advancedMode ? 'radio' : 'learn';
 let runId = 0;
 let tutorialBusy = false;
 let tutorialCharacter = '';
@@ -178,7 +180,8 @@ function activeSound() {
 
 for (const preset of ['default', 'custom']) {
   $(`#audio-${preset}`).addEventListener('click', () => {
-    chatRoom.stopAudio(); audioSettings.mode = preset; syncSound();
+    chatRoom.stopAudio(); radioRoom.stopAudio(); callsignRoom.stopAudio();
+    audioSettings.mode = preset; syncSound();
   });
 }
 
@@ -191,6 +194,8 @@ for (const key of Object.keys(sound)) {
     target[key] = clamp(input.value, Number(input.min), Number(input.max), target[key]);
     target.farnsworth = Math.min(target.farnsworth, target.wpm);
     if (mode === 'chat') chatRoom.stopAudio();
+    if (mode === 'radio') radioRoom.stopAudio();
+    if (mode === 'callsigns') callsignRoom.stopAudio();
     syncSound();
   };
   $(`#${key}-range`).addEventListener('input', update);
@@ -201,6 +206,8 @@ $('#test-tone').addEventListener('click', async () => {
   if (learn.playing || learn.countdown || tutorialBusy || answerBusy || replayPlayer.isPlaying || ['countdown', 'playing', 'paused'].includes(practice.phase)) return;
   cancelAudio();
   chatRoom.stopAudio();
+  radioRoom.stopAudio(); callsignRoom.stopAudio();
+  if (mode === 'radio') await radioRoom.stopReceiving();
   const token = runId;
   toneBusy = true;
   $('#test-tone').disabled = true;
@@ -215,10 +222,14 @@ $('#test-tone').addEventListener('click', async () => {
 });
 
 function setMode(nextMode) {
+  if (advancedMode && ['learn', 'characters'].includes(nextMode)) nextMode = nextMode === 'learn' ? 'radio' : 'callsigns';
+  if (!advancedMode && ['radio', 'callsigns'].includes(nextMode)) return;
   if (mode === nextMode) return;
   if (mode === 'practice' && ['countdown', 'playing', 'paused', 'interrupted'].includes(practice.phase)) stopPractice();
   cancelAudio();
   if (mode === 'chat') chatRoom.close();
+  if (mode === 'radio') radioRoom.close();
+  if (mode === 'callsigns') callsignRoom.close();
   if (mode === 'learn' && learn.phase === 'practice') learn.audible = false;
   mode = nextMode;
   const url = new URL(location.href);
@@ -230,17 +241,31 @@ function setMode(nextMode) {
 }
 document.querySelectorAll('.mode-button[data-mode]').forEach((element) => element.addEventListener('click', () => setMode(element.dataset.mode)));
 
+$('#advanced-mode-toggle').addEventListener('click', () => {
+  advancedMode = !advancedMode;
+  writeStorage('morse-room-advanced', advancedMode);
+  if (advancedMode && ['learn', 'characters'].includes(mode)) setMode(mode === 'learn' ? 'radio' : 'callsigns');
+  else if (!advancedMode && ['radio', 'callsigns'].includes(mode)) setMode('learn');
+  else render();
+});
+
 function render() {
   document.body.dataset.mode = mode;
+  document.body.dataset.advanced = String(advancedMode);
+  $('#advanced-mode-toggle').setAttribute('aria-checked', String(advancedMode));
   document.querySelectorAll('.mode-button[data-mode]').forEach((element) => {
+    if (['learn', 'characters'].includes(element.dataset.mode)) element.hidden = advancedMode;
+    else if (['radio', 'callsigns'].includes(element.dataset.mode)) element.hidden = !advancedMode;
     const selected = element.dataset.mode === mode;
     element.classList.toggle('active', selected);
     element.setAttribute('aria-current', selected ? 'page' : 'false');
   });
-  $('#page-title').textContent = mode === 'learn' ? 'Learn Morse Code' : mode === 'practice' ? 'Practice Morse Code' : mode === 'characters' ? 'Morse Characters' : 'Morse Chat Room';
+  $('#page-title').textContent = ({ learn: 'Learn Morse Code', practice: 'Practice Morse Code', characters: 'Morse Characters', chat: 'Morse Chat Room', radio: 'Radio', callsigns: 'Callsigns' })[mode];
   syncSound();
   $('#chat-panel').hidden = mode !== 'chat';
-  $('#setup-panel').hidden = mode === 'chat' || mode === 'characters';
+  $('#setup-panel').hidden = ['chat', 'characters', 'radio', 'callsigns'].includes(mode);
+  $('#radio-panel').hidden = mode !== 'radio';
+  $('#callsigns-panel').hidden = mode !== 'callsigns';
   if ($('#characters-panel')) $('#characters-panel').hidden = mode !== 'characters';
   roundPanel.hidden = true;
   document.body.dataset.practiceRound = 'false';
@@ -248,6 +273,13 @@ function render() {
   document.body.dataset.practiceReviewed = 'false';
   mobileTrainingPanel.hidden = true;
   document.body.dataset.trainingActive = 'false';
+  if (mode === 'radio' || mode === 'callsigns') {
+    $('#view-heading').hidden = true;
+    $('.receiver').hidden = true;
+    $('.bottom-note').hidden = true;
+    (mode === 'radio' ? radioRoom : callsignRoom).open();
+    return;
+  }
   if (mode === 'characters') {
     $('#view-heading').hidden = true;
     $('.receiver').hidden = true;
@@ -1185,7 +1217,7 @@ document.addEventListener('keydown', (event) => {
 });
 
 mobileViewport.addEventListener('change', () => {
-  if (mode === 'chat') return;
+  if (['chat', 'radio', 'callsigns'].includes(mode)) return;
   if (mode === 'characters') { renderCharacterPanel(); return; }
   renderWorkspace();
   updateTransport();
@@ -1201,6 +1233,8 @@ const chatRoom = createChatRoom({
   accountToggle: $('#account-toggle'), accountMenu: $('#account-menu'),
   onEnter: () => setMode('chat'), onAudioStart: cancelAudio, getSound: activeSound,
 });
+const radioRoom = createRadioRoom({ panel: $('#radio-panel'), getSound: activeSound, onAudioStart: cancelAudio });
+const callsignRoom = createCallsigns({ panel: $('#callsigns-panel'), getSound: activeSound, onAudioStart: cancelAudio });
 const chatParameters = new URL(location.href).searchParams;
 if (chatParameters.has('chat') || chatParameters.has('join')) mode = 'chat';
 syncSound();
@@ -1223,6 +1257,8 @@ window.addEventListener('morse-native-background', () => {
     updateTransport();
   }
   chatRoom.stopAudio();
+  radioRoom.stopAudio();
+  callsignRoom.stopAudio();
   stopAnswerAudio();
   stopReplay();
 });

@@ -1,0 +1,220 @@
+.radio-panel {
+  width: 100%;
+  min-width: 0;
+  --radio-muted: var(--muted);
+  --text: var(--ink);
+}
+
+html:not([data-theme='dark']) .radio-panel {
+  --radio-muted: #667367;
+}
+
+.radio-workspace,
+.callsigns-workspace {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--card);
+  color: var(--text);
+}
+
+.radio-panel .button {
+  min-height: 40px;
+  font-size: 13px;
+  padding: 8px 12px;
+}
+
+.radio-station-bar,
+.radio-section-heading,
+.radio-receive-meta,
+.radio-receive-controls,
+.radio-transmit-footer,
+.radio-station-identity,
+.radio-copy-actions,
+.radio-dialog-heading,
+.callsigns-contact,
+.callsigns-station-profile {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.radio-station-bar {
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.radio-station-identity { justify-content: flex-start; gap: 10px; }
+.radio-radio-icon { display: flex; color: var(--green); }
+.radio-radio-icon svg { width: 27px; height: 27px; }
+.radio-station-identity strong { display: block; font-size: 14px; font-weight: 600; color: var(--ink); }
+.radio-station-identity strong span { margin-left: 4px; font-size: 10px; color: var(--radio-muted); font-weight: 500; }
+.radio-station-identity small { display: block; margin-top: 3px; color: var(--radio-muted); font-size: 12px; }
+
+.radio-receiver,
+.radio-transmitter,
+.callsigns-station,
+.callsigns-contacts {
+  padding: 16px 20px;
+}
+
+.radio-transmitter,
+.callsigns-contacts { border-top: 1px solid var(--line); }
+.radio-section-heading { margin-bottom: 12px; }
+.radio-section-heading h2 { margin: 0; color: var(--ink); font-size: 14px; line-height: 1.4; font-weight: 600; }
+.radio-section-heading h2 > span { margin-left: 6px; font-size: 12px; font-weight: 400; color: var(--radio-muted); }
+.radio-state { display: flex; align-items: center; gap: 7px; color: var(--radio-muted); font-size: 12px; }
+.radio-state i { height: 6px; width: 6px; border-radius: 50%; background: var(--radio-muted); }
+.radio-state.is-live { color: var(--green); }
+.radio-state.is-live i { background: var(--green); box-shadow: 0 0 0 3px var(--soft-green); }
+.radio-state.has-signal i { background: var(--amber); box-shadow: 0 0 0 3px var(--soft-amber); }
+.radio-receive-meta { margin-bottom: 10px; color: var(--radio-muted); font-size: 12px; line-height: 1.5; }
+.radio-receive-meta > :last-child { flex-shrink: 0; font-variant-numeric: tabular-nums; }
+.radio-receive-readout { display: flex; align-items: center; gap: 8px; }
+.radio-input-level { display: block; height: 4px; width: 40px; overflow: hidden; border-radius: 3px; background: var(--line); }
+.radio-input-level i { display: block; height: 100%; width: 100%; background: var(--green); transform: scaleX(0); transform-origin: left; }
+.radio-copy { min-height: 220px; max-height: 43dvh; overflow-y: auto; padding: 14px; border: 1px solid var(--line); border-radius: 9px; background: var(--paper); color: var(--ink); font-family: var(--signal-font, 'Courier New', monospace); font-size: 18px; line-height: 1.7; letter-spacing: .6px; white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; }
+.radio-copy-placeholder { display: flex; justify-content: center; align-items: center; min-height: 180px; margin: 0; color: var(--radio-muted); font-family: var(--ui-font, 'Segoe UI', Arial, sans-serif); font-size: 14px; letter-spacing: 0; }
+.radio-received-morse { max-height: 46px; overflow: hidden; padding: 7px 2px 0; color: var(--signal-ink, var(--green)); font-family: var(--signal-font, 'Courier New', monospace); font-size: 13px; line-height: 1.6; letter-spacing: 1px; overflow-wrap: anywhere; }
+.radio-receive-controls { margin-top: 12px; }
+.radio-copy-actions { justify-content: flex-end; gap: 2px; }
+.radio-decoder-note,
+.radio-operation-note,
+.callsigns-local-note { margin: 10px 0 0; color: var(--radio-muted); font-size: 12px; line-height: 1.5; }
+.radio-operation-note { max-width: 62ch; }
+.radio-composer-mode button { min-height: 32px; font-size: 12px; padding: 5px 13px; }
+.radio-compose-row { display: flex; align-items: flex-end; gap: 10px; }
+.radio-compose-row textarea { width: 100%; min-width: 0; min-height: 68px; max-height: 160px; resize: vertical; padding: 11px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); color: var(--ink); font-family: var(--ui-font, 'Segoe UI', Arial, sans-serif); font-size: 15px; line-height: 1.45; }
+.radio-compose-row textarea::placeholder { font-size: 14px; color: var(--radio-muted); opacity: 1; }
+.radio-compose-row textarea.is-morse { font-family: var(--signal-font, 'Courier New', monospace); letter-spacing: 2px; font-size: 18px; }
+.radio-compose-row .radio-transmit-button { min-height: 44px; flex-shrink: 0; margin-bottom: 1px; }
+.radio-draft-preview { margin-top: 8px; max-height: 48px; overflow: auto; color: var(--ink); font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+.radio-draft-preview.is-morse { font-family: var(--signal-font, 'Courier New', monospace); color: var(--signal-ink, var(--green)); letter-spacing: 1px; font-size: 12px; }
+.radio-draft-preview.is-error { color: var(--red); font-family: var(--ui-font, 'Segoe UI', Arial, sans-serif); letter-spacing: 0; }
+.radio-transmit-footer { margin-top: 9px; color: var(--radio-muted); font-size: 12px; line-height: 1.5; }
+.radio-transmit-footer > div { display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
+.radio-transmit-footer .button { padding: 6px 8px; }
+.radio-status { margin: 0; padding: 12px 20px; border-top: 1px solid var(--line); color: var(--green); font-size: 13px; line-height: 1.5; }
+.radio-status.is-error { color: var(--red); }
+.radio-morse-controls { margin-top: 10px; }
+.radio-morse-controls > p { margin: 0 0 8px; color: var(--radio-muted); font-size: 12px; line-height: 1.5; }
+.radio-desktop-hint { margin-left: 8px; }
+.radio-paddles { display: grid; grid-template-columns: 80px 80px minmax(80px, 1fr) 46px; gap: 10px; align-items: center; max-width: 550px; }
+.radio-paddles button { color: var(--ink); border: 1px solid var(--line); background: var(--paper); border-radius: 10px; min-height: 44px; touch-action: none; user-select: none; -webkit-user-select: none; }
+.radio-paddles button.is-pressed:not(:disabled) { background: var(--soft-green); border-color: var(--green); }
+.radio-paddle { display: flex; justify-content: center; align-items: center; gap: 8px; font-size: 13px; }
+.radio-paddle strong { font-family: var(--signal-font, monospace); font-size: 23px; }
+.radio-backspace { display: flex; align-items: center; justify-content: center; }
+.radio-backspace svg { width: 24px; height: 24px; }
+
+.radio-dialog { width: min(520px, calc(100% - 28px)); max-height: min(88dvh, 800px); padding: 0; border: 1px solid var(--line); border-radius: 14px; color: var(--text); background: var(--card); box-shadow: 0 16px 64px #0004; overflow: auto; overscroll-behavior: contain; }
+.radio-dialog::backdrop { background: #0007; }
+.radio-dialog-heading { position: sticky; top: 0; z-index: 1; margin: 0; padding: 10px 16px; background: var(--card); border-bottom: 1px solid var(--line); }
+.radio-dialog-heading h2 { margin: 0; color: var(--ink); font-size: 16px; font-weight: 600; }
+.radio-dialog-heading > .button { min-width: 40px; padding: 7px; }
+.radio-dialog-body { padding: 18px; }
+.radio-setup-note { display: flex; align-items: flex-start; gap: 10px; padding: 12px; border-radius: 9px; background: var(--soft-green); color: var(--ink); }
+.radio-setup-note svg { width: 19px; height: 19px; margin-top: 1px; color: var(--green); }
+.radio-setup-note p { margin: 0; font-size: 13px; line-height: 1.55; }
+.radio-wiring-list { list-style: none; display: grid; gap: 12px; padding: 0; margin: 16px 0 12px; }
+.radio-wiring-list li { display: grid; gap: 3px; font-size: 13px; line-height: 1.55; }
+.radio-wiring-list strong { color: var(--ink); font-weight: 600; }
+.radio-wiring-list span,
+.radio-setup-help { color: var(--radio-muted); }
+.radio-setup-help { font-size: 12px; line-height: 1.55; margin: 8px 0 0; }
+.radio-setup-section { display: grid; gap: 8px; border-top: 1px solid var(--line); padding-top: 16px; margin-top: 16px; }
+.radio-setup-section h3 { color: var(--ink); font-size: 14px; font-weight: 600; margin: 0 0 3px; }
+.radio-dialog-body label { display: flex; justify-content: space-between; color: var(--ink); font-size: 13px; line-height: 1.5; }
+.radio-dialog-body label span { color: var(--radio-muted); font-size: 12px; }
+.radio-dialog-body :is(input:not([type='checkbox']), select) { width: 100%; min-height: 44px; min-width: 0; padding: 9px 11px; background: var(--paper); color: var(--ink); border: 1px solid var(--line); border-radius: 7px; font-family: var(--ui-font, 'Segoe UI', Arial, sans-serif); font-size: 14px; }
+.radio-input-row { display: flex; gap: 8px; align-items: stretch; min-width: 0; }
+.radio-input-row select { flex: 1; }
+.radio-input-row .button { flex-shrink: 0; }
+.radio-setup-section small { color: var(--radio-muted); font-size: 12px; line-height: 1.55; }
+.radio-dialog-body .radio-confirm-hardware { justify-content: flex-start; align-items: flex-start; gap: 10px; margin-top: 6px; }
+.radio-confirm-hardware input { accent-color: var(--green); width: 20px; height: 20px; flex-shrink: 0; margin: 1px 0 0; }
+.radio-confirm-hardware span { font-size: 13px !important; color: var(--text) !important; }
+.radio-save-setup { width: 100%; margin-top: 16px; }
+.radio-dialog-body .radio-status { border: 0; padding: 10px 0 0; color: var(--red); }
+.callsigns-station-profile { justify-content: flex-start; flex-wrap: wrap; }
+.callsigns-station-profile > strong { font-family: var(--signal-font, 'Courier New', monospace); color: var(--ink); font-size: 23px; letter-spacing: .6px; }
+.callsigns-station-profile > span { color: var(--radio-muted); font-size: 13px; flex: 1; }
+.callsigns-station-profile > button { margin-left: auto; }
+.callsigns-empty-profile { color: var(--radio-muted); font-size: 14px; line-height: 1.6; margin: 0; max-width: 55ch; }
+.callsigns-contact-list { display: grid; }
+.callsigns-contact { padding: 10px 0; gap: 5px; border-bottom: 1px solid var(--line); }
+.callsigns-contact:last-child { border-bottom: 0; }
+.callsigns-contact > div { min-width: 0; flex: 1; }
+.callsigns-contact strong { display: block; color: var(--ink); font-family: var(--signal-font, 'Courier New', monospace); font-size: 17px; letter-spacing: .3px; }
+.callsigns-contact span { display: block; color: var(--radio-muted); font-size: 12px; margin-top: 4px; overflow-wrap: anywhere; }
+.callsigns-contact .button { min-width: 40px; padding: 8px; }
+.callsigns-empty { padding: 30px 12px; text-align: center; color: var(--radio-muted); }
+.callsigns-empty > svg { width: 28px; height: 28px; }
+.callsigns-empty p { margin: 12px 0 7px; font-size: 14px; line-height: 1.5; }
+.callsigns-empty span { display: block; font-size: 12px; line-height: 1.5; }
+.callsigns-local-note { padding: 0 20px 16px; }
+.callsigns-dialog #callsigns-profile-form { display: grid; gap: 9px; }
+.callsigns-dialog #callsigns-profile-form > label:not(:first-child) { margin-top: 5px; }
+.callsigns-dialog #callsigns-profile-form > .button { margin-top: 8px; }
+.radio-panel .is-playing { background: var(--soft-green); color: var(--green); }
+
+.advanced-setting { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 18px; padding-top: 15px; border-top: 1px solid var(--line); }
+.advanced-setting strong { display: block; color: var(--ink); font-size: 13px; font-weight: 600; }
+.advanced-setting small { display: block; color: var(--muted); margin-top: 4px; font-size: 11px; line-height: 1.4; }
+#advanced-mode-toggle { position: relative; display: flex; align-items: center; width: 46px; height: 44px; min-height: 44px; flex-shrink: 0; padding: 3px; border: 0; border-radius: 8px; background: transparent; }
+#advanced-mode-toggle::before { position: absolute; content: ''; inset: 9px 0; border: 1px solid var(--line); border-radius: 20px; background: var(--paper); }
+#advanced-mode-toggle > span { position: relative; display: block; width: 18px; height: 18px; border-radius: 50%; background: var(--muted); transition: transform .15s, background .15s; }
+#advanced-mode-toggle[aria-checked='true']::before { border-color: var(--green); background: var(--soft-green); }
+#advanced-mode-toggle[aria-checked='true'] > span { background: var(--green); transform: translateX(17px); }
+
+@media (max-width: 760px), (pointer: coarse), (hover: none) {
+  .radio-panel .button { min-height: 44px; font-size: 13px; }
+  .radio-station-bar { padding: 9px 12px; gap: 6px; }
+  .radio-station-bar > .button { font-size: 12px; padding: 7px; }
+  .radio-station-bar > .button > svg { display: none; }
+  .radio-station-identity { gap: 8px; }
+  .radio-station-identity strong { font-size: 13px; }
+  .radio-station-identity small { font-size: 12px; }
+  .radio-radio-icon svg { width: 23px; height: 23px; }
+  .radio-receiver,
+  .radio-transmitter,
+  .callsigns-station,
+  .callsigns-contacts { padding: 13px 12px; }
+  .radio-section-heading { margin-bottom: 10px; }
+  .radio-section-heading h2 { font-size: 14px; }
+  .radio-copy { min-height: 180px; max-height: 36dvh; padding: 12px; font-size: 17px; line-height: 1.65; }
+  .radio-copy-placeholder { min-height: 150px; font-size: 13px; }
+  .radio-receive-meta { align-items: flex-start; gap: 8px; font-size: 11px; }
+  .radio-composer-mode button { min-height: 34px; padding: 5px 12px; font-size: 12px; }
+  .radio-compose-row { gap: 8px; }
+  .radio-compose-row textarea { min-height: 48px; padding: 11px 12px; font-size: 16px; line-height: 1.45; border-radius: 14px; }
+  .radio-compose-row textarea::placeholder { font-size: 14px; }
+  .radio-compose-row .radio-transmit-button { width: 44px; min-width: 44px; height: 44px; padding: 10px; border-radius: 50%; margin-bottom: 2px; }
+  .radio-transmit-button span { display: none; }
+  .radio-compose-row .radio-transmit-button svg { width: 20px; height: 20px; }
+  .radio-transmit-footer { flex-wrap: wrap; gap: 2px 10px; font-size: 12px; }
+  .radio-transmit-footer > span { flex: 1; min-width: 150px; }
+  .radio-transmit-footer > div { margin-left: auto; }
+  .radio-operation-note,
+  .radio-decoder-note { font-size: 11px; line-height: 1.5; }
+  .radio-desktop-hint { display: none; }
+  .radio-morse-controls { padding: 10px 0 2px; margin-top: 4px; }
+  .radio-morse-controls > p { font-size: 11px; margin-bottom: 12px; }
+  .radio-paddles { grid-template-columns: 1fr 1fr; grid-template-rows: 94px 46px; max-width: 380px; margin: 0 auto; gap: 12px 14px; position: relative; padding: 0 8px; }
+  .radio-paddle { justify-self: center; flex-direction: column; gap: 3px; width: 88px; min-width: 88px; height: 88px; min-height: 88px; border-radius: 50% !important; font-size: 14px; }
+  .radio-paddle strong { font-size: 30px; line-height: 1; }
+  .radio-word-space { grid-row: 2; grid-column: 1/-1; margin-right: 60px; height: 46px; font-size: 14px; }
+  .radio-backspace { position: absolute; right: 8px; bottom: 0; width: 48px; height: 46px; }
+  .radio-dialog { width: calc(100% - 24px); max-height: calc(var(--app-height, 100dvh) - 30px); border-radius: 12px; }
+  .radio-dialog-heading { padding: 8px 12px; }
+  .radio-dialog-body { padding: 14px; }
+  .radio-dialog-body :is(input:not([type='checkbox']), select) { font-size: 16px; }
+  .radio-setup-note { padding: 10px; gap: 8px; }
+  .radio-setup-note p,
+  .radio-wiring-list li { font-size: 13px; }
+  .radio-status { padding: 11px 12px; }
+  .callsigns-local-note { padding: 0 12px 14px; font-size: 12px; }
+  body.keyboard-open[data-mode='radio'] .radio-copy { min-height: 90px; max-height: 18dvh; }
+}

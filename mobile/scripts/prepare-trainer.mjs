@@ -17,7 +17,7 @@ const text = async (name) => (await readFile(resolve(root, name), 'utf8')).repla
 // Metro stays inside the mobile project. Generate its copy from the same public
 // normalizer used by the web trainer instead of maintaining separate rules.
 await writeFile(resolve(generated, 'audio-settings.js'), await text('audio-settings.js'));
-const styleNames = ['styles.css', 'chat.css', 'practice.css'];
+const styleNames = ['styles.css', 'chat.css', 'practice.css', 'radio.css'];
 const css = (await Promise.all(styleNames.map(text))).join('\n');
 const images = await Promise.all(['google-signin-light.png', 'google-signin-dark.png'].map(async (name) => ({
   name, data: `data:image/png;base64,${(await readFile(resolve(root, name))).toString('base64')}`,

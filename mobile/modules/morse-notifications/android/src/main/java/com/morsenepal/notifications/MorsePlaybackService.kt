@@ -12,18 +12,18 @@ import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.os.Process
 import android.os.SystemClock
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import java.util.concurrent.Executors
 import java.util.concurrent.LinkedBlockingQueue
-import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.math.PI
 import kotlin.math.min
 import kotlin.math.sin
 
-/** A warm stream owns tone playback. New taps append; they never stop an earlier dit or dah. */
+/** Live key feedback replaces stale feedback; Listen still plays every Morse segment at the chosen speed. */
 class MorsePlaybackService : Service() {
   @Volatile private var track: AudioTrack? = null
   private val audioExecutor = Executors.newSingleThreadExecutor { task -> Thread(task, "MorseNotificationAudio") }
@@ -32,6 +32,8 @@ class MorsePlaybackService : Service() {
   @Volatile private var workerStarted = false
   @Volatile private var latestStartId = 0
   private val mainHandler = Handler(Looper.getMainLooper())
+  private var nextLockCheckMillis = 0L
+  private var cachedUnlocked = true
 
   override fun onBind(intent: Intent?): IBinder? = null
   override fun onCreate() { super.onCreate(); synchronized(gate) { currentService = this; starting = false } }
@@ -40,7 +42,9 @@ class MorsePlaybackService : Service() {
     latestStartId = startId
     synchronized(gate) { currentService = this; starting = false }
     val messageId = intent?.getStringExtra("messageId") ?: return stop(startId)
-    if (!MorseNotifications.unlocked(this) || MorseNotifications.currentMessage(this, messageId) == null) return stop(startId)
+    val epoch = NotificationStore.accountEpoch.get()
+    if (!MorseNotifications.unlocked(this) || MorseNotifications.currentMessage(this, messageId) == null ||
+      epoch != NotificationStore.accountEpoch.get() || authorizedEpoch != epoch || authorizedMessageId != messageId) return stop(startId)
     if (!workerStarted) {
       MorseNotifications.ensureChannels(this)
       val notification = NotificationCompat.Builder(this, MorseNotifications.PLAYBACK_CHANNEL)
@@ -58,7 +62,10 @@ class MorsePlaybackService : Service() {
   private fun stop(id: Int): Int { stopSelf(id); return START_NOT_STICKY }
 
   private fun startAudioWorker() {
-    audioExecutor.execute { finishWorker(runCatching { playLoop() }.getOrDefault(false)) }
+    audioExecutor.execute {
+      runCatching { Process.setThreadPriority(Process.THREAD_PRIORITY_AUDIO) }
+      finishWorker(runCatching { playLoop() }.getOrDefault(false))
+    }
   }
 
   private fun finishWorker(idleExit: Boolean) {
@@ -89,12 +96,18 @@ class MorsePlaybackService : Service() {
       audioManager.requestAudioFocus(request)
     } else audioManager.requestAudioFocus(focusListener, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
     if (focus != AudioManager.AUDIOFOCUS_REQUEST_GRANTED) return false
-    val sampleRate = 44_100
-    val bufferSize = maxOf(AudioTrack.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT), 4096)
+    // The native output rate lets supported devices use Android's low latency mixer path.
+    val sampleRate = audioManager.getProperty(AudioManager.PROPERTY_OUTPUT_SAMPLE_RATE)?.toIntOrNull()
+      ?.takeIf { it in 8_000..192_000 } ?: 48_000
+    val burstFrames = audioManager.getProperty(AudioManager.PROPERTY_OUTPUT_FRAMES_PER_BUFFER)?.toIntOrNull()
+      ?.takeIf { it in 16..4096 } ?: 256
+    val bufferSize = maxOf(AudioTrack.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT), burstFrames * 8, 2048)
     val output = try {
-      AudioTrack.Builder().setAudioAttributes(attributes)
+      val builder = AudioTrack.Builder().setAudioAttributes(attributes)
         .setAudioFormat(AudioFormat.Builder().setSampleRate(sampleRate).setChannelMask(AudioFormat.CHANNEL_OUT_MONO).setEncoding(AudioFormat.ENCODING_PCM_16BIT).build())
-        .setTransferMode(AudioTrack.MODE_STREAM).setBufferSizeInBytes(bufferSize).build()
+        .setTransferMode(AudioTrack.MODE_STREAM).setBufferSizeInBytes(bufferSize)
+      if (Build.VERSION.SDK_INT >= 26) builder.setPerformanceMode(AudioTrack.PERFORMANCE_MODE_LOW_LATENCY)
+      builder.build().also { it.setBufferSizeInFrames(maxOf(burstFrames * 2, sampleRate / 100)) }
     } catch (error: Exception) {
       if (Build.VERSION.SDK_INT >= 26) focusRequest?.let { audioManager.abandonAudioFocusRequest(it) }
       else audioManager.abandonAudioFocus(focusListener)
@@ -103,31 +116,45 @@ class MorsePlaybackService : Service() {
     track = output
     var writtenFrames = 0L
     var streamGeneration = generation.get()
-    var priorToneAudibleEndMillis = 0.0
+    var lastRequestMillis = SystemClock.elapsedRealtime()
     var idleExit = false
+    val silence = ShortArray(128)
     try {
       output.play()
       // Wake a sleeping output route once, before its first tone. Every later tap uses the same stream.
       writtenFrames += writeSamples(output, ShortArray((sampleRate * 0.08).toInt()), streamGeneration)
       while (!Thread.currentThread().isInterrupted) {
-        val request = requests.poll(if (editorMode) 45_000L else 750L, TimeUnit.MILLISECONDS)
-        if (request == null) { idleExit = true; break }
-        if (!MorseNotifications.unlocked(this)) break
-        if (request.generation != generation.get()) continue
+        if (!stillAuthorized()) break
+        val nextGeneration = generation.get()
+        if (streamGeneration != nextGeneration) {
+          output.pause(); output.flush(); output.play()
+          streamGeneration = nextGeneration
+          // flush() resets the playback head. Do not prepend silence before each key press.
+          writtenFrames = 0L
+        }
+        val request = requests.poll()
+        if (request == null) {
+          val now = SystemClock.elapsedRealtime()
+          if (editorMode) {
+            if (now - lastInputMillis >= 45_000L) { idleExit = true; break }
+            // Keep the route awake between taps, rather than underrunning and reopening it on each mark.
+            writtenFrames += writeSamples(output, silence, streamGeneration)
+          } else {
+            if (now - lastRequestMillis >= 750L) { idleExit = true; break }
+            Thread.sleep(4L)
+          }
+          continue
+        }
+        if (request.generation != generation.get() || request.epoch != NotificationStore.accountEpoch.get()) continue
         if (streamGeneration != request.generation) {
+          // A newer tap can arrive between the generation check and poll(). Keep that latest tone.
           output.pause(); output.flush(); output.play()
           streamGeneration = request.generation
-          writtenFrames = output.playbackHeadPosition.toLong()
-          priorToneAudibleEndMillis = 0.0
-          writtenFrames += writeSamples(output, ShortArray((sampleRate * 0.04).toInt()), streamGeneration)
+          writtenFrames = 0L
         }
-        if (request.live) {
-          // Boundaries come from the draft, not audio-queue delay. Backlogged letters and words keep their full gaps.
-          val missingGap = request.settings.remainingGapSeconds(request.gapUnits,
-            priorToneAudibleEndMillis, SystemClock.elapsedRealtime())
-          if (missingGap > 0.0) writtenFrames += writeSamples(output,
-            ShortArray((missingGap * sampleRate).toInt()), streamGeneration)
-        }
+        lastRequestMillis = SystemClock.elapsedRealtime()
+        // Captured tap times decide the draft's letter boundaries. Feedback must never wait behind
+        // synthetic inter-mark, letter or word gaps, or an older long dah.
         for ((tone, units) in MorseCodec.segments(request.signal)) {
           if (generation.get() != streamGeneration || Thread.currentThread().isInterrupted) break
           val count = (sampleRate * request.settings.durationSeconds(tone, units)).toInt()
@@ -142,12 +169,10 @@ class MorsePlaybackService : Service() {
           }
           writtenFrames += writeSamples(output, samples, streamGeneration)
         }
-        priorToneAudibleEndMillis = if (request.live) SystemClock.elapsedRealtime() +
-          (writtenFrames - output.playbackHeadPosition.toLong()).coerceAtLeast(0L) * 1000.0 / sampleRate else 0.0
       }
       // Let the last buffered dah finish. This never holds the input/model queue.
       val deadline = SystemClock.elapsedRealtime() + 1_000L
-      while (generation.get() == streamGeneration && output.playbackHeadPosition.toLong() < writtenFrames &&
+      while (generation.get() == streamGeneration && stillAuthorized() && output.playbackHeadPosition.toLong() < writtenFrames &&
         SystemClock.elapsedRealtime() < deadline) Thread.sleep(5L)
     } catch (_: Exception) { idleExit = false } finally {
       if (track === output) track = null
@@ -160,12 +185,23 @@ class MorsePlaybackService : Service() {
 
   private fun writeSamples(output: AudioTrack, samples: ShortArray, expectedGeneration: Long): Long {
     var offset = 0
-    while (offset < samples.size && generation.get() == expectedGeneration && !Thread.currentThread().isInterrupted) {
-      val count = output.write(samples, offset, min(512, samples.size - offset), AudioTrack.WRITE_BLOCKING)
-      if (count <= 0) break
+    while (offset < samples.size && generation.get() == expectedGeneration && !Thread.currentThread().isInterrupted && stillAuthorized()) {
+      val count = output.write(samples, offset, min(128, samples.size - offset), AudioTrack.WRITE_NON_BLOCKING)
+      check(count >= 0) { "Audio output is unavailable." }
+      if (count == 0) { Thread.sleep(1L); continue }
       offset += count
     }
     return offset.toLong()
+  }
+
+  private fun stillAuthorized(): Boolean {
+    if (authorizedMessageId == null || authorizedEpoch != NotificationStore.accountEpoch.get()) return false
+    val now = SystemClock.elapsedRealtime()
+    if (now >= nextLockCheckMillis) {
+      cachedUnlocked = MorseNotifications.unlocked(this)
+      nextLockCheckMillis = now + 100L
+    }
+    return cachedUnlocked
   }
 
   override fun onDestroy() {
@@ -184,34 +220,54 @@ class MorsePlaybackService : Service() {
   }
 
   companion object {
-    private data class Request(val signal: String, val settings: MorseAudioSettings, val live: Boolean,
-      val generation: Long, val gapUnits: Int)
+    private data class Request(val signal: String, val settings: MorseAudioSettings,
+      val generation: Long, val epoch: Long)
     private val gate = Any()
-    private val requests = LinkedBlockingQueue<Request>()
+    // Input is stored by the composer. Only its latest feedback belongs in the audio queue.
+    private val requests = LinkedBlockingQueue<Request>(1)
     private val generation = AtomicLong(0L)
     @Volatile private var currentService: MorsePlaybackService? = null
     @Volatile private var starting = false
     @Volatile private var editorMode = false
+    @Volatile private var authorizedMessageId: String? = null
+    @Volatile private var authorizedEpoch = -1L
+    @Volatile private var lastInputMillis = 0L
 
     internal fun prepareEditor(context: Context, messageId: String) {
-      synchronized(gate) { replacePlayback(); editorMode = true }
+      val epoch = authorize(context, messageId) ?: return
+      synchronized(gate) {
+        authorizedMessageId = messageId
+        authorizedEpoch = epoch
+        replacePlayback()
+        editorMode = true
+        lastInputMillis = SystemClock.elapsedRealtime()
+      }
       ensureStarted(context, messageId)
     }
 
+    @Suppress("UNUSED_PARAMETER")
     internal fun tone(context: Context, messageId: String, signal: String, settings: MorseAudioSettings, gapUnits: Int) {
       synchronized(gate) {
-        if (!editorMode) replacePlayback()
+        // prepareEditor authenticates once. A touch never decrypts credentials, accesses disk or waits
+        // for the previous tone. Lock state is monitored by the warm audio worker.
+        if ((signal != "." && signal != "-") || authorizedMessageId != messageId ||
+          authorizedEpoch != NotificationStore.accountEpoch.get()) return
+        replacePlayback()
         editorMode = true
-        requests.offer(Request(signal, settings, true, generation.get(), gapUnits))
+        lastInputMillis = SystemClock.elapsedRealtime()
+        requests.offer(Request(signal, settings, generation.get(), authorizedEpoch))
       }
       ensureStarted(context, messageId)
     }
 
     internal fun listen(context: Context, messageId: String, signal: String, settings: MorseAudioSettings) {
+      val epoch = authorize(context, messageId) ?: return
       synchronized(gate) {
+        authorizedMessageId = messageId
+        authorizedEpoch = epoch
         replacePlayback()
         editorMode = false
-        requests.offer(Request(signal, settings, false, generation.get(), 0))
+        requests.offer(Request(signal, settings, generation.get(), epoch))
       }
       ensureStarted(context, messageId)
     }
@@ -219,7 +275,14 @@ class MorsePlaybackService : Service() {
     private fun replacePlayback() {
       generation.incrementAndGet()
       requests.clear()
-      runCatching { currentService?.track?.pause(); currentService?.track?.flush() }
+      // The audio worker owns pause/flush/write, avoiding cross-thread AudioTrack lock contention.
+    }
+
+    private fun authorize(context: Context, messageId: String): Long? {
+      val epoch = NotificationStore.accountEpoch.get()
+      if (!MorseNotifications.unlocked(context) || MorseNotifications.currentMessage(context, messageId) == null ||
+        epoch != NotificationStore.accountEpoch.get()) return null
+      return epoch
     }
 
     private fun ensureStarted(context: Context, messageId: String) {

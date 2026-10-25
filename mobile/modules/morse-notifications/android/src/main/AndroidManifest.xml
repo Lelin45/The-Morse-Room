@@ -14,6 +14,13 @@
       </intent-filter>
     </service>
     <service android:name=".MorsePlaybackService" android:exported="false" android:foregroundServiceType="mediaPlayback" />
+    <activity android:name=".MorseReplyActivity"
+      android:exported="false"
+      android:excludeFromRecents="true"
+      android:launchMode="singleTop"
+      android:taskAffinity=""
+      android:theme="@style/MorseReplyDialog.Dark"
+      android:windowSoftInputMode="adjustResize|stateAlwaysHidden" />
     <receiver android:name=".NotificationActionReceiver" android:exported="false" />
   </application>
 </manifest>

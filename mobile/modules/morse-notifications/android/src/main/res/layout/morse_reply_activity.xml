@@ -1,0 +1,253 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+  android:id="@+id/quick_reply_panel"
+  android:layout_width="match_parent"
+  android:layout_height="match_parent"
+  android:orientation="vertical"
+  android:padding="16dp"
+  android:saveEnabled="false">
+
+  <LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:minHeight="48dp"
+    android:gravity="center_vertical"
+    android:orientation="horizontal">
+    <LinearLayout
+      android:layout_width="0dp"
+      android:layout_height="wrap_content"
+      android:layout_weight="1"
+      android:orientation="vertical">
+      <TextView
+        android:id="@+id/quick_reply_heading"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:fontFamily="sans-serif-medium"
+        android:text="Quick reply"
+        android:textSize="12sp" />
+      <TextView
+        android:id="@+id/quick_reply_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:ellipsize="end"
+        android:fontFamily="sans-serif-medium"
+        android:maxLines="1"
+        android:textSize="18sp" />
+    </LinearLayout>
+    <ImageButton
+      android:id="@+id/quick_reply_close"
+      android:layout_width="48dp"
+      android:layout_height="48dp"
+      android:background="@android:color/transparent"
+      android:contentDescription="Close reply and keep draft"
+      android:padding="13dp"
+      android:src="@android:drawable/ic_menu_close_clear_cancel" />
+  </LinearLayout>
+
+  <TextView
+    android:id="@+id/quick_reply_incoming"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="4dp"
+    android:layout_marginBottom="12dp"
+    android:ellipsize="end"
+    android:fontFamily="monospace"
+    android:maxLines="2"
+    android:padding="10dp"
+    android:textSize="13sp" />
+
+  <LinearLayout
+    android:id="@+id/quick_reply_modes"
+    android:layout_width="match_parent"
+    android:layout_height="44dp"
+    android:orientation="horizontal"
+    android:padding="3dp">
+    <Button
+      android:id="@+id/quick_reply_mode_text"
+      android:layout_width="0dp"
+      android:layout_height="match_parent"
+      android:layout_weight="1"
+      android:fontFamily="sans-serif-medium"
+      android:minHeight="0dp"
+      android:minWidth="0dp"
+      android:padding="0dp"
+      android:text="Text"
+      android:textAllCaps="false"
+      android:textSize="14sp" />
+    <Button
+      android:id="@+id/quick_reply_mode_morse"
+      android:layout_width="0dp"
+      android:layout_height="match_parent"
+      android:layout_marginStart="3dp"
+      android:layout_weight="1"
+      android:fontFamily="sans-serif-medium"
+      android:minHeight="0dp"
+      android:minWidth="0dp"
+      android:padding="0dp"
+      android:text="Morse"
+      android:textAllCaps="false"
+      android:textSize="14sp" />
+  </LinearLayout>
+
+  <ScrollView
+    android:id="@+id/quick_reply_scroll"
+    android:layout_width="match_parent"
+    android:layout_height="0dp"
+    android:layout_marginTop="12dp"
+    android:layout_weight="1"
+    android:clipToPadding="false"
+    android:fillViewport="true"
+    android:scrollbars="vertical">
+    <FrameLayout
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content">
+      <EditText
+        android:id="@+id/quick_reply_text"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:autofillHints=""
+        android:fontFamily="sans-serif"
+        android:gravity="top|start"
+        android:hint="Message"
+        android:imeOptions="flagNoExtractUi|actionNone"
+        android:importantForAutofill="no"
+        android:inputType="textCapSentences|textMultiLine"
+        android:maxLength="1000"
+        android:minHeight="120dp"
+        android:minLines="3"
+        android:padding="12dp"
+        android:saveEnabled="false"
+        android:scrollHorizontally="false"
+        android:textSize="16sp" />
+      <EditText
+        android:id="@+id/quick_reply_morse"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:contentDescription="Morse reply draft. Use the dit and dah buttons below."
+        android:fontFamily="monospace"
+        android:gravity="top|start"
+        android:hint="Tap dit or dah"
+        android:importantForAutofill="no"
+        android:inputType="textMultiLine"
+        android:minHeight="120dp"
+        android:minLines="3"
+        android:padding="12dp"
+        android:saveEnabled="false"
+        android:scrollHorizontally="false"
+        android:textIsSelectable="true"
+        android:textSize="20sp"
+        android:visibility="gone" />
+    </FrameLayout>
+  </ScrollView>
+
+  <LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="8dp"
+    android:gravity="center_vertical"
+    android:orientation="horizontal">
+    <TextView
+      android:id="@+id/quick_reply_status"
+      android:layout_width="0dp"
+      android:layout_height="wrap_content"
+      android:layout_weight="1"
+      android:accessibilityLiveRegion="polite"
+      android:fontFamily="sans-serif"
+      android:maxLines="2"
+      android:textSize="12sp" />
+    <TextView
+      android:id="@+id/quick_reply_count"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_marginStart="8dp"
+      android:fontFamily="sans-serif"
+      android:textSize="12sp" />
+  </LinearLayout>
+
+  <LinearLayout
+    android:id="@+id/quick_reply_paddles"
+    android:layout_width="match_parent"
+    android:layout_height="88dp"
+    android:layout_marginTop="8dp"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:visibility="gone">
+    <Button
+      android:id="@+id/quick_reply_dit"
+      android:layout_width="76dp"
+      android:layout_height="76dp"
+      android:contentDescription="Dit"
+      android:fontFamily="sans-serif-medium"
+      android:minHeight="0dp"
+      android:minWidth="0dp"
+      android:padding="0dp"
+      android:text="&#x00B7;"
+      android:textSize="36sp" />
+    <Button
+      android:id="@+id/quick_reply_space"
+      android:layout_width="0dp"
+      android:layout_height="52dp"
+      android:layout_marginStart="12dp"
+      android:layout_marginEnd="12dp"
+      android:layout_weight="1"
+      android:contentDescription="Word space"
+      android:fontFamily="sans-serif-medium"
+      android:minHeight="0dp"
+      android:minWidth="0dp"
+      android:padding="0dp"
+      android:text="Space"
+      android:textAllCaps="false"
+      android:textSize="14sp" />
+    <Button
+      android:id="@+id/quick_reply_dah"
+      android:layout_width="76dp"
+      android:layout_height="76dp"
+      android:contentDescription="Dah"
+      android:fontFamily="sans-serif-medium"
+      android:minHeight="0dp"
+      android:minWidth="0dp"
+      android:padding="0dp"
+      android:text="-"
+      android:textSize="32sp" />
+  </LinearLayout>
+
+  <LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="48dp"
+    android:layout_marginTop="10dp"
+    android:gravity="center_vertical"
+    android:orientation="horizontal">
+    <TextView
+      android:id="@+id/quick_reply_hint"
+      android:layout_width="0dp"
+      android:layout_height="wrap_content"
+      android:layout_marginEnd="8dp"
+      android:layout_weight="1"
+      android:fontFamily="sans-serif"
+      android:maxLines="2"
+      android:textSize="12sp" />
+    <Button
+      android:id="@+id/quick_reply_backspace"
+      android:layout_width="52dp"
+      android:layout_height="48dp"
+      android:layout_marginEnd="8dp"
+      android:contentDescription="Backspace. Hold to keep deleting."
+      android:fontFamily="sans-serif"
+      android:minHeight="0dp"
+      android:minWidth="0dp"
+      android:padding="0dp"
+      android:text="&#x232B;"
+      android:textSize="24sp"
+      android:visibility="gone" />
+    <Button
+      android:id="@+id/quick_reply_send"
+      android:layout_width="80dp"
+      android:layout_height="48dp"
+      android:fontFamily="sans-serif-medium"
+      android:minHeight="0dp"
+      android:minWidth="0dp"
+      android:padding="0dp"
+      android:text="Send"
+      android:textAllCaps="false"
+      android:textSize="14sp" />
+  </LinearLayout>
+</LinearLayout>

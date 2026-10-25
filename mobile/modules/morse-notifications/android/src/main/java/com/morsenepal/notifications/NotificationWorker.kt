@@ -72,7 +72,7 @@ class NotificationWorker(context: Context, parameters: WorkerParameters) : Worke
       val pending = NotificationStore.read(applicationContext, "reply:$id")
       pending?.optString("messageId")?.let { messageId ->
         NotificationActionDispatcher.updateFromWorker(applicationContext, messageId, pending.optString("userId")) { message ->
-          message.put("status", "Waiting for a connection...")
+          if (ownsReply(message, pending, id)) message.put("status", "Waiting for a connection...")
         }
       }
     }
@@ -81,25 +81,36 @@ class NotificationWorker(context: Context, parameters: WorkerParameters) : Worke
 
   private fun completeReply(replyId: String, status: String, clearDraft: Boolean = false) {
     val pending = NotificationStore.read(applicationContext, "reply:$replyId") ?: return
-    NotificationStore.remove(applicationContext, "reply:$replyId")
     NotificationActionDispatcher.updateFromWorker(applicationContext, pending.optString("messageId"), pending.optString("userId")) { message ->
-      message.put("sending", false).put("status", status)
-      if (clearDraft) message.put("draft", "").put("replyMode", "message").put("lastTap", 0L)
+      // A delayed/retried completion must not overwrite a newer reply for the same notification.
+      if (ownsReply(message, pending, replyId)) {
+        message.put("sending", false).put("status", status)
+        message.remove("pendingReplyId")
+        if (clearDraft) message.put("draft", "").put("draftText", "").put("replyMode", "message").put("lastTap", 0L)
+          .put("sourceText", org.json.JSONObject.NULL).put("sourceMorse", org.json.JSONObject.NULL).put("replySent", true)
+      }
     }
+    NotificationStore.remove(applicationContext, "reply:$replyId")
+  }
+
+  private fun ownsReply(message: org.json.JSONObject, pending: org.json.JSONObject, replyId: String): Boolean {
+    val active = message.optString("pendingReplyId")
+    return active == replyId || (active.isBlank() && message.optBoolean("sending") &&
+      pending.optJSONObject("body")?.optString("clientId") == replyId)
   }
 
   companion object {
     const val TAG = "morse-notifications"
-    fun enqueueMessage(context: Context, id: String, userId: String) = enqueue(context, "message", id, userId, true)
+    fun enqueueMessage(context: Context, id: String, userId: String) { enqueue(context, "message", id, userId, true) }
     fun enqueueReply(context: Context, id: String, userId: String) = enqueue(context, "reply", id, userId, true)
-    fun enqueueToken(context: Context, userId: String) = enqueue(context, "token", "refresh", userId, false)
-    private fun enqueue(context: Context, operation: String, id: String, userId: String, expedited: Boolean) {
+    fun enqueueToken(context: Context, userId: String) { enqueue(context, "token", "refresh", userId, false) }
+    private fun enqueue(context: Context, operation: String, id: String, userId: String, expedited: Boolean): androidx.work.Operation {
       val builder = OneTimeWorkRequestBuilder<NotificationWorker>()
         .setInputData(workDataOf("operation" to operation, "id" to id, "userId" to userId))
         .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
         .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 15, TimeUnit.SECONDS).addTag(TAG)
       if (expedited) builder.setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
-      WorkManager.getInstance(context).enqueueUniqueWork("$TAG:$userId:$operation:$id", ExistingWorkPolicy.KEEP, builder.build())
+      return WorkManager.getInstance(context).enqueueUniqueWork("$TAG:$userId:$operation:$id", ExistingWorkPolicy.KEEP, builder.build())
     }
   }
 }

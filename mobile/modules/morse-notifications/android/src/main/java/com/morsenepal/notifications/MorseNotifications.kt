@@ -10,7 +10,6 @@ import android.content.Intent
 import android.graphics.Color
 import android.net.Uri
 import android.os.Build
-import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.RemoteInput
@@ -98,21 +97,12 @@ internal object MorseNotifications {
     when (mode) {
       "choose" -> {
         builder.addAction(action(context, messageId, "text", "Text reply", remoteInput = true))
-        builder.addAction(action(context, messageId, "morse", "Morse reply"))
-        builder.addAction(action(context, messageId, "back", "Back"))
+        builder.addAction(editorAction(context, messageId, userId, "morse", "Morse reply"))
+        builder.addAction(editorAction(context, messageId, userId, "text", "Long reply"))
       }
       "morse" -> {
-        val editor = RemoteViews(context.packageName, R.layout.morse_notification_editor)
-        editor.setTextViewText(R.id.morse_reply_title, "Reply to $title")
-        val draft = message.optString("draft")
-        editor.setTextViewText(R.id.morse_reply_draft, if (draft.isBlank()) "Tap dit or dah" else (if (draft.length > 80) "…" else "") + draft.takeLast(80))
-        editor.setTextViewText(R.id.morse_reply_status, status.ifBlank { "A short pause separates letters. Space separates words." })
-        for ((view, key) in listOf(R.id.morse_reply_dit to "dit", R.id.morse_reply_dah to "dah",
-          R.id.morse_reply_space to "space", R.id.morse_reply_backspace to "backspace", R.id.morse_reply_send to "send")) {
-          editor.setOnClickPendingIntent(view, pendingAction(context, messageId, key))
-          editor.setBoolean(view, "setEnabled", !message.optBoolean("sending"))
-        }
-        builder.setStyle(NotificationCompat.DecoratedCustomViewStyle()).setCustomBigContentView(editor)
+        // Old saved drafts reopen in the local editor, outside System UI's limited RemoteViews area.
+        builder.addAction(editorAction(context, messageId, userId, "morse", "Continue Morse"))
         builder.addAction(action(context, messageId, "text", "Text reply", remoteInput = true))
         builder.addAction(action(context, messageId, "back", "Back"))
       }
@@ -123,6 +113,18 @@ internal object MorseNotifications {
       }
     }
     try { NotificationManagerCompat.from(context).notify(id(messageId), builder.build()) } catch (_: SecurityException) { }
+  }
+
+  private fun editorAction(context: Context, messageId: String, userId: String, mode: String, label: String): NotificationCompat.Action {
+    // Launch the Activity directly. A receiver/service trampoline is blocked on modern Android.
+    val intent = Intent(context, MorseReplyActivity::class.java)
+      .setAction("com.morsenepal.notifications.EDITOR")
+      .setData(Uri.parse("morse-notification://editor/" + Uri.encode(messageId) + "/" + mode))
+      .putExtra("messageId", messageId).putExtra("mode", mode).putExtra("userId", userId)
+      .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+    val pending = PendingIntent.getActivity(context, (messageId + ":editor:" + mode).hashCode(), intent,
+      PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+    return NotificationCompat.Action.Builder(0, label, pending).setShowsUserInterface(true).build()
   }
 
   fun pendingAction(context: Context, messageId: String, key: String, mutable: Boolean = false): PendingIntent {

@@ -78,6 +78,7 @@ internal object NotificationStore {
 
   @Synchronized fun forgetAccount(context: Context) {
     accountEpoch.incrementAndGet()
+    NotificationReplySession.clearAll()
     val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
     val token = read(context, "fcm")
     val audio = read(context, "audio")

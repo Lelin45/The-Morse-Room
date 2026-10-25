@@ -181,12 +181,18 @@ export default function TrainerScreen() {
       } else if (value.type === 'ready' || value.type === 'morse-native-ready') {
         ready.current = true; setLoading(false); setFailure(false); flushExchange();
         if (value.type === 'morse-native-ready') {
-          if (value.theme === 'dark' || value.theme === 'light') setDark(value.theme === 'dark');
+          if (value.theme === 'dark' || value.theme === 'light') {
+            setDark(value.theme === 'dark');
+            void nativeNotifications.updateThemeAsync(value.theme).catch(() => {});
+          }
           if (Number.isFinite(value.volume)) setVolume(Math.max(0, Math.min(100, value.volume * 100)));
           setPreferencesReady(true);
         }
       } else if (value.type === 'theme' || value.type === 'preferences') {
-        if (typeof value.dark === 'boolean') setDark(value.dark);
+        if (typeof value.dark === 'boolean') {
+          setDark(value.dark);
+          void nativeNotifications.updateThemeAsync(value.dark ? 'dark' : 'light').catch(() => {});
+        }
         if (value.type === 'preferences' && Number.isFinite(value.volume)) setVolume(Math.max(0, Math.min(100, value.volume)));
       } else if (value.type === 'sign-in') void signIn();
       else if (value.type === 'morse-native-auth-cleared') {

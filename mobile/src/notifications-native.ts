@@ -38,6 +38,7 @@ type NotificationEvents = {
 };
 
 interface NativeNotificationsModule {
+  updateThemeAsync?(theme: 'dark' | 'light'): Promise<void>;
   updateAudioSettingsAsync?(options: NotificationAudioSettings): Promise<void>;
   getStateAsync(): Promise<NotificationState>;
   getFCMTokenAsync(): Promise<string | null>;
@@ -59,6 +60,9 @@ const unsupported: NotificationState = {
 };
 
 export const nativeNotifications = {
+  async updateThemeAsync(theme: 'dark' | 'light'): Promise<void> {
+    if (nativeModule?.updateThemeAsync) await nativeModule.updateThemeAsync(theme);
+  },
   async updateAudioSettingsAsync(options: NotificationAudioSettings): Promise<void> {
     if (nativeModule?.updateAudioSettingsAsync) await nativeModule.updateAudioSettingsAsync(options);
   },

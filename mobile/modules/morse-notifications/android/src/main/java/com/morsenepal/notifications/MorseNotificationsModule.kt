@@ -38,6 +38,12 @@ class MorseNotificationsModule : Module() {
       NotificationAudioSettings.update(context, options).asMap()
     }
 
+    AsyncFunction("updateThemeAsync") { theme: String ->
+      require(theme == "dark" || theme == "light")
+      context.getSharedPreferences("morse_reply_preferences", android.content.Context.MODE_PRIVATE)
+        .edit().putString("theme", theme).apply()
+    }
+
     AsyncFunction("getFCMTokenAsync") { promise: Promise ->
       if (!firebaseConfigured() || !MorseNotifications.enabled(context)) promise.resolve(null)
       else try {

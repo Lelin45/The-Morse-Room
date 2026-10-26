@@ -30,6 +30,7 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -55,6 +56,7 @@ class MorseReplyActivity : Activity() {
   private var suppressClick = false
   private var caretPosted = false
   private var pendingCaret: EditText? = null
+  private var keyboardRequested = false
 
   private lateinit var panel: LinearLayout
   private lateinit var title: TextView
@@ -67,6 +69,9 @@ class MorseReplyActivity : Activity() {
   private lateinit var textMode: Button
   private lateinit var morseMode: Button
   private lateinit var paddles: LinearLayout
+  private lateinit var composer: LinearLayout
+  private lateinit var footer: LinearLayout
+  private lateinit var draftScroll: ScrollView
   private lateinit var dit: Button
   private lateinit var dah: Button
   private lateinit var space: Button
@@ -130,9 +135,12 @@ class MorseReplyActivity : Activity() {
     setTheme(if (dark) R.style.MorseReplyDialog_Dark else R.style.MorseReplyDialog_Light)
     super.onCreate(savedInstanceState)
     window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
-    window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE or WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN)
+    val initialKeyboard = if (intent.getStringExtra("mode") == "morse")
+      WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN else WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE
+    window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE or initialKeyboard)
     window.setGravity(Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL)
-    window.attributes = window.attributes.apply { y = dp(10) }
+    // ADJUST_RESIZE docks the window above the IME. Do not add the IME inset or a second bottom gap.
+    window.attributes = window.attributes.apply { y = 0 }
     setFinishOnTouchOutside(true)
     setContentView(R.layout.morse_reply_activity)
     bindViews()
@@ -144,6 +152,7 @@ class MorseReplyActivity : Activity() {
     panel.viewTreeObserver.addOnGlobalLayoutListener(visibleLayout)
     ViewCompat.setOnApplyWindowInsetsListener(panel) { _, insets ->
       keyboardVisible = insets.isVisible(WindowInsetsCompat.Type.ime())
+      if (keyboardVisible) keyboardRequested = false
       resizeWindow(insets)
       insets
     }
@@ -160,6 +169,7 @@ class MorseReplyActivity : Activity() {
     if (isFinishing) return
     if (!MorseNotifications.unlocked(this) || NotificationStore.accountEpoch.get() != accountEpoch) { finish(); return }
     NotificationReplySession.open(this, messageId)?.let(::render) ?: run { finish(); return }
+    if (current?.mode == "text" && current?.sending == false && current?.sent == false) requestTextKeyboard()
     handler.removeCallbacks(securityCheck)
     handler.post(securityCheck)
   }
@@ -180,9 +190,15 @@ class MorseReplyActivity : Activity() {
     stopRepeating()
     cancelCaretScroll()
     handler.removeCallbacks(securityCheck)
+    keyboardRequested = false
     hideKeyboard()
     closeSession()
     super.onStop()
+  }
+
+  override fun onWindowFocusChanged(hasFocus: Boolean) {
+    super.onWindowFocusChanged(hasFocus)
+    if (hasFocus && keyboardRequested) showRequestedKeyboard()
   }
 
   override fun onDestroy() {
@@ -203,18 +219,17 @@ class MorseReplyActivity : Activity() {
     if (!MorseNotifications.unlocked(this)) { finish(); return }
     val expectedUser = intent.getStringExtra("userId")
     if (expectedUser != null && NotificationStore.read(this, "credentials")?.optString("userId") != expectedUser) { finish(); return }
-    val snapshot = NotificationReplySession.open(this, messageId) ?: run { finish(); return }
+    NotificationReplySession.open(this, messageId) ?: run { finish(); return }
     accountEpoch = NotificationStore.accountEpoch.get()
     subscription?.close()
-    subscription = NotificationReplySession.listen(messageId) { value ->
-      if (value == null) finish() else if (!isFinishing) render(value)
-    }
-    render(snapshot)
     if (!modeApplied) {
       modeApplied = true
-      intent.getStringExtra("mode")?.takeIf { it == "text" || it == "morse" }?.let {
-        NotificationReplySession.switchMode(messageId, it)
-      }
+      // Normal Reply always opens text, converting any retained Morse draft instead of discarding it.
+      val mode = intent.getStringExtra("mode")?.takeIf { it == "text" || it == "morse" } ?: "text"
+      NotificationReplySession.switchMode(messageId, mode)
+    }
+    subscription = NotificationReplySession.listen(messageId) { value ->
+      if (value == null) finish() else if (!isFinishing) render(value)
     }
   }
 
@@ -236,6 +251,9 @@ class MorseReplyActivity : Activity() {
     textMode = findViewById(R.id.quick_reply_mode_text)
     morseMode = findViewById(R.id.quick_reply_mode_morse)
     paddles = findViewById(R.id.quick_reply_paddles)
+    composer = findViewById(R.id.quick_reply_composer)
+    footer = findViewById(R.id.quick_reply_footer)
+    draftScroll = findViewById(R.id.quick_reply_scroll)
     dit = findViewById(R.id.quick_reply_dit)
     dah = findViewById(R.id.quick_reply_dah)
     space = findViewById(R.id.quick_reply_space)
@@ -349,11 +367,12 @@ class MorseReplyActivity : Activity() {
     textEditor.visibility = if (morse) View.GONE else View.VISIBLE
     morseEditor.visibility = if (morse) View.VISIBLE else View.GONE
     paddles.visibility = if (morse) View.VISIBLE else View.GONE
+    footer.visibility = if (morse) View.VISIBLE else View.GONE
     backspace.visibility = if (morse) View.VISIBLE else View.GONE
     val instructions = if (morse) "Pause for letters. Space for words." else ""
     if (!TextUtils.equals(hint.text, instructions)) hint.text = instructions
     if (!TextUtils.equals(status.text, snapshot.status)) status.text = snapshot.status
-    status.visibility = if (snapshot.status.isBlank()) View.INVISIBLE else View.VISIBLE
+    status.visibility = if (snapshot.status.isBlank()) View.GONE else View.VISIBLE
     val counter = if (morse) "${snapshot.draftMorse.length} / 6,000" else "${snapshot.draftText.length} / 1,000"
     if (!TextUtils.equals(count.text, counter)) count.text = counter
     val enabled = !snapshot.sending && !snapshot.sent
@@ -373,19 +392,15 @@ class MorseReplyActivity : Activity() {
       styleMode(textMode, !morse)
       styleMode(morseMode, morse)
       if (morse) {
+        keyboardRequested = false
+        window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE or WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN)
         hideKeyboard()
         textEditor.clearFocus()
         morseEditor.requestFocus()
         revealCaret(morseEditor)
       } else {
-        textEditor.requestFocus()
         textEditor.setSelection(textEditor.length())
-        textEditor.post {
-          if (!isFinishing && current?.mode == "text" && current?.sending == false) {
-            (getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager).showSoftInput(textEditor, InputMethodManager.SHOW_IMPLICIT)
-            revealCaret(textEditor)
-          }
-        }
+        requestTextKeyboard()
       }
       resizeWindow()
     }
@@ -427,6 +442,22 @@ class MorseReplyActivity : Activity() {
     if (::panel.isInitialized) (getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager).hideSoftInputFromWindow(panel.windowToken, 0)
   }
 
+  private fun requestTextKeyboard() {
+    if (!::textEditor.isInitialized || current?.mode != "text" || current?.sending != false || current?.sent != false) return
+    keyboardRequested = true
+    window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE or WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE)
+    textEditor.requestFocus()
+    textEditor.post { showRequestedKeyboard() }
+  }
+
+  private fun showRequestedKeyboard() {
+    if (!keyboardRequested || isFinishing || isDestroyed || !hasWindowFocus() || current?.mode != "text" || current?.sending != false || current?.sent != false) return
+    textEditor.requestFocus()
+    (getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager).showSoftInput(textEditor, InputMethodManager.SHOW_IMPLICIT)
+    ViewCompat.getWindowInsetsController(textEditor)?.show(WindowInsetsCompat.Type.ime())
+    revealCaret(textEditor)
+  }
+
   private fun resizeWindow(insets: WindowInsetsCompat? = null) {
     if (!::panel.isInitialized || isFinishing) return
     val metrics = resources.displayMetrics
@@ -439,11 +470,21 @@ class MorseReplyActivity : Activity() {
     val inferredIme = if (obscured > metrics.heightPixels / 5) obscured else 0
     val keyboard = max(ime, inferredIme)
     keyboardVisible = rootInsets?.isVisible(WindowInsetsCompat.Type.ime()) == true || keyboard > 0
-    val available = (metrics.heightPixels - (bars?.top ?: dp(24)) - max(keyboard, bars?.bottom ?: 0) - dp(24)).coerceAtLeast(1)
+    val available = (metrics.heightPixels - (bars?.top ?: dp(24)) - max(keyboard, bars?.bottom ?: 0) - dp(8)).coerceAtLeast(1)
     val width = min(dp(560), metrics.widthPixels - dp(24))
-    val extraFontSpace = dp((resources.configuration.fontScale - 1f).coerceIn(0f, 1f) * 100f)
-    val height = min(dp(if (current?.mode == "morse") 590 else 530) + extraFontSpace, available)
     incoming.visibility = if (keyboardVisible || available < dp(390)) View.GONE else View.VISIBLE
+    // Measure the actual chrome and draft, rather than reserving a 530dp text window. The scroll
+    // child keeps its full editable layout, while only its viewport is capped for long messages.
+    val widthSpec = View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY)
+    panel.measure(widthSpec, View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
+    val chrome = (panel.measuredHeight - composer.measuredHeight).coerceAtLeast(0)
+    val editor = if (current?.mode == "morse") morseEditor else textEditor
+    val viewport = min(editor.measuredHeight, (available - chrome).coerceAtLeast(1)).coerceAtLeast(1)
+    if (draftScroll.layoutParams.height != viewport) {
+      draftScroll.layoutParams = draftScroll.layoutParams.apply { height = viewport }
+      panel.measure(widthSpec, View.MeasureSpec.makeMeasureSpec(available, View.MeasureSpec.AT_MOST))
+    }
+    val height = min(panel.measuredHeight, available)
     if (width != lastWidth || height != lastHeight) {
       lastWidth = width
       lastHeight = height

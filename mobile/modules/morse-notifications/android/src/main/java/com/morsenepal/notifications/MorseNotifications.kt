@@ -69,7 +69,6 @@ internal object MorseNotifications {
     ensureChannels(context)
     val messageId = message.getString("id")
     val revealed = message.optBoolean("revealed", false)
-    val mode = message.optString("replyMode", "message")
     val text = message.optString("text").take(1000)
     val signal = message.optString("morse").ifBlank { MorseCodec.encode(text) }
     val body = if (revealed) text else signal
@@ -94,24 +93,9 @@ internal object MorseNotifications {
     if (status.isNotBlank()) builder.setSubText(status.take(100))
     if (open != null) builder.setContentIntent(PendingIntent.getActivity(context, id(messageId), open,
       PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
-    when (mode) {
-      "choose" -> {
-        builder.addAction(action(context, messageId, "text", "Text reply", remoteInput = true))
-        builder.addAction(editorAction(context, messageId, userId, "morse", "Morse reply"))
-        builder.addAction(editorAction(context, messageId, userId, "text", "Long reply"))
-      }
-      "morse" -> {
-        // Old saved drafts reopen in the local editor, outside System UI's limited RemoteViews area.
-        builder.addAction(editorAction(context, messageId, userId, "morse", "Continue Morse"))
-        builder.addAction(action(context, messageId, "text", "Text reply", remoteInput = true))
-        builder.addAction(action(context, messageId, "back", "Back"))
-      }
-      else -> {
-        builder.addAction(action(context, messageId, "reveal", if (revealed) "Hide text" else "Show text"))
-        builder.addAction(action(context, messageId, "listen", "Listen"))
-        builder.addAction(action(context, messageId, "reply", "Reply"))
-      }
-    }
+    builder.addAction(action(context, messageId, "reveal", if (revealed) "Hide text" else "Show text"))
+    builder.addAction(action(context, messageId, "listen", "Listen"))
+    builder.addAction(editorAction(context, messageId, userId, "text", "Reply"))
     try { NotificationManagerCompat.from(context).notify(id(messageId), builder.build()) } catch (_: SecurityException) { }
   }
 
